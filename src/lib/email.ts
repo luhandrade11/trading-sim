@@ -50,7 +50,13 @@ async function sendViaSMTP(to: string, subject: string, html: string): Promise<v
     auth:   { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
   });
   const from = process.env.EMAIL_FROM ?? process.env.SMTP_USER ?? FROM_DEFAULT;
-  await transport.sendMail({ from, to, subject, html });
+  const info = await transport.sendMail({ from, to, subject, html });
+
+  // Log Ethereal preview URL (works when SMTP_HOST = smtp.ethereal.email)
+  const previewUrl = nodemailer.default.getTestMessageUrl(info);
+  if (previewUrl) {
+    console.log(`[EMAIL] Preview: ${previewUrl}`);
+  }
 }
 
 export async function sendVerificationEmail(to: string, name: string, token: string): Promise<void> {

@@ -274,8 +274,8 @@ export default function TradingChart({
       if (!seriesRef.current) return;
       const base   = simPriceRef.current;
       const target = lastPriceRef.current;
-      const vol    = base * 0.00035;
-      const drift  = (target - base) * 0.06;
+      const vol    = base * 0.00055; // slightly more noise for visual movement
+      const drift  = (target - base) * 0.20; // 20% per tick — tracks real price in ~4s
       simPriceRef.current = Math.max(base + drift + (Math.random() - 0.5) * vol * 2, base * 0.001);
       const price = simPriceRef.current;
 
@@ -399,16 +399,17 @@ export default function TradingChart({
       const vr          = chart.timeScale().getVisibleRange();
 
       const newAnnotations: AnnotPos[] = activeTrades.map((trade) => {
-        // simEntryPrice = the simulated chart price at the exact moment this bet was placed.
-        // Using it (not the real API entryPrice) ensures isWin and Y coord are consistent
-        // with what the user sees on the simulated chart.
+        // simEntryPrice: used ONLY for the Y coordinate of the horizontal line.
+        // It's the simulated price at bet-placement time, guaranteed to be within the
+        // sim chart's visible range so priceToCoordinate() always returns a valid pixel.
         const simEntryPrice = simEntryPricesRef.current.get(trade.id) ?? simPrice;
 
-        // isWin: did the simulated price move in the bet's direction since placement?
-        // >= / <= so price == entry shows as winning (green) rather than immediately red
+        // isWin: always compare real market price vs real entry price.
+        // This matches the settlement cron AND the badge shown above the chart (TradeAnnotations).
+        // simPrice is NOT used here because the sim random walk is independent of real price.
         const isWin = trade.direction === "UP"
-          ? simPrice >= simEntryPrice
-          : simPrice <= simEntryPrice;
+          ? lastPriceRef.current > trade.entryPrice
+          : lastPriceRef.current < trade.entryPrice;
         const pnl    = isWin ? trade.amount * PAYOUT_RATE : -trade.amount;
         const pnlPct = (pnl / trade.amount) * 100;
         const timeLeft    = Math.max(0, Math.ceil((new Date(trade.expiresAt).getTime() - Date.now()) / 1000));

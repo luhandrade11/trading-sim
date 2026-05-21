@@ -15,12 +15,12 @@ import {
 import { PAYOUT_RATE } from "@/lib/constants";
 
 // ── Seeded PRNG (Mulberry32) ─────────────────────────────────────────────────
-// Same asset + same 2-hour block = identical chart history every time
+// Same asset + same 2-hour block → identical chart history every time
 
 function mulberry32(seed: number) {
-  let s = seed;
+  let s = seed >>> 0;
   return () => {
-    s |= 0; s = (s + 0x6d2b79f5) | 0;
+    s = (s + 0x6d2b79f5) >>> 0;
     let t = Math.imul(s ^ (s >>> 15), s | 1);
     t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
@@ -34,42 +34,60 @@ function hashStr(str: string): number {
 }
 
 function getChartSeed(asset: string): number {
-  const block = Math.floor(Date.now() / (2 * 3_600_000)); // rotates every 2h
+  const block = Math.floor(Date.now() / (2 * 3_600_000));
   return hashStr(asset + "-" + block);
 }
 
-// ── Chart data generation ────────────────────────────────────────────────────
+// ── Chart data — generated BACKWARDS from current price ──────────────────────
+// This guarantees: last data point === current price → no jump when sim starts
 
-function generateCandles(basePrice: number, asset: string): CandlestickData[] {
-  const rand    = mulberry32(getChartSeed(asset));
-  const candles: CandlestickData[] = [];
-  const now     = Math.floor(Date.now() / 60000) * 60;
-  let price     = basePrice * (0.96 + rand() * 0.02);
-  for (let i = 59; i >= 0; i--) {
-    const time = (now - i * 60) as Time;
-    const vol  = basePrice * 0.003;
-    const chg  = (rand() - 0.5) * vol * 2;
-    const close = Math.max(price + chg, basePrice * 0.01);
-    const high  = Math.max(price, close) + rand() * vol * 0.5;
-    const low   = Math.min(price, close) - rand() * vol * 0.5;
-    candles.push({ time, open: price, high, low: Math.max(low, basePrice * 0.01), close });
-    price = close;
+function generateLine(endPrice: number, asset: string): { time: Time; value: number }[] {
+  const rand  = mulberry32(getChartSeed(asset));
+  const now   = Math.floor(Date.now() / 1000);
+  const pts: number[] = [];
+  let p = endPrice;
+
+  for (let i = 0; i < 300; i++) {
+    pts.unshift(p);
+    const vol = endPrice * 0.0004;
+    const mr  = (endPrice - p) * 0.018; // gentle mean reversion toward endPrice
+    p = p - (rand() - 0.5) * vol * 2 - mr;
+    p = Math.max(p, endPrice * 0.001);
   }
-  return candles;
+
+  return pts.map((v, i) => ({
+    time:  (now - (299 - i) * 2) as Time,
+    value: v,
+  }));
 }
 
-function generateLine(basePrice: number, asset: string): { time: Time; value: number }[] {
+function generateCandles(endPrice: number, asset: string): CandlestickData[] {
   const rand  = mulberry32(getChartSeed(asset));
-  const data: { time: Time; value: number }[] = [];
-  const now   = Math.floor(Date.now() / 1000);
-  let price   = basePrice * (0.97 + rand() * 0.02);
-  for (let i = 299; i >= 0; i--) {
-    const time = (now - i * 2) as Time;
-    const vol  = basePrice * 0.0005;
-    price     += (rand() - 0.49) * vol * 2; // slight upward drift
-    data.push({ time, value: Math.max(price, basePrice * 0.01) });
+  const now   = Math.floor(Date.now() / 60000) * 60;
+  const closes: number[] = [];
+  let p = endPrice;
+
+  for (let i = 0; i < 60; i++) {
+    closes.unshift(p);
+    const vol = endPrice * 0.0025;
+    const mr  = (endPrice - p) * 0.05;
+    p = p - (rand() - 0.5) * vol * 2 - mr;
+    p = Math.max(p, endPrice * 0.001);
   }
-  return data;
+
+  return closes.map((close, i) => {
+    const open = i > 0 ? closes[i - 1] : close;
+    const vol  = endPrice * 0.002;
+    const high = Math.max(open, close) + rand() * vol;
+    const low  = Math.min(open, close) - rand() * vol;
+    return {
+      time:  (now - (59 - i) * 60) as Time,
+      open,
+      high,
+      low:   Math.max(low, endPrice * 0.001),
+      close,
+    };
+  });
 }
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -106,17 +124,21 @@ interface Props {
 
 // ── Countdown circle ─────────────────────────────────────────────────────────
 
-function CountdownCircle({ timeLeft, maxDuration, isWin }: { timeLeft: number; maxDuration: number; isWin: boolean }) {
-  const pct  = maxDuration > 0 ? Math.min(1, timeLeft / maxDuration) : 0;
-  const r    = 13;
-  const circ = 2 * Math.PI * r;
+function CountdownCircle({ timeLeft, maxDuration, isWin }: {
+  timeLeft: number; maxDuration: number; isWin: boolean;
+}) {
+  const pct   = maxDuration > 0 ? Math.min(1, timeLeft / maxDuration) : 0;
+  const r     = 13;
+  const circ  = 2 * Math.PI * r;
   const color = isWin ? "#22c55e" : "#ef4444";
   return (
     <div className="relative w-8 h-8 flex items-center justify-center">
       <svg className="absolute inset-0 w-full h-full -rotate-90" viewBox="0 0 32 32">
-        <circle cx="16" cy="16" r={r} fill="rgba(0,0,0,0.85)" stroke="rgba(255,255,255,0.08)" strokeWidth="1.5" />
-        <circle cx="16" cy="16" r={r} fill="none" stroke={color} strokeWidth="2"
-          strokeDasharray={circ} strokeDashoffset={circ * (1 - pct)} strokeLinecap="round" />
+        <circle cx="16" cy="16" r={r} fill="rgba(0,0,0,0.85)"
+          stroke="rgba(255,255,255,0.08)" strokeWidth="1.5" />
+        <circle cx="16" cy="16" r={r} fill="none" stroke={color}
+          strokeWidth="2" strokeDasharray={circ}
+          strokeDashoffset={circ * (1 - pct)} strokeLinecap="round" />
       </svg>
       <span className="relative text-[8px] font-black leading-none" style={{ color }}>
         {timeLeft >= 60 ? `${Math.ceil(timeLeft / 60)}m` : `${timeLeft}`}
@@ -125,6 +147,10 @@ function CountdownCircle({ timeLeft, maxDuration, isWin }: { timeLeft: number; m
   );
 }
 
+// How many seconds of future whitespace to show initially
+const FUTURE_BUFFER_SECS = 90;
+// How many seconds of history to show
+const HISTORY_SECS = 300;
 const MAX_LINE_POINTS = 600;
 const BG = "#050509";
 
@@ -143,8 +169,8 @@ export default function TradingChart({
   const seriesRef     = useRef<ISeriesApi<any> | null>(null);
   const candlesRef    = useRef<CandlestickData[]>([]);
   const lineRef       = useRef<{ time: Time; value: number }[]>([]);
-  const lastPriceRef  = useRef<number>(0);
-  const simPriceRef   = useRef<number>(0);
+  const lastPriceRef  = useRef<number>(currentPrice || 100);
+  const simPriceRef   = useRef<number>(currentPrice || 100);
   const modeRef       = useRef(chartType);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [annotations,  setAnnotations]  = useState<AnnotPos[]>([]);
@@ -155,10 +181,9 @@ export default function TradingChart({
     modeRef.current = chartType;
     setAnnotations([]);
 
-    // Use current API price or fall back to something sensible
-    const initPrice = currentPrice > 0 ? currentPrice : (lastPriceRef.current > 0 ? lastPriceRef.current : 100);
+    const initPrice = currentPrice > 0 ? currentPrice : Math.max(lastPriceRef.current, 1);
     lastPriceRef.current = initPrice;
-    simPriceRef.current  = initPrice;
+    simPriceRef.current  = initPrice; // sim starts from chart's last point (= initPrice)
 
     const chart = createChart(containerRef.current, {
       layout: {
@@ -180,8 +205,6 @@ export default function TradingChart({
         borderColor:    "#0d1020",
         timeVisible:    true,
         secondsVisible: true,
-        // Leave room on the right so future expiry times are visible
-        rightOffset: 20,
       },
       width:  containerRef.current.clientWidth,
       height: containerRef.current.clientHeight,
@@ -207,19 +230,26 @@ export default function TradingChart({
         topColor:     "rgba(255,255,255,0.06)",
         bottomColor:  "rgba(255,255,255,0)",
         lineWidth:    2,
-        crosshairMarkerVisible:          true,
-        crosshairMarkerRadius:           3,
-        crosshairMarkerBorderColor:      "rgba(255,255,255,0.5)",
-        crosshairMarkerBackgroundColor:  "#ffffff",
+        crosshairMarkerVisible:         true,
+        crosshairMarkerRadius:          3,
+        crosshairMarkerBorderColor:     "rgba(255,255,255,0.5)",
+        crosshairMarkerBackgroundColor: "#ffffff",
       });
       const lineData = generateLine(initPrice, asset);
       lineRef.current = lineData;
       series.setData(lineData);
     }
 
-    chart.timeScale().fitContent();
     chartRef.current  = chart;
     seriesRef.current = series;
+
+    // Explicitly set visible range: HISTORY_SECS of history + FUTURE_BUFFER_SECS of future
+    // This is what makes timeToCoordinate work for near-future expiry times
+    const nowSec = Math.floor(Date.now() / 1000);
+    chart.timeScale().setVisibleRange({
+      from: (nowSec - HISTORY_SECS)       as Time,
+      to:   (nowSec + FUTURE_BUFFER_SECS) as Time,
+    });
 
     // OHLC crosshair
     chart.subscribeCrosshairMove((param) => {
@@ -235,19 +265,19 @@ export default function TradingChart({
       }
     });
 
-    // 800ms simulated movement — keeps chart alive 24/7 even between API ticks
+    // 800ms simulated movement — continuous movement 24/7
     const simInterval = setInterval(() => {
       if (!seriesRef.current) return;
       const base   = simPriceRef.current;
       const target = lastPriceRef.current;
-      const vol    = base * 0.0004;
-      const drift  = (target - base) * 0.07;
+      const vol    = base * 0.00035;
+      const drift  = (target - base) * 0.06;
       simPriceRef.current = Math.max(base + drift + (Math.random() - 0.5) * vol * 2, base * 0.001);
       const price = simPriceRef.current;
 
       if (modeRef.current === "candle") {
         if (!candlesRef.current.length) return;
-        const last = candlesRef.current[candlesRef.current.length - 1];
+        const last   = candlesRef.current[candlesRef.current.length - 1];
         const curMin = (Math.floor(Date.now() / 60000) * 60) as Time;
         if (last.time === curMin) {
           const updated: CandlestickData = {
@@ -283,6 +313,22 @@ export default function TradingChart({
       }
     }, 800);
 
+    // Scroll time scale forward as time passes (keeps "now" in view)
+    const scrollInterval = setInterval(() => {
+      if (!chartRef.current) return;
+      const nowSec = Math.floor(Date.now() / 1000);
+      const vr = chartRef.current.timeScale().getVisibleRange();
+      if (!vr) return;
+      const span = Number(vr.to) - Number(vr.from);
+      // Shift the window forward to keep current time centered-right
+      chartRef.current.timeScale().setVisibleRange({
+        from: (nowSec - HISTORY_SECS)       as Time,
+        to:   (nowSec + FUTURE_BUFFER_SECS) as Time,
+      });
+      // Restore if trades need more future space (handled in activeTrades effect)
+      void span;
+    }, 10_000); // gentle shift every 10s
+
     const handleResize = () => {
       if (containerRef.current) {
         chart.applyOptions({
@@ -294,6 +340,7 @@ export default function TradingChart({
     window.addEventListener("resize", handleResize);
     return () => {
       clearInterval(simInterval);
+      clearInterval(scrollInterval);
       window.removeEventListener("resize", handleResize);
       chart.remove();
       chartRef.current  = null;
@@ -302,27 +349,35 @@ export default function TradingChart({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [asset, chartType]);
 
-  // Update real price target for simulated drift
+  // Update real price target
   useEffect(() => {
     if (currentPrice > 0) lastPriceRef.current = currentPrice;
   }, [currentPrice]);
 
-  // ── Extend visible range so expiry lines are visible ──────────────────────
+  // ── Extend visible range when trades are placed ───────────────────────────
   useEffect(() => {
     if (!chartRef.current || activeTrades.length === 0) return;
     const nowSec    = Math.floor(Date.now() / 1000);
-    const maxExpiry = Math.max(...activeTrades.map((t) => Math.floor(new Date(t.expiresAt).getTime() / 1000)));
+    const maxExpiry = Math.max(...activeTrades.map((t) =>
+      Math.floor(new Date(t.expiresAt).getTime() / 1000)
+    ));
     if (maxExpiry <= nowSec) return;
 
+    // Need future buffer = time until last expiry + 30s padding
+    const futureSecs = (maxExpiry - nowSec) + 30;
     const vr = chartRef.current.timeScale().getVisibleRange();
     if (!vr) return;
-    const needed = (maxExpiry + 40) as Time; // 40s buffer after last expiry
-    if (maxExpiry + 40 > Number(vr.to)) {
-      chartRef.current.timeScale().setVisibleRange({ from: vr.from, to: needed });
+
+    const desiredTo = (nowSec + futureSecs) as Time;
+    if (futureSecs > FUTURE_BUFFER_SECS || Number(vr.to) < nowSec + futureSecs) {
+      chartRef.current.timeScale().setVisibleRange({
+        from: (nowSec - HISTORY_SECS) as Time,
+        to:   desiredTo,
+      });
     }
   }, [activeTrades]);
 
-  // ── Annotation positions (400ms) ──────────────────────────────────────────
+  // ── Annotation positions ──────────────────────────────────────────────────
   useEffect(() => {
     const update = () => {
       if (!chartRef.current || !seriesRef.current || !containerRef.current) return;
@@ -330,9 +385,7 @@ export default function TradingChart({
       const series     = seriesRef.current;
       const simPrice   = simPriceRef.current;
       const chartWidth = containerRef.current.clientWidth;
-
-      // Visible range for manual X calculation
-      const vr = chart.timeScale().getVisibleRange();
+      const vr         = chart.timeScale().getVisibleRange();
 
       const newAnnotations: AnnotPos[] = activeTrades.map((trade) => {
         const isWin = trade.direction === "UP"
@@ -341,22 +394,25 @@ export default function TradingChart({
         const pnl    = isWin ? trade.amount * PAYOUT_RATE : -trade.amount;
         const pnlPct = (pnl / trade.amount) * 100;
         const timeLeft    = Math.max(0, Math.ceil((new Date(trade.expiresAt).getTime() - Date.now()) / 1000));
-        const maxDuration = Math.max(1, Math.round((new Date(trade.expiresAt).getTime() - new Date(trade.createdAt).getTime()) / 1000));
+        const maxDuration = Math.max(1, Math.round(
+          (new Date(trade.expiresAt).getTime() - new Date(trade.createdAt).getTime()) / 1000
+        ));
 
-        // Y: entry price line
+        // Y: entry price horizontal line
         let entryY: number | null = null;
         try { entryY = series.priceToCoordinate(trade.entryPrice) ?? null; } catch {}
 
-        // X: expiry vertical line — manual calc using visible range
+        // X: expiry vertical line — manual calculation using visible range
         let expiryX: number | null = null;
-        if (vr) {
-          const fromSec    = Number(vr.from);
-          const toSec      = Number(vr.to);
-          const span       = toSec - fromSec;
+        if (vr && chartWidth > 0) {
+          const fromSec  = Number(vr.from);
+          const toSec    = Number(vr.to);
+          const span     = toSec - fromSec;
           if (span > 0) {
             const expSec = new Date(trade.expiresAt).getTime() / 1000;
             const rawX   = ((expSec - fromSec) / span) * chartWidth;
-            if (rawX > 8 && rawX < chartWidth - 4) expiryX = rawX;
+            // Only show if within the chart's drawable area
+            if (rawX > 5 && rawX < chartWidth - 2) expiryX = rawX;
           }
         }
 
@@ -394,35 +450,40 @@ export default function TradingChart({
         <span
           className="font-black uppercase tracking-[0.35em] text-5xl"
           style={{
-            color: "transparent",
-            WebkitTextStroke: "1px rgba(255,255,255,0.04)",
-            textShadow: "0 0 80px rgba(251,191,36,0.03)",
+            color:            "transparent",
+            WebkitTextStroke: "1px rgba(255,255,255,0.045)",
+            textShadow:       "0 0 120px rgba(251,191,36,0.04)",
           }}
         >
           Prime Broker
         </span>
       </div>
 
-      {/* Avalon trade annotations */}
+      {/* Avalon annotations */}
       {annotations.map((ann) => (
         <div key={ann.id} className="absolute inset-0 pointer-events-none overflow-hidden">
-          {/* Horizontal entry price line */}
+
+          {/* Horizontal dashed entry price line */}
           {ann.entryY !== null && ann.entryY > 20 && (
             <>
-              <div className="absolute left-0 right-14" style={{
-                top:    ann.entryY - 0.5,
-                height: 1,
+              <div style={{
+                position:        "absolute",
+                left:            0,
+                right:           56,
+                top:             ann.entryY - 0.5,
+                height:          1,
                 backgroundImage: ann.isWin
                   ? "repeating-linear-gradient(to right,#22c55e 0,#22c55e 6px,transparent 6px,transparent 12px)"
                   : "repeating-linear-gradient(to right,#ef4444 0,#ef4444 6px,transparent 6px,transparent 12px)",
                 opacity: 0.9,
               }} />
               {/* P&L % label */}
-              <div className="absolute right-16 flex items-center" style={{ top: ann.entryY - 10 }}>
-                <span className={`text-[9px] font-black px-1.5 py-0.5 rounded-md backdrop-blur-sm ${
+              <div style={{ position: "absolute", right: 60, top: ann.entryY - 10 }}
+                className="flex items-center">
+                <span className={`text-[9px] font-black px-1.5 py-0.5 rounded-md ${
                   ann.isWin
-                    ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
-                    : "bg-rose-500/20 text-rose-400 border border-rose-500/30"
+                    ? "bg-emerald-500/25 text-emerald-400 border border-emerald-500/30"
+                    : "bg-rose-500/25 text-rose-400 border border-rose-500/30"
                 }`}>
                   {ann.isWin ? "+" : ""}{ann.pnlPct.toFixed(0)}%
                 </span>
@@ -430,20 +491,26 @@ export default function TradingChart({
             </>
           )}
 
-          {/* Vertical expiry line + countdown circle */}
+          {/* Vertical dashed expiry line + countdown circle */}
           {ann.expiryX !== null && (
             <>
-              <div className="absolute top-0" style={{
-                left:   ann.expiryX - 0.5,
-                width:  1,
-                bottom: 30,
+              <div style={{
+                position:        "absolute",
+                left:            ann.expiryX - 0.5,
+                top:             0,
+                bottom:          30,
+                width:           1,
                 backgroundImage: ann.isWin
                   ? "repeating-linear-gradient(to bottom,#22c55e 0,#22c55e 5px,transparent 5px,transparent 10px)"
                   : "repeating-linear-gradient(to bottom,#ef4444 0,#ef4444 5px,transparent 5px,transparent 10px)",
                 opacity: 0.65,
               }} />
-              <div className="absolute" style={{ left: ann.expiryX - 16, bottom: 32 }}>
-                <CountdownCircle timeLeft={ann.timeLeft} maxDuration={ann.maxDuration} isWin={ann.isWin} />
+              <div style={{ position: "absolute", left: ann.expiryX - 16, bottom: 32 }}>
+                <CountdownCircle
+                  timeLeft={ann.timeLeft}
+                  maxDuration={ann.maxDuration}
+                  isWin={ann.isWin}
+                />
               </div>
             </>
           )}
@@ -455,11 +522,13 @@ export default function TradingChart({
         className="absolute top-2 right-2 z-10 w-7 h-7 flex items-center justify-center bg-[#0c1018]/80 border border-white/5 rounded-lg text-white/20 hover:text-white/60 hover:border-white/10 transition-all backdrop-blur-sm">
         {isFullscreen ? (
           <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 9V4.5M9 9H4.5M9 15v4.5M9 15H4.5M15 9h4.5M15 9V4.5M15 15h4.5M15 15v4.5" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+              d="M9 9V4.5M9 9H4.5M9 15v4.5M9 15H4.5M15 9h4.5M15 9V4.5M15 15h4.5M15 15v4.5" />
           </svg>
         ) : (
           <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+              d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
           </svg>
         )}
       </button>

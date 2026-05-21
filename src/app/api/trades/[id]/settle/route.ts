@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { PAYOUT_RATE } from "@/lib/constants";
 
 export async function POST(
   req: NextRequest,
@@ -13,18 +14,29 @@ export async function POST(
   }
 
   const { id } = await params;
-  const { exitPrice } = await req.json();
+  const body = await req.json().catch(() => null);
+  if (!body) {
+    return NextResponse.json({ error: "Body inválido" }, { status: 400 });
+  }
+
+  const { exitPrice } = body;
+  if (typeof exitPrice !== "number" || exitPrice <= 0) {
+    return NextResponse.json({ error: "Preço de saída inválido" }, { status: 400 });
+  }
 
   const trade = await prisma.trade.findUnique({ where: { id } });
-  if (!trade || trade.userId !== session.user.id || trade.result !== "PENDING") {
-    return NextResponse.json({ error: "Operação inválida" }, { status: 400 });
+  if (!trade || trade.userId !== session.user.id) {
+    return NextResponse.json({ error: "Operação não encontrada" }, { status: 404 });
+  }
+  if (trade.result !== "PENDING") {
+    return NextResponse.json({ error: "Operação já finalizada" }, { status: 400 });
   }
 
   const won =
     (trade.direction === "UP" && exitPrice > trade.entryPrice) ||
     (trade.direction === "DOWN" && exitPrice < trade.entryPrice);
 
-  const profit = won ? trade.amount * 0.85 : 0;
+  const profit = won ? trade.amount * PAYOUT_RATE : 0;
   const result = won ? "WIN" : "LOSS";
 
   const [updated] = await prisma.$transaction([

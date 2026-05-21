@@ -1,46 +1,59 @@
 import { NextResponse } from "next/server";
 
-const ASSETS = [
+const COINGECKO_ASSETS = [
   { id: "bitcoin", symbol: "BTC/USD" },
   { id: "ethereum", symbol: "ETH/USD" },
   { id: "solana", symbol: "SOL/USD" },
 ];
 
+// Fallback prices if APIs are down
+const FALLBACKS: Record<string, { price: number; change24h: number }> = {
+  "BTC/USD": { price: 105000, change24h: 0 },
+  "ETH/USD": { price: 2500, change24h: 0 },
+  "SOL/USD": { price: 175, change24h: 0 },
+  "EUR/USD": { price: 1.085, change24h: 0 },
+  "USD/BRL": { price: 5.75, change24h: 0 },
+};
+
 export async function GET() {
+  const prices: Record<string, { price: number; change24h: number }> = {
+    ...FALLBACKS,
+  };
+
   try {
-    const ids = ASSETS.map((a) => a.id).join(",");
+    const ids = COINGECKO_ASSETS.map((a) => a.id).join(",");
     const res = await fetch(
       `https://api.coingecko.com/api/v3/simple/price?ids=${ids}&vs_currencies=usd&include_24hr_change=true`,
-      { next: { revalidate: 10 } }
+      { next: { revalidate: 0 }, signal: AbortSignal.timeout(5000) }
     );
-
-    if (!res.ok) throw new Error("CoinGecko error");
-    const data = await res.json();
-
-    const prices: Record<string, { price: number; change24h: number }> = {};
-    for (const asset of ASSETS) {
-      prices[asset.symbol] = {
-        price: data[asset.id]?.usd ?? 0,
-        change24h: data[asset.id]?.usd_24h_change ?? 0,
-      };
+    if (res.ok) {
+      const data = await res.json();
+      for (const asset of COINGECKO_ASSETS) {
+        if (data[asset.id]?.usd) {
+          prices[asset.symbol] = {
+            price: data[asset.id].usd,
+            change24h: data[asset.id].usd_24h_change ?? 0,
+          };
+        }
+      }
     }
+  } catch {
+    // use fallbacks for crypto
+  }
 
-    // Forex via Frankfurter
+  try {
     const forexRes = await fetch(
       "https://api.frankfurter.app/latest?from=EUR&to=USD,BRL",
-      { next: { revalidate: 60 } }
+      { next: { revalidate: 0 }, signal: AbortSignal.timeout(5000) }
     );
     if (forexRes.ok) {
       const forex = await forexRes.json();
-      prices["EUR/USD"] = { price: forex.rates?.USD ?? 1.08, change24h: 0 };
-      prices["USD/BRL"] = { price: forex.rates?.BRL ?? 5.1, change24h: 0 };
+      if (forex.rates?.USD) prices["EUR/USD"] = { price: forex.rates.USD, change24h: 0 };
+      if (forex.rates?.BRL) prices["USD/BRL"] = { price: 1 / (forex.rates.USD / forex.rates.BRL), change24h: 0 };
     }
-
-    return NextResponse.json(prices);
   } catch {
-    return NextResponse.json(
-      { error: "Erro ao buscar preços" },
-      { status: 500 }
-    );
+    // use fallbacks for forex
   }
+
+  return NextResponse.json(prices);
 }

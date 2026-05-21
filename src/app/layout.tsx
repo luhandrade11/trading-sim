@@ -16,6 +16,7 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "TradeSim — Simulador de Trading",
   description: "Plataforma de simulação de trading para estudo",
+  icons: { icon: "/favicon.svg" },
 };
 
 export default function RootLayout({

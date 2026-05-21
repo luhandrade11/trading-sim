@@ -19,10 +19,11 @@ interface Props {
 function generateInitialCandles(basePrice: number): CandlestickData[] {
   const candles: CandlestickData[] = [];
   const now = Math.floor(Date.now() / 1000);
+  const currentMinute = Math.floor(now / 60) * 60;
   let price = basePrice * 0.97;
 
   for (let i = 59; i >= 0; i--) {
-    const time = (now - i * 60) as Time;
+    const time = (currentMinute - i * 60) as Time;
     const open = price;
     const volatility = basePrice * 0.003;
     const change = (Math.random() - 0.5) * volatility * 2;

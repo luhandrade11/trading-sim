@@ -9,6 +9,7 @@ import TradeHistory from "@/components/TradeHistory";
 import PositionsTable from "@/components/PositionsTable";
 import ConfirmModal from "@/components/ConfirmModal";
 import AssetPicker from "@/components/AssetPicker";
+import type { TradeAnnotation } from "@/components/TradingChart";
 import { PAYOUT_RATE, ALL_ASSETS, DEFAULT_TABS, DURATIONS, getSpread } from "@/lib/constants";
 import { computeStats, formatPrice } from "@/lib/utils";
 import { useI18n, LOCALES, setLocale as setGlobalLocale, formatCurrency } from "@/lib/i18n";
@@ -118,11 +119,11 @@ function NavItem({ icon, label, active = false, badge, onClick }: {
   return (
     <button
       onClick={onClick}
-      className={`relative flex flex-col items-center justify-center gap-1.5 w-full py-3.5 transition-all cursor-pointer select-none ${
+      className={`relative flex flex-col items-center justify-center gap-2 w-full py-4 transition-all cursor-pointer select-none ${
         active ? "text-amber-400 bg-amber-400/10" : "text-slate-500 hover:text-slate-200 hover:bg-white/4"
       }`}
     >
-      <div className="relative">
+      <div className="relative [&>svg]:w-6 [&>svg]:h-6">
         {icon}
         {badge && (
           <span className="absolute -top-2 -right-2 bg-amber-400 text-[#080c14] text-[8px] font-black px-1.5 rounded-full leading-tight min-w-[16px] text-center">
@@ -130,8 +131,8 @@ function NavItem({ icon, label, active = false, badge, onClick }: {
           </span>
         )}
       </div>
-      <span className="text-[9px] font-bold leading-none tracking-wide uppercase">{label}</span>
-      {active && <div className="absolute right-0 top-1/2 -translate-y-1/2 w-0.5 h-7 bg-amber-400 rounded-l-full" />}
+      <span className="text-[10px] font-bold leading-none tracking-wide uppercase">{label}</span>
+      {active && <div className="absolute right-0 top-1/2 -translate-y-1/2 w-0.5 h-8 bg-amber-400 rounded-l-full" />}
     </button>
   );
 }
@@ -766,12 +767,16 @@ function DepositModal({ open, onClose }: { open: boolean; onClose: () => void })
 
 // ─── Deposit success handler (needs Suspense for useSearchParams) ─────────────
 
-function DepositSuccessHandler({ onSuccess }: { onSuccess: () => void }) {
+function DepositSuccessHandler({ onSuccess, onVerified }: { onSuccess: () => void; onVerified: () => void }) {
   const searchParams = useSearchParams();
   const router       = useRouter();
   useEffect(() => {
     if (searchParams?.get("deposit") === "success") {
       onSuccess();
+      router.replace("/dashboard");
+    }
+    if (searchParams?.get("verified") === "1") {
+      onVerified();
       router.replace("/dashboard");
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -809,6 +814,8 @@ export default function DashboardPage() {
   const [ohlc,             setOhlc]             = useState<OhlcData | null>(null);
   const [tradeResult,      setTradeResult]      = useState<TradeResult | null>(null);
   const [mobileTab,        setMobileTab]        = useState<"chart" | "trade" | "panels">("chart");
+  const [emailVerified,    setEmailVerified]    = useState<boolean | null>(null);
+  const [showDepositCta,   setShowDepositCta]   = useState(false);
 
   const notifTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const staleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -826,9 +833,17 @@ export default function DashboardPage() {
   const potentialWin  = amount * PAYOUT_RATE;
   const canTrade      = currentPrice > 0 && !placing && balance !== null && balance >= amount && amount >= 1;
 
-  const activeEntries = useMemo(
-    () => activeTrades.filter((t) => t.asset === selectedAsset)
-      .map((t) => ({ entryPrice: t.entryPrice, direction: t.direction as "UP" | "DOWN" })),
+  const activeTradesForChart = useMemo(
+    () => activeTrades
+      .filter((t) => t.asset === selectedAsset)
+      .map((t): TradeAnnotation => ({
+        id:         t.id,
+        entryPrice: t.entryPrice,
+        direction:  t.direction as "UP" | "DOWN",
+        expiresAt:  t.expiresAt,
+        createdAt:  t.createdAt,
+        amount:     t.amount,
+      })),
     [activeTrades, selectedAsset]
   );
 
@@ -899,6 +914,12 @@ export default function DashboardPage() {
         const u = await r.json();
         setBalance(u.balance);
         if (u.image) setUserImage(u.image);
+        if (typeof u.emailVerified === "boolean") setEmailVerified(u.emailVerified);
+        // Show deposit CTA once if first time seeing demo balance
+        if (u.balance !== null && u.balance >= 9900) {
+          const ctaDismissed = localStorage.getItem("pb-deposit-cta-dismissed");
+          if (!ctaDismissed) setShowDepositCta(true);
+        }
         // Auto-reset demo balance when depleted
         if (u.balance !== null && u.balance <= 0) {
           const rr = await fetch("/api/user/reset", { method: "POST" });
@@ -941,7 +962,8 @@ export default function DashboardPage() {
         setTrades((prev) => prev.map((t) => t.id === id ? { ...t, ...settled } : t));
         await fetchUser();
         const isWin = settled.result === "WIN";
-        setTradeResult({ profit: Math.abs(settled.profit), isWin, asset: settled.asset, amount: settled.amount });
+        // For WIN: settled.profit = amount * PAYOUT_RATE; for LOSS: profit=0 in DB, so show amount
+        setTradeResult({ profit: isWin ? settled.profit : settled.amount, isWin, asset: settled.asset, amount: settled.amount });
         showNotif(
           isWin
             ? `${t("win_notif")} +${formatCurrency(settled.profit)} em ${settled.asset}`
@@ -1171,7 +1193,7 @@ export default function DashboardPage() {
     <div className="h-[100dvh] flex flex-col bg-[#050509] overflow-hidden">
 
       {/* Toast */}
-      <div className={`fixed top-14 left-1/2 -translate-x-1/2 z-50 transition-all duration-300 ${notification ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-3 pointer-events-none"}`}>
+      <div className={`fixed top-20 left-1/2 -translate-x-1/2 z-50 transition-all duration-300 ${notification ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-3 pointer-events-none"}`}>
         {notification && (
           <div key={notification.key} className={`px-5 py-2.5 rounded-xl font-semibold text-sm shadow-2xl whitespace-nowrap border ${
             notification.type === "win" ? "bg-emerald-500 border-emerald-400 text-white" :
@@ -1198,16 +1220,19 @@ export default function DashboardPage() {
 
       {/* Deposit URL handler */}
       <Suspense fallback={null}>
-        <DepositSuccessHandler onSuccess={() => showNotif("💰 Depósito recebido!", "win")} />
+        <DepositSuccessHandler
+          onSuccess={() => { showNotif("💰 Depósito recebido!", "win"); fetchUser(); }}
+          onVerified={() => { setEmailVerified(true); showNotif("✅ Email confirmado! Conta ativa.", "win"); }}
+        />
       </Suspense>
 
       {/* ── HEADER ── */}
-      <header className="h-12 bg-[#0a0c14] border-b border-white/5 flex items-center px-3 gap-2 shrink-0 z-10">
-        <div className="flex items-center gap-2 shrink-0 pr-3 border-r border-white/5">
-          <div className="w-7 h-7 bg-gradient-to-br from-amber-400 to-amber-600 rounded-lg flex items-center justify-center">
-            <span className="text-[#080c14] font-black text-[9px]">PB</span>
+      <header className="h-16 bg-[#0a0c14] border-b border-white/5 flex items-center px-4 gap-3 shrink-0 z-10">
+        <div className="flex items-center gap-2.5 shrink-0 pr-4 border-r border-white/5">
+          <div className="w-10 h-10 bg-gradient-to-br from-amber-400 to-amber-600 rounded-xl flex items-center justify-center shadow-lg shadow-amber-500/20">
+            <span className="text-[#080c14] font-black text-xs">PB</span>
           </div>
-          <span className="font-bold text-sm tracking-tight hidden sm:block">
+          <span className="font-black text-base tracking-tight hidden sm:block">
             <span className="text-white">Prime</span><span className="text-amber-400"> Broker</span>
           </span>
         </div>
@@ -1220,44 +1245,84 @@ export default function DashboardPage() {
             const sel  = selectedAsset === symbol;
             return (
               <button key={symbol} onClick={() => setSelectedAsset(symbol)}
-                className={`group flex flex-col items-start justify-center px-2.5 h-full border-b-2 transition-all shrink-0 ${sel ? "border-amber-400 bg-white/3" : "border-transparent hover:border-white/10 hover:bg-white/2"}`}>
-                <div className="flex items-center gap-1">
-                  <div className={`w-1 h-1 rounded-full ${info?.type === "forex" ? "bg-blue-400" : "bg-amber-400"}`} />
-                  <span className={`text-[10px] font-semibold ${sel ? "text-white" : "text-slate-500 group-hover:text-slate-300"}`}>{symbol}</span>
+                className={`group flex flex-col items-start justify-center px-3 h-full border-b-2 transition-all shrink-0 ${sel ? "border-amber-400 bg-white/4" : "border-transparent hover:border-white/10 hover:bg-white/2"}`}>
+                <div className="flex items-center gap-1.5">
+                  <div className={`w-1.5 h-1.5 rounded-full ${info?.type === "forex" ? "bg-blue-400" : "bg-amber-400"}`} />
+                  <span className={`text-xs font-bold ${sel ? "text-white" : "text-slate-500 group-hover:text-slate-300"}`}>{symbol}</span>
                   {openAssets.length > 1 && (
                     <button onClick={(e) => { e.stopPropagation(); removeAsset(symbol); }}
-                      className="opacity-0 group-hover:opacity-100 text-white/20 hover:text-white/60 ml-0.5 text-[10px]">×</button>
+                      className="opacity-0 group-hover:opacity-100 text-white/20 hover:text-white/60 ml-0.5 text-xs">×</button>
                   )}
                 </div>
                 {p?.price ? (
-                  <span className={`text-[8px] font-mono leading-none ${(p.change24h ?? 0) >= 0 ? "text-emerald-500" : "text-rose-500"}`}>
+                  <span className={`text-[9px] font-mono leading-none ${(p.change24h ?? 0) >= 0 ? "text-emerald-500" : "text-rose-500"}`}>
                     {p.change24h >= 0 ? "+" : ""}{p.change24h.toFixed(2)}%
                   </span>
-                ) : <span className="text-[8px] text-white/10 animate-pulse">…</span>}
+                ) : <span className="text-[9px] text-white/10 animate-pulse">…</span>}
               </button>
             );
           })}
           <button onClick={() => setShowAssetPicker(true)}
-            className="flex items-center justify-center w-8 h-full text-white/20 hover:text-amber-400 hover:bg-white/3 transition-all shrink-0 text-lg leading-none">+</button>
+            className="flex items-center justify-center w-10 h-full text-white/20 hover:text-amber-400 hover:bg-white/3 transition-all shrink-0 text-xl leading-none">+</button>
         </div>
 
         {/* Balance + Deposit */}
-        <div className="flex items-center gap-1.5 shrink-0 pl-2 border-l border-white/5">
-          <div className="hidden sm:flex items-center gap-2 bg-[#111827] border border-white/5 rounded-lg px-2.5 py-1.5 cursor-pointer hover:border-white/10 transition-all" onClick={() => setDepositModalOpen(true)}>
+        <div className="flex items-center gap-2 shrink-0 pl-3 border-l border-white/5">
+          <div className="hidden sm:flex items-center gap-2 bg-[#111827] border border-white/5 rounded-xl px-3 py-2 cursor-pointer hover:border-white/10 transition-all" onClick={() => setDepositModalOpen(true)}>
             <div className="flex flex-col items-end">
-              <div className="flex items-center gap-1">
-                <span className="text-[7px] font-bold text-amber-400 uppercase tracking-wider">{t("demo")}</span>
-                <div className="w-1 h-1 rounded-full bg-emerald-400 animate-pulse" />
+              <div className="flex items-center gap-1.5">
+                <span className="text-[9px] font-bold text-amber-400 uppercase tracking-wider">{t("demo")}</span>
+                <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
               </div>
-              <span className={`text-xs font-bold font-mono ${balance === null ? "text-slate-700 animate-pulse" : "text-white"}`}>{balanceFmt}</span>
+              <span className={`text-sm font-black font-mono ${balance === null ? "text-slate-700 animate-pulse" : "text-white"}`}>{balanceFmt}</span>
             </div>
           </div>
           <button onClick={() => setDepositModalOpen(true)}
-            className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-white text-xs font-bold rounded-lg transition-all shadow-lg shadow-emerald-500/20">
+            className="hidden sm:flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-white text-sm font-bold rounded-xl transition-all shadow-lg shadow-emerald-500/25">
             <span>💰</span> {t("deposit")}
           </button>
         </div>
       </header>
+
+      {/* ── BANNERS ── */}
+      {emailVerified === false && (
+        <div className="bg-amber-500/10 border-b border-amber-500/20 px-4 py-2 flex items-center justify-between gap-3 shrink-0">
+          <div className="flex items-center gap-2 min-w-0">
+            <span className="text-amber-400 text-sm shrink-0">📧</span>
+            <p className="text-xs text-amber-300/80 truncate">
+              Confirme seu email para ativar todas as funcionalidades.
+            </p>
+          </div>
+          <button
+            onClick={async () => {
+              const r = await fetch("/api/auth/resend-verify", { method: "POST" });
+              if (r.ok) showNotif("📧 Email enviado!", "win");
+            }}
+            className="text-[10px] font-bold text-amber-400 border border-amber-400/30 rounded-lg px-2.5 py-1 hover:bg-amber-400/10 transition-colors shrink-0"
+          >
+            Reenviar
+          </button>
+        </div>
+      )}
+      {showDepositCta && emailVerified && (
+        <div className="bg-emerald-500/10 border-b border-emerald-500/20 px-4 py-2 flex items-center justify-between gap-3 shrink-0">
+          <div className="flex items-center gap-2 min-w-0">
+            <span className="text-emerald-400 text-sm shrink-0">💎</span>
+            <p className="text-xs text-emerald-300/80 truncate">
+              Você está no modo demo. Faça um depósito para ativar sua conta real.
+            </p>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <button onClick={() => setDepositModalOpen(true)}
+              className="text-[10px] font-bold text-emerald-400 border border-emerald-400/30 rounded-lg px-2.5 py-1 hover:bg-emerald-400/10 transition-colors">
+              Depositar
+            </button>
+            <button
+              onClick={() => { setShowDepositCta(false); localStorage.setItem("pb-deposit-cta-dismissed", "1"); }}
+              className="text-white/20 hover:text-white/50 text-xs">✕</button>
+          </div>
+        </div>
+      )}
 
       {/* ── MAIN ── */}
       <div className="flex flex-1 overflow-hidden min-h-0">
@@ -1328,7 +1393,7 @@ export default function DashboardPage() {
 
             {/* Chart */}
             {currentPrice > 0
-              ? <TradingChart currentPrice={currentPrice} asset={selectedAsset} chartType={chartType} activeEntries={activeEntries} onOhlcChange={setOhlc} />
+              ? <TradingChart key={selectedAsset} currentPrice={currentPrice} asset={selectedAsset} chartType={chartType} activeTrades={activeTradesForChart} onOhlcChange={setOhlc} />
               : (
                 <div className="w-full h-full flex items-center justify-center bg-[#050509]">
                   <div className="w-5 h-5 border-2 border-white/10 border-t-white/40 rounded-full animate-spin" />

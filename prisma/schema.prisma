@@ -8,16 +8,18 @@ datasource db {
 }
 
 model User {
-  id          String       @id @default(cuid())
-  email       String       @unique
-  name        String
-  password    String
-  balance     Float        @default(10000)
-  image       String?
-  trades      Trade[]
-  withdrawals Withdrawal[]
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
+  id             String       @id @default(cuid())
+  email          String       @unique
+  name           String
+  password       String
+  balance        Float        @default(10000)
+  image          String?
+  emailVerified  Boolean      @default(false)
+  verifyToken    String?      @unique
+  trades         Trade[]
+  withdrawals    Withdrawal[]
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
 }
 
 model Trade {

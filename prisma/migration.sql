@@ -1,6 +1,11 @@
 -- Add updatedAt to User (existing rows get current timestamp)
 ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "updatedAt" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW();
 
+-- Email verification fields
+ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "emailVerified" BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "verifyToken"   TEXT;
+CREATE UNIQUE INDEX IF NOT EXISTS "User_verifyToken_key" ON "User"("verifyToken") WHERE "verifyToken" IS NOT NULL;
+
 -- Add image to User
 ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "image" TEXT;
 

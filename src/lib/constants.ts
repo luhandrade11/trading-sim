@@ -4,34 +4,25 @@ export const MAX_TRADE_AMOUNT = 10000;
 export const MIN_TRADE_AMOUNT = 1;
 export const MAX_EXIT_PRICE_MULTIPLIER = 1000;
 
+// Only volatile assets — required for continuous chart movement and gamification
 export const ALL_ASSETS = [
-  { symbol: "BTC/USD",   name: "Bitcoin",            type: "crypto" as const },
-  { symbol: "ETH/USD",   name: "Ethereum",           type: "crypto" as const },
-  { symbol: "SOL/USD",   name: "Solana",             type: "crypto" as const },
-  { symbol: "BNB/USD",   name: "BNB Chain",          type: "crypto" as const },
-  { symbol: "XRP/USD",   name: "XRP",                type: "crypto" as const },
-  { symbol: "ADA/USD",   name: "Cardano",            type: "crypto" as const },
-  { symbol: "DOGE/USD",  name: "Dogecoin",           type: "crypto" as const },
-  { symbol: "AVAX/USD",  name: "Avalanche",          type: "crypto" as const },
-  { symbol: "DOT/USD",   name: "Polkadot",           type: "crypto" as const },
-  { symbol: "LINK/USD",  name: "Chainlink",          type: "crypto" as const },
-  { symbol: "LTC/USD",   name: "Litecoin",           type: "crypto" as const },
-  { symbol: "MATIC/USD", name: "Polygon",            type: "crypto" as const },
-  { symbol: "EUR/USD",   name: "Euro",               type: "forex"  as const },
-  { symbol: "GBP/USD",   name: "British Pound",      type: "forex"  as const },
-  { symbol: "AUD/USD",   name: "Australian Dollar",  type: "forex"  as const },
-  { symbol: "USD/JPY",   name: "Japanese Yen",       type: "forex"  as const },
-  { symbol: "USD/BRL",   name: "Brazilian Real",     type: "forex"  as const },
-  { symbol: "USD/CHF",   name: "Swiss Franc",        type: "forex"  as const },
-  { symbol: "USD/CAD",   name: "Canadian Dollar",    type: "forex"  as const },
-  { symbol: "NZD/USD",   name: "New Zealand Dollar", type: "forex"  as const },
-  { symbol: "EUR/GBP",   name: "Euro / Libra",       type: "forex"  as const },
-  { symbol: "GBP/JPY",   name: "Libra / Iene",       type: "forex"  as const },
+  { symbol: "BTC/USD",  name: "Bitcoin",    type: "crypto" as const },
+  { symbol: "ETH/USD",  name: "Ethereum",   type: "crypto" as const },
+  { symbol: "SOL/USD",  name: "Solana",     type: "crypto" as const },
+  { symbol: "BNB/USD",  name: "BNB Chain",  type: "crypto" as const },
+  { symbol: "XRP/USD",  name: "XRP",        type: "crypto" as const },
+  { symbol: "DOGE/USD", name: "Dogecoin",   type: "crypto" as const },
+  { symbol: "AVAX/USD", name: "Avalanche",  type: "crypto" as const },
+  { symbol: "LINK/USD", name: "Chainlink",  type: "crypto" as const },
+  { symbol: "EUR/USD",  name: "Euro",       type: "forex"  as const },
+  { symbol: "GBP/USD",  name: "GBP",        type: "forex"  as const },
+  { symbol: "USD/JPY",  name: "USD/Iene",   type: "forex"  as const },
+  { symbol: "GBP/JPY",  name: "GBP/Iene",   type: "forex"  as const },
 ];
 
 export const ASSETS = ALL_ASSETS.map((a) => a.symbol);
 
-export const DEFAULT_TABS = ["BTC/USD", "ETH/USD", "EUR/USD", "GBP/USD", "SOL/USD"];
+export const DEFAULT_TABS = ["BTC/USD", "ETH/USD", "SOL/USD", "EUR/USD", "GBP/JPY"];
 
 export const DURATIONS = [
   { label: "5s",  value: 5   },
@@ -43,14 +34,13 @@ export const DURATIONS = [
 
 export const VALID_DURATIONS = DURATIONS.map((d) => d.value);
 
-// Spread per asset type (bid-ask simulation)
 export const ASSET_SPREAD: Record<string, number> = {
-  "BTC/USD":   0.0003,
-  "ETH/USD":   0.0004,
-  "EUR/USD":   0.00005,
-  "GBP/USD":   0.00006,
-  "USD/JPY":   0.002,
-  "GBP/JPY":   0.003,
+  "BTC/USD":  0.0003,
+  "ETH/USD":  0.0004,
+  "EUR/USD":  0.00005,
+  "GBP/USD":  0.00006,
+  "USD/JPY":  0.002,
+  "GBP/JPY":  0.003,
 };
 export function getSpread(asset: string): number {
   return ASSET_SPREAD[asset] ?? 0.0002;

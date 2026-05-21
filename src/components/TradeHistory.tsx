@@ -46,10 +46,7 @@ export default function TradeHistory({ trades, loading }: Props) {
     return (
       <div className="space-y-2">
         {[1, 2, 3].map((i) => (
-          <div key={i} className="rounded-lg p-3 border border-gray-800 animate-pulse">
-            <div className="h-3 w-3/4 bg-gray-800 rounded mb-2" />
-            <div className="h-2 w-1/2 bg-gray-800 rounded" />
-          </div>
+          <div key={i} className="rounded-xl border border-[#1e2a42] shimmer h-14" />
         ))}
       </div>
     );
@@ -57,11 +54,14 @@ export default function TradeHistory({ trades, loading }: Props) {
 
   if (settled.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-8 gap-2">
-        <div className="text-3xl">🕐</div>
-        <p className="text-gray-600 text-sm text-center">
-          Nenhuma operação finalizada ainda.
-        </p>
+      <div className="flex flex-col items-center justify-center py-10 gap-3">
+        <div className="w-12 h-12 rounded-2xl bg-[#111827] border border-[#1e2a42] flex items-center justify-center">
+          <span className="text-xl">🕐</span>
+        </div>
+        <div className="text-center">
+          <p className="text-slate-500 text-sm font-medium">Nenhuma operação finalizada</p>
+          <p className="text-slate-700 text-xs mt-0.5">Suas operações aparecerão aqui</p>
+        </div>
       </div>
     );
   }
@@ -75,10 +75,10 @@ export default function TradeHistory({ trades, loading }: Props) {
         <div className="flex gap-1 flex-wrap flex-1">
           <button
             onClick={() => setFilterAsset("all")}
-            className={`px-2 py-0.5 rounded text-[10px] font-medium transition-colors ${
+            className={`px-2 py-0.5 rounded-md text-[10px] font-semibold transition-colors ${
               filterAsset === "all"
-                ? "bg-blue-500/20 text-blue-400"
-                : "text-gray-600 hover:text-gray-400"
+                ? "bg-amber-400/15 text-amber-400"
+                : "text-slate-600 hover:text-slate-400"
             }`}
           >
             Todos
@@ -87,10 +87,10 @@ export default function TradeHistory({ trades, loading }: Props) {
             <button
               key={a}
               onClick={() => setFilterAsset(a)}
-              className={`px-2 py-0.5 rounded text-[10px] font-medium transition-colors ${
+              className={`px-2 py-0.5 rounded-md text-[10px] font-semibold transition-colors ${
                 filterAsset === a
-                  ? "bg-blue-500/20 text-blue-400"
-                  : "text-gray-600 hover:text-gray-400"
+                  ? "bg-amber-400/15 text-amber-400"
+                  : "text-slate-600 hover:text-slate-400"
               }`}
             >
               {a}
@@ -100,7 +100,7 @@ export default function TradeHistory({ trades, loading }: Props) {
         <select
           value={sortBy}
           onChange={(e) => setSortBy(e.target.value as SortKey)}
-          className="bg-[#0e1117] border border-gray-800 rounded text-[10px] text-gray-500 px-1.5 py-0.5 focus:outline-none"
+          className="bg-[#0d1117] border border-[#1e2a42] rounded-lg text-[10px] text-slate-500 px-1.5 py-0.5 focus:outline-none"
         >
           <option value="time">Recente</option>
           <option value="profit">Resultado</option>
@@ -109,7 +109,7 @@ export default function TradeHistory({ trades, loading }: Props) {
       </div>
 
       {sorted.length === 0 ? (
-        <p className="text-gray-700 text-xs text-center py-4">
+        <p className="text-slate-700 text-xs text-center py-4">
           Nenhuma operação para {filterAsset}
         </p>
       ) : (
@@ -118,33 +118,35 @@ export default function TradeHistory({ trades, loading }: Props) {
           return (
             <div
               key={trade.id}
-              className={`rounded-lg p-3 border ${
+              className={`rounded-xl p-3 border ${
                 won
-                  ? "bg-green-500/5 border-green-500/20"
-                  : "bg-red-500/5 border-red-500/20"
+                  ? "bg-emerald-500/5 border-emerald-500/15"
+                  : "bg-rose-500/5 border-rose-500/15"
               }`}
             >
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <span
-                    className={`text-xs font-bold ${
-                      won ? "text-green-400" : "text-red-400"
+                    className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md ${
+                      won
+                        ? "bg-emerald-500/15 text-emerald-400"
+                        : "bg-rose-500/15 text-rose-400"
                     }`}
                   >
                     {won ? "✓ GANHOU" : "✗ PERDEU"}
                   </span>
-                  <span className="text-gray-400 text-xs">{trade.asset}</span>
+                  <span className="text-slate-400 text-[10px]">{trade.asset}</span>
                   <span
-                    className={`text-xs ${
-                      trade.direction === "UP" ? "text-green-400" : "text-red-400"
+                    className={`text-[10px] ${
+                      trade.direction === "UP" ? "text-emerald-400" : "text-rose-400"
                     }`}
                   >
                     {trade.direction === "UP" ? "▲" : "▼"}
                   </span>
                 </div>
                 <span
-                  className={`text-sm font-semibold font-mono ${
-                    won ? "text-green-400" : "text-red-400"
+                  className={`text-sm font-bold font-mono ${
+                    won ? "text-emerald-400" : "text-rose-400"
                   }`}
                 >
                   {won
@@ -152,13 +154,13 @@ export default function TradeHistory({ trades, loading }: Props) {
                     : `-$${trade.amount.toFixed(2)}`}
                 </span>
               </div>
-              <div className="flex items-center gap-2 mt-1 text-xs text-gray-600">
-                <span>${formatPrice(trade.entryPrice, trade.asset)}</span>
-                <span>→</span>
-                <span>${formatPrice(trade.exitPrice ?? 0, trade.asset)}</span>
-                <span className="text-gray-700 mx-1">·</span>
-                <span className="text-gray-600">${trade.amount.toFixed(2)}</span>
-                <span className="ml-auto">
+              <div className="flex items-center gap-1.5 mt-1.5 text-[10px] text-slate-700">
+                <span className="font-mono">${formatPrice(trade.entryPrice, trade.asset)}</span>
+                <span className="text-slate-800">→</span>
+                <span className="font-mono">${formatPrice(trade.exitPrice ?? 0, trade.asset)}</span>
+                <span className="text-slate-800 mx-0.5">·</span>
+                <span className="text-slate-600">${trade.amount.toFixed(2)}</span>
+                <span className="ml-auto text-slate-600">
                   {new Date(trade.createdAt).toLocaleTimeString("pt-BR", {
                     hour: "2-digit",
                     minute: "2-digit",

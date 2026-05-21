@@ -14,8 +14,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "TradeSim — Simulador de Trading",
-  description: "Plataforma de simulação de trading para estudo",
+  title: "Prime Broker — Simulador de Trading",
+  description: "Plataforma profissional de simulação de opções binárias",
   icons: { icon: "/favicon.svg" },
 };
 
@@ -29,7 +29,7 @@ export default function RootLayout({
       lang="pt-BR"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full bg-[#0e1117] text-white flex flex-col">
+      <body className="min-h-full bg-[#080c14] text-white flex flex-col">
         <SessionProvider>{children}</SessionProvider>
       </body>
     </html>

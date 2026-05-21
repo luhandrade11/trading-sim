@@ -49,34 +49,41 @@ export default function TradingChart({ currentPrice, asset }: Props) {
 
     const chart = createChart(containerRef.current, {
       layout: {
-        background: { type: ColorType.Solid, color: "#0e1117" },
-        textColor: "#9ca3af",
+        background: { type: ColorType.Solid, color: "#080c14" },
+        textColor: "#475569",
+        fontFamily: "var(--font-geist-mono), monospace",
+        fontSize: 11,
       },
       grid: {
-        vertLines: { color: "#1f2937" },
-        horzLines: { color: "#1f2937" },
+        vertLines: { color: "#0f1829" },
+        horzLines: { color: "#0f1829" },
       },
       crosshair: {
-        vertLine: { color: "#4b5563" },
-        horzLine: { color: "#4b5563" },
+        vertLine: { color: "#2d4070", width: 1, style: 2 },
+        horzLine: { color: "#2d4070", width: 1, style: 2 },
       },
-      rightPriceScale: { borderColor: "#1f2937" },
+      rightPriceScale: {
+        borderColor: "#0f1829",
+        textColor: "#475569",
+      },
       timeScale: {
-        borderColor: "#1f2937",
+        borderColor: "#0f1829",
         timeVisible: true,
         secondsVisible: false,
+        fixLeftEdge: false,
+        fixRightEdge: false,
       },
       width: containerRef.current.clientWidth,
       height: containerRef.current.clientHeight,
     });
 
     const series = chart.addSeries(CandlestickSeries, {
-      upColor: "#22c55e",
-      downColor: "#ef4444",
-      borderUpColor: "#22c55e",
-      borderDownColor: "#ef4444",
-      wickUpColor: "#22c55e",
-      wickDownColor: "#ef4444",
+      upColor: "#10b981",
+      downColor: "#f43f5e",
+      borderUpColor: "#10b981",
+      borderDownColor: "#f43f5e",
+      wickUpColor: "#10b981",
+      wickDownColor: "#f43f5e",
     });
 
     chartRef.current = chart;
@@ -89,7 +96,10 @@ export default function TradingChart({ currentPrice, asset }: Props) {
 
     const handleResize = () => {
       if (containerRef.current) {
-        chart.applyOptions({ width: containerRef.current.clientWidth });
+        chart.applyOptions({
+          width: containerRef.current.clientWidth,
+          height: containerRef.current.clientHeight,
+        });
       }
     };
     window.addEventListener("resize", handleResize);

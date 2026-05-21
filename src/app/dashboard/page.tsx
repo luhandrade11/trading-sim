@@ -13,10 +13,10 @@ import { computeStats, formatPrice } from "@/lib/utils";
 const TradingChart = dynamic(() => import("@/components/TradingChart"), {
   ssr: false,
   loading: () => (
-    <div className="w-full h-full flex items-center justify-center bg-[#0e1117]">
+    <div className="w-full h-full flex items-center justify-center bg-[#080c14]">
       <div className="flex flex-col items-center gap-3">
-        <div className="w-7 h-7 border-2 border-green-500 border-t-transparent rounded-full animate-spin" />
-        <span className="text-gray-600 text-xs">Carregando gráfico…</span>
+        <div className="w-6 h-6 border-2 border-amber-400 border-t-transparent rounded-full animate-spin" />
+        <span className="text-slate-600 text-xs">Carregando gráfico…</span>
       </div>
     </div>
   ),
@@ -53,7 +53,6 @@ export default function DashboardPage() {
 
   const notifTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const staleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const lastPriceUpdateRef = useRef(0);
 
   const activeTrades = trades.filter((t) => t.result === "PENDING");
   const stats = computeStats(trades);
@@ -85,12 +84,9 @@ export default function DashboardPage() {
         setPrevPrice(prevVal);
         return data;
       });
-      lastPriceUpdateRef.current = Date.now();
-      setPricesStale(false);
-
-      // Mark stale if no update in 30s
       if (staleTimerRef.current) clearTimeout(staleTimerRef.current);
       staleTimerRef.current = setTimeout(() => setPricesStale(true), 30000);
+      setPricesStale(false);
     } catch {
       // prices stay as-is
     }
@@ -118,7 +114,6 @@ export default function DashboardPage() {
     fetchPrices();
     fetchUser();
     fetchTrades();
-
     const priceInterval = setInterval(fetchPrices, 5000);
     const dataInterval = setInterval(() => { fetchUser(); fetchTrades(); }, 15000);
     return () => {
@@ -203,8 +198,11 @@ export default function DashboardPage() {
 
   if (status === "loading") {
     return (
-      <div className="min-h-screen bg-[#0e1117] flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-green-500 border-t-transparent rounded-full animate-spin" />
+      <div className="min-h-screen bg-[#080c14] flex items-center justify-center">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-8 h-8 border-2 border-amber-400 border-t-transparent rounded-full animate-spin" />
+          <span className="text-slate-600 text-xs">Prime Broker</span>
+        </div>
       </div>
     );
   }
@@ -217,56 +215,68 @@ export default function DashboardPage() {
   const canTrade = currentPrice > 0 && !placing && balance !== null && balance >= amount && amount >= 1;
 
   return (
-    <div className="min-h-screen bg-[#0e1117] flex flex-col">
-      {/* Navbar */}
-      <header className="h-12 bg-[#161b22] border-b border-gray-800 flex items-center px-3 gap-3 shrink-0 z-10">
-        <div className="flex items-center gap-1.5 shrink-0">
-          <div className="w-6 h-6 bg-green-500 rounded flex items-center justify-center">
-            <span className="text-black font-bold text-xs">T</span>
+    <div className="min-h-screen bg-[#080c14] flex flex-col">
+      {/* ── NAVBAR ── */}
+      <header className="h-13 bg-[#0c1018]/95 backdrop-blur-sm border-b border-[#1e2a42] flex items-center px-3 gap-3 shrink-0 z-10">
+        {/* Logo */}
+        <div className="flex items-center gap-2 shrink-0">
+          <div className="w-7 h-7 bg-gradient-to-br from-amber-400 to-amber-600 rounded-lg flex items-center justify-center shadow-md">
+            <span className="text-[#080c14] font-black text-[10px] tracking-tight">PB</span>
           </div>
-          <span className="text-white font-semibold text-sm hidden sm:block">TradeSim</span>
+          <span className="font-bold text-sm tracking-tight hidden sm:block">
+            <span className="text-white">Prime</span>
+            <span className="text-amber-400"> Broker</span>
+          </span>
         </div>
 
+        {/* Asset ticker */}
         <div className="flex items-center gap-0.5 overflow-x-auto scrollbar-hide flex-1">
           {ASSETS.map((asset) => {
             const p = prices[asset];
+            const isSelected = selectedAsset === asset;
             return (
               <button
                 key={asset}
                 onClick={() => setSelectedAsset(asset)}
-                className={`flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-medium whitespace-nowrap transition-colors shrink-0 ${
-                  selectedAsset === asset
-                    ? "bg-green-500/20 text-green-400"
-                    : "text-gray-500 hover:text-gray-300 hover:bg-white/5"
+                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-all shrink-0 ${
+                  isSelected
+                    ? "bg-amber-400/10 text-amber-400 border border-amber-400/20"
+                    : "text-slate-500 hover:text-slate-300 hover:bg-white/5 border border-transparent"
                 }`}
               >
                 <span>{asset}</span>
                 {p?.price ? (
-                  <span className={`hidden md:block font-mono text-[10px] ${(p.change24h ?? 0) >= 0 ? "text-green-500" : "text-red-500"}`}>
+                  <span className={`hidden md:block font-mono text-[10px] ${(p.change24h ?? 0) >= 0 ? "text-emerald-500" : "text-rose-500"}`}>
                     {p.change24h >= 0 ? "+" : ""}{p.change24h.toFixed(1)}%
                   </span>
                 ) : (
-                  <span className="hidden md:block text-[10px] text-gray-700 animate-pulse">…</span>
+                  <span className="hidden md:block text-[10px] text-slate-700 animate-pulse">…</span>
                 )}
               </button>
             );
           })}
         </div>
 
+        {/* Right side */}
         <div className="flex items-center gap-3 shrink-0">
-          <div className="text-right hidden sm:block">
-            <div className="text-[10px] text-gray-600 uppercase tracking-wide">Saldo</div>
-            <div className={`text-sm font-bold font-mono ${balance === null ? "text-gray-600 animate-pulse" : "text-white"}`}>
-              {balanceDisplay}
+          {/* Balance pill */}
+          <div className="hidden sm:flex items-center gap-2 bg-[#111827] border border-[#1e2a42] rounded-lg px-3 py-1.5">
+            <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+            <div>
+              <div className="text-[9px] text-slate-600 uppercase tracking-widest leading-none mb-0.5">Saldo</div>
+              <div className={`text-xs font-bold font-mono ${balance === null ? "text-slate-600 animate-pulse" : "text-white"}`}>
+                {balanceDisplay}
+              </div>
             </div>
           </div>
 
+          {/* Mobile panel toggle */}
           <button
             onClick={() => setShowPanel((v) => !v)}
-            className="md:hidden p-1.5 text-gray-400 hover:text-white transition-colors"
+            className="md:hidden p-2 text-slate-500 hover:text-white transition-colors bg-[#111827] border border-[#1e2a42] rounded-lg"
             aria-label="Painel de trading"
           >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
                 d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
               />
@@ -275,161 +285,195 @@ export default function DashboardPage() {
 
           <button
             onClick={() => signOut({ callbackUrl: "/login" })}
-            className="text-xs text-gray-600 hover:text-gray-400 transition-colors"
+            className="text-xs text-slate-600 hover:text-slate-300 transition-colors hidden sm:block"
           >
             Sair
           </button>
         </div>
       </header>
 
-      {/* Toast */}
-      <div className={`fixed top-14 left-1/2 -translate-x-1/2 z-50 transition-all duration-300 ${
+      {/* ── TOAST ── */}
+      <div className={`fixed top-16 left-1/2 -translate-x-1/2 z-50 transition-all duration-300 ${
         notification ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-3 pointer-events-none"
       }`}>
         {notification && (
-          <div key={notification.key} className={`px-5 py-2.5 rounded-lg font-semibold text-sm shadow-xl whitespace-nowrap ${
-            notification.type === "win" ? "bg-green-500 text-black"
-            : notification.type === "loss" ? "bg-red-500 text-white"
-            : "bg-yellow-500 text-black"
-          }`}>
+          <div
+            key={notification.key}
+            className={`px-5 py-2.5 rounded-xl font-semibold text-sm shadow-2xl whitespace-nowrap border ${
+              notification.type === "win"
+                ? "bg-emerald-500 border-emerald-400 text-white"
+                : notification.type === "loss"
+                ? "bg-rose-500 border-rose-400 text-white"
+                : "bg-amber-500 border-amber-400 text-[#080c14]"
+            }`}
+          >
             {notification.msg}
           </div>
         )}
       </div>
 
-      {/* Confirm modal */}
+      {/* ── CONFIRM MODAL ── */}
       <ConfirmModal
         open={resetModalOpen}
         title="Resetar saldo"
-        message="Isso vai apagar todo o histórico de operações e restaurar o saldo para $1.000. Esta ação não pode ser desfeita."
-        confirmLabel={resetting ? "Resetando…" : "Resetar"}
+        message="Isso vai apagar todo o histórico e restaurar o saldo para $1.000. Esta ação não pode ser desfeita."
+        confirmLabel={resetting ? "Resetando…" : "Resetar tudo"}
         danger
         onConfirm={handleReset}
         onCancel={() => setResetModalOpen(false)}
       />
 
-      {/* Main */}
+      {/* ── MAIN ── */}
       <div className="flex flex-1 overflow-hidden relative">
-        {/* Chart */}
+
+        {/* ── CHART AREA ── */}
         <div className="flex-1 flex flex-col min-w-0 min-h-0">
           {/* Price bar */}
-          <div className="h-14 bg-[#161b22] border-b border-gray-800 flex items-center px-4 gap-4 shrink-0">
-            <div className={`transition-colors duration-300 ${
-              priceFlash === "up" ? "text-green-400" : priceFlash === "down" ? "text-red-400" : "text-white"
-            }`}>
-              <span className="text-xl font-bold font-mono">
-                {currentPrice > 0 ? `$${formatPrice(currentPrice, selectedAsset)}` : "—"}
-              </span>
+          <div className="h-14 bg-[#0c1018] border-b border-[#1e2a42] flex items-center px-4 gap-4 shrink-0">
+            <div>
+              <div className="text-[9px] text-slate-600 uppercase tracking-widest mb-0.5">{selectedAsset}</div>
+              <div className={`text-xl font-bold font-mono transition-colors duration-300 ${
+                priceFlash === "up" ? "text-emerald-400" : priceFlash === "down" ? "text-rose-400" : "text-white"
+              }`}>
+                {currentPrice > 0 ? `$${formatPrice(currentPrice, selectedAsset)}` : (
+                  <span className="text-slate-700 animate-pulse">——</span>
+                )}
+              </div>
             </div>
 
             {change24h !== 0 && (
-              <div className={`text-sm font-medium ${change24h >= 0 ? "text-green-400" : "text-red-400"}`}>
-                {change24h >= 0 ? "+" : ""}{change24h.toFixed(2)}% (24h)
+              <div className={`flex items-center gap-1 text-xs font-semibold px-2 py-1 rounded-lg ${
+                change24h >= 0
+                  ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/15"
+                  : "bg-rose-500/10 text-rose-400 border border-rose-500/15"
+              }`}>
+                {change24h >= 0 ? "▲" : "▼"} {Math.abs(change24h).toFixed(2)}%
               </div>
             )}
 
             {pricesStale && (
-              <div className="flex items-center gap-1 text-[10px] text-yellow-600 bg-yellow-600/10 border border-yellow-600/20 rounded px-2 py-0.5">
-                <span>⚠</span> preço estimado
+              <div className="flex items-center gap-1 text-[10px] text-amber-600 bg-amber-600/10 border border-amber-600/20 rounded-lg px-2 py-1">
+                ⚠ preço estimado
               </div>
             )}
 
             {currentPrice > 0 && prevPrice > 0 && (
-              <div className="text-xs text-gray-600 ml-auto hidden sm:block">
-                ant.: <span className="text-gray-500 font-mono">${formatPrice(prevPrice, selectedAsset)}</span>
+              <div className="text-[10px] text-slate-700 ml-auto hidden sm:block font-mono">
+                ant: ${formatPrice(prevPrice, selectedAsset)}
               </div>
             )}
           </div>
 
-          {/* Chart area */}
-          <div className="flex-1 p-2 min-h-0">
+          {/* Chart */}
+          <div className="flex-1 min-h-0">
             {currentPrice > 0 ? (
               <TradingChart currentPrice={currentPrice} asset={selectedAsset} />
             ) : (
               <div className="w-full h-full flex items-center justify-center">
-                <div className="flex flex-col items-center gap-2">
-                  <div className="w-6 h-6 border-2 border-gray-700 border-t-green-500 rounded-full animate-spin" />
-                  <span className="text-gray-700 text-xs">Carregando preço…</span>
+                <div className="flex flex-col items-center gap-3">
+                  <div className="w-6 h-6 border-2 border-[#1e2a42] border-t-amber-400 rounded-full animate-spin" />
+                  <span className="text-slate-700 text-xs">Carregando preço…</span>
                 </div>
               </div>
             )}
           </div>
         </div>
 
-        {/* Right panel */}
-        <div className={`bg-[#161b22] border-l border-gray-800 flex flex-col shrink-0 w-full md:w-80 ${
+        {/* ── RIGHT PANEL ── */}
+        <div className={`bg-[#0c1018] border-l border-[#1e2a42] flex flex-col shrink-0 w-full md:w-[300px] ${
           showPanel ? "absolute inset-0 md:relative z-20" : "hidden md:flex"
         }`}>
-          {/* Mobile close */}
-          <div className="md:hidden flex items-center justify-between px-4 pt-3 pb-1">
-            <span className="text-xs text-gray-500 font-medium">Painel de Trading</span>
-            <button onClick={() => setShowPanel(false)} className="text-gray-500 hover:text-white text-sm p-1">✕</button>
+
+          {/* Mobile header */}
+          <div className="md:hidden flex items-center justify-between px-4 pt-3 pb-2 border-b border-[#1e2a42]">
+            <span className="text-xs text-slate-500 font-semibold uppercase tracking-wide">Painel</span>
+            <button onClick={() => setShowPanel(false)} className="text-slate-500 hover:text-white p-1 rounded-lg hover:bg-white/5 transition-colors">
+              ✕
+            </button>
+          </div>
+
+          {/* Balance card */}
+          <div className="p-3 border-b border-[#1e2a42] shrink-0">
+            <div className="bg-gradient-to-br from-[#111827] to-[#0d1117] border border-[#1e2a42] rounded-xl p-3.5">
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-[9px] font-semibold text-slate-600 uppercase tracking-widest">Saldo Virtual</span>
+                <div className="flex items-center gap-1">
+                  <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                  <span className="text-[9px] text-emerald-500 font-medium">LIVE</span>
+                </div>
+              </div>
+              <div className={`text-2xl font-bold font-mono tracking-tight ${
+                balance === null ? "text-slate-700 animate-pulse" : "text-white"
+              }`}>
+                {balanceDisplay}
+              </div>
+              {stats.settled > 0 && (
+                <div className={`text-xs font-semibold mt-1 ${stats.pnl >= 0 ? "text-emerald-400" : "text-rose-400"}`}>
+                  {stats.pnl >= 0 ? "▲" : "▼"} ${Math.abs(stats.pnl).toFixed(2)} P&L total
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Stats */}
-          <div className="grid grid-cols-3 gap-px bg-gray-800 border-b border-gray-800 shrink-0">
-            <div className="bg-[#161b22] px-2 py-2.5 text-center">
-              <div className="text-[9px] text-gray-600 uppercase tracking-wide mb-0.5">Win Rate</div>
-              <div className={`text-sm font-bold ${
-                stats.winRate >= 50 ? "text-green-400" : stats.winRate > 0 ? "text-red-400" : "text-gray-600"
-              }`}>
-                {stats.settled === 0 ? "—" : `${stats.winRate.toFixed(0)}%`}
+          <div className="grid grid-cols-3 gap-px bg-[#1e2a42]/30 shrink-0">
+            {[
+              {
+                label: "Win Rate",
+                value: stats.settled === 0 ? "—" : `${stats.winRate.toFixed(0)}%`,
+                color: stats.winRate >= 50 ? "text-emerald-400" : stats.winRate > 0 ? "text-rose-400" : "text-slate-600",
+              },
+              {
+                label: "P&L",
+                value: stats.settled === 0 ? "—" : `${stats.pnl >= 0 ? "+" : ""}$${Math.abs(stats.pnl).toFixed(0)}`,
+                color: stats.pnl > 0 ? "text-emerald-400" : stats.pnl < 0 ? "text-rose-400" : "text-slate-600",
+              },
+              {
+                label: "Streak",
+                value: stats.streak === 0 ? "—" : `${stats.streakType === "WIN" ? "🔥" : "❄️"} ${stats.streak}`,
+                color: stats.streakType === "WIN" ? "text-emerald-400" : stats.streakType === "LOSS" ? "text-rose-400" : "text-slate-600",
+              },
+            ].map(({ label, value, color }) => (
+              <div key={label} className="bg-[#0c1018] px-2 py-2.5 text-center">
+                <div className="text-[8px] text-slate-700 uppercase tracking-widest mb-1">{label}</div>
+                <div className={`text-sm font-bold ${color}`}>{value}</div>
               </div>
-            </div>
-            <div className="bg-[#161b22] px-2 py-2.5 text-center">
-              <div className="text-[9px] text-gray-600 uppercase tracking-wide mb-0.5">P&L</div>
-              <div className={`text-sm font-bold font-mono ${
-                stats.pnl > 0 ? "text-green-400" : stats.pnl < 0 ? "text-red-400" : "text-gray-600"
-              }`}>
-                {stats.settled === 0 ? "—" : `${stats.pnl >= 0 ? "+" : ""}$${Math.abs(stats.pnl).toFixed(0)}`}
-              </div>
-            </div>
-            <div className="bg-[#161b22] px-2 py-2.5 text-center">
-              <div className="text-[9px] text-gray-600 uppercase tracking-wide mb-0.5">Streak</div>
-              <div className={`text-sm font-bold ${
-                stats.streakType === "WIN" ? "text-green-400" : stats.streakType === "LOSS" ? "text-red-400" : "text-gray-600"
-              }`}>
-                {stats.streak === 0 ? "—" : (
-                  <span>
-                    {stats.streakType === "WIN" ? "🔥" : "❄️"} {stats.streak}
-                  </span>
-                )}
-              </div>
-            </div>
+            ))}
           </div>
 
-          {/* Sub-stats row */}
+          {/* Sub-stats */}
           {stats.settled > 0 && (
-            <div className="flex items-center justify-around px-3 py-1.5 border-b border-gray-800 shrink-0">
-              <span className="text-[10px] text-gray-600">
-                <span className="text-green-500">{stats.wins}</span>W{" "}
-                <span className="text-red-500">{stats.losses}</span>L
+            <div className="flex items-center justify-around px-3 py-1.5 border-b border-[#1e2a42] shrink-0">
+              <span className="text-[9px] text-slate-600">
+                <span className="text-emerald-500 font-bold">{stats.wins}</span>W{" "}
+                <span className="text-rose-500 font-bold">{stats.losses}</span>L
               </span>
-              <span className="text-gray-800">|</span>
-              <span className="text-[10px] text-gray-600">
-                Invest.: <span className="text-gray-400">${stats.totalInvested.toFixed(0)}</span>
+              <span className="text-[#1e2a42]">|</span>
+              <span className="text-[9px] text-slate-600">
+                Invest <span className="text-slate-400">${stats.totalInvested.toFixed(0)}</span>
               </span>
-              <span className="text-gray-800">|</span>
-              <span className="text-[10px] text-gray-600">
-                Ganho: <span className="text-green-600">${stats.totalProfit.toFixed(0)}</span>
+              <span className="text-[#1e2a42]">|</span>
+              <span className="text-[9px] text-slate-600">
+                Lucro <span className="text-emerald-600">${stats.totalProfit.toFixed(0)}</span>
               </span>
             </div>
           )}
 
-          {/* Trading controls */}
-          <div className="p-4 border-b border-gray-800 shrink-0">
+          {/* ── TRADING CONTROLS ── */}
+          <div className="p-3 border-b border-[#1e2a42] shrink-0 space-y-3">
+
             {/* Duration */}
-            <div className="mb-3">
-              <div className="text-[10px] text-gray-600 uppercase tracking-wide mb-1.5">Tempo</div>
+            <div>
+              <div className="text-[9px] font-semibold text-slate-600 uppercase tracking-widest mb-2">Expiração</div>
               <div className="grid grid-cols-4 gap-1">
                 {DURATIONS.map((d) => (
                   <button
                     key={d.value}
                     onClick={() => setSelectedDuration(d.value)}
-                    className={`py-1.5 rounded text-xs font-medium transition-colors ${
+                    className={`py-1.5 rounded-lg text-xs font-semibold transition-all ${
                       selectedDuration === d.value
-                        ? "bg-blue-500/20 text-blue-400 border border-blue-500/40"
-                        : "bg-[#0e1117] text-gray-500 border border-gray-800 hover:border-gray-600 hover:text-gray-300"
+                        ? "bg-amber-400/15 text-amber-400 border border-amber-400/30"
+                        : "bg-[#0d1117] text-slate-600 border border-[#1e2a42] hover:border-[#2d4070] hover:text-slate-400"
                     }`}
                   >
                     {d.label}
@@ -439,12 +483,12 @@ export default function DashboardPage() {
             </div>
 
             {/* Amount */}
-            <div className="mb-3">
-              <div className="flex items-center justify-between mb-1.5">
-                <div className="text-[10px] text-gray-600 uppercase tracking-wide">Valor (USD)</div>
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <div className="text-[9px] font-semibold text-slate-600 uppercase tracking-widest">Investimento (USD)</div>
                 {balance !== null && (
-                  <div className="text-[10px] text-gray-700">
-                    Disp.: <span className="text-gray-500 font-mono">${balance.toFixed(2)}</span>
+                  <div className="text-[9px] text-slate-700">
+                    Disp.: <span className="text-slate-500 font-mono">${balance.toFixed(2)}</span>
                   </div>
                 )}
               </div>
@@ -452,13 +496,10 @@ export default function DashboardPage() {
                 <input
                   type="number"
                   value={amount}
-                  onChange={(e) => {
-                    const v = Number(e.target.value);
-                    setAmount(Math.max(1, v));
-                  }}
+                  onChange={(e) => setAmount(Math.max(1, Number(e.target.value)))}
                   min={1}
                   max={balance ?? undefined}
-                  className="flex-1 bg-[#0e1117] border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-green-500 font-mono"
+                  className="flex-1 bg-[#0d1117] border border-[#1e2a42] rounded-xl px-3 py-2 text-white text-sm focus:outline-none focus:border-amber-500/40 focus:ring-1 focus:ring-amber-500/15 font-mono transition-all"
                 />
                 <div className="flex gap-1">
                   {[25, 50, 100].map((pct) => (
@@ -466,7 +507,7 @@ export default function DashboardPage() {
                       key={pct}
                       onClick={() => setAmount(Math.max(1, Math.floor((balance ?? 0) * (pct / 100))))}
                       disabled={balance === null || balance < 1}
-                      className="px-1.5 py-1.5 bg-[#0e1117] border border-gray-800 rounded text-[10px] text-gray-500 hover:text-gray-300 hover:border-gray-600 transition-colors disabled:opacity-30"
+                      className="px-1.5 py-2 bg-[#0d1117] border border-[#1e2a42] rounded-lg text-[10px] text-slate-600 hover:text-slate-300 hover:border-[#2d4070] transition-colors disabled:opacity-30"
                     >
                       {pct}%
                     </button>
@@ -474,66 +515,85 @@ export default function DashboardPage() {
                 </div>
               </div>
               {amount > (balance ?? 0) && balance !== null && (
-                <p className="text-red-400 text-[10px] mt-1">Valor acima do saldo disponível</p>
+                <p className="text-rose-400 text-[10px] mt-1.5">Valor acima do saldo disponível</p>
               )}
             </div>
 
-            {/* Payout */}
-            <div className="bg-[#0e1117] rounded-lg px-3 py-2 mb-3 flex items-center justify-between">
-              <span className="text-[10px] text-gray-600 uppercase tracking-wide">Retorno (acerto)</span>
-              <span className="text-xs text-green-400 font-semibold font-mono">
-                +${(amount * PAYOUT_RATE).toFixed(2)}{" "}
-                <span className="text-green-700">({(PAYOUT_RATE * 100).toFixed(0)}%)</span>
-              </span>
+            {/* Payout preview */}
+            <div className="flex items-center justify-between bg-[#0d1117] border border-[#1e2a42] rounded-xl px-3 py-2">
+              <div>
+                <div className="text-[9px] text-slate-600 uppercase tracking-widest mb-0.5">Retorno estimado</div>
+                <div className="text-xs text-slate-400 font-mono">
+                  ${amount.toFixed(2)} → <span className="text-emerald-400 font-bold">${(amount + amount * PAYOUT_RATE).toFixed(2)}</span>
+                </div>
+              </div>
+              <div className="text-right">
+                <div className="text-[9px] text-slate-600 uppercase tracking-widest mb-0.5">Payout</div>
+                <div className="text-sm font-bold text-emerald-400">+{(PAYOUT_RATE * 100).toFixed(0)}%</div>
+              </div>
             </div>
 
-            {/* Buttons */}
+            {/* Trade buttons */}
             <div className="grid grid-cols-2 gap-2">
               <button
                 onClick={() => placeTrade("UP")}
                 disabled={!canTrade}
-                className="py-3 rounded-lg bg-green-500 hover:bg-green-400 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed text-black font-bold text-sm transition-all flex items-center justify-center gap-1.5"
+                className="btn-up py-4 rounded-xl bg-gradient-to-b from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 disabled:opacity-30 disabled:cursor-not-allowed text-white font-bold text-sm flex flex-col items-center justify-center gap-0.5"
               >
-                <span className="text-base leading-none">▲</span> CIMA
+                <span className="text-lg leading-none">▲</span>
+                <span>CIMA</span>
               </button>
               <button
                 onClick={() => placeTrade("DOWN")}
                 disabled={!canTrade}
-                className="py-3 rounded-lg bg-red-500 hover:bg-red-400 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold text-sm transition-all flex items-center justify-center gap-1.5"
+                className="btn-down py-4 rounded-xl bg-gradient-to-b from-rose-500 to-rose-600 hover:from-rose-400 hover:to-rose-500 disabled:opacity-30 disabled:cursor-not-allowed text-white font-bold text-sm flex flex-col items-center justify-center gap-0.5"
               >
-                <span className="text-base leading-none">▼</span> BAIXO
+                <span className="text-lg leading-none">▼</span>
+                <span>BAIXO</span>
               </button>
             </div>
+
+            {placing && (
+              <div className="flex items-center justify-center gap-2 text-xs text-amber-400">
+                <div className="w-3 h-3 border border-amber-400 border-t-transparent rounded-full animate-spin" />
+                Abrindo operação…
+              </div>
+            )}
           </div>
 
-          {/* Trades */}
-          <div className="flex border-b border-gray-800 shrink-0">
+          {/* ── TABS ── */}
+          <div className="flex border-b border-[#1e2a42] shrink-0">
             <button
               onClick={() => setActiveTab("active")}
-              className={`flex-1 py-2.5 text-xs font-medium transition-colors ${
-                activeTab === "active" ? "text-white border-b-2 border-green-500" : "text-gray-500 hover:text-gray-400"
+              className={`flex-1 py-2.5 text-xs font-semibold transition-all ${
+                activeTab === "active"
+                  ? "text-amber-400 border-b-2 border-amber-400"
+                  : "text-slate-600 hover:text-slate-400"
               }`}
             >
               Ativas
               {activeTrades.length > 0 && (
-                <span className="ml-1 bg-green-500/20 text-green-400 rounded-full px-1.5 py-0.5 text-[10px]">
+                <span className="ml-1 bg-amber-400/15 text-amber-400 rounded-full px-1.5 py-0.5 text-[9px] font-bold">
                   {activeTrades.length}
                 </span>
               )}
             </button>
             <button
               onClick={() => setActiveTab("history")}
-              className={`flex-1 py-2.5 text-xs font-medium transition-colors ${
-                activeTab === "history" ? "text-white border-b-2 border-green-500" : "text-gray-500 hover:text-gray-400"
+              className={`flex-1 py-2.5 text-xs font-semibold transition-all ${
+                activeTab === "history"
+                  ? "text-amber-400 border-b-2 border-amber-400"
+                  : "text-slate-600 hover:text-slate-400"
               }`}
             >
               Histórico
               {stats.settled > 0 && (
-                <span className="ml-1 text-gray-700 text-[10px]">({stats.settled})</span>
+                <span className="ml-1 text-slate-700 text-[9px]">({stats.settled})</span>
               )}
             </button>
           </div>
 
+          {/* Trade list */}
           <div className="flex-1 overflow-y-auto p-3 min-h-0">
             {activeTab === "active" ? (
               <ActiveTrades
@@ -548,17 +608,32 @@ export default function DashboardPage() {
           </div>
 
           {/* Footer */}
-          <div className="p-3 border-t border-gray-800 flex items-center justify-between shrink-0">
-            <span className="text-xs text-gray-600 truncate max-w-[120px]">
-              {session?.user?.name}
-            </span>
-            <button
-              onClick={() => setResetModalOpen(true)}
-              disabled={resetting}
-              className="text-[10px] text-gray-700 hover:text-red-400 transition-colors disabled:opacity-50 flex items-center gap-1"
-            >
-              ↺ Resetar saldo
-            </button>
+          <div className="px-3 py-2.5 border-t border-[#1e2a42] flex items-center justify-between shrink-0">
+            <div className="flex items-center gap-2">
+              <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center">
+                <span className="text-[#080c14] font-black text-[8px]">
+                  {session?.user?.name?.charAt(0).toUpperCase() ?? "?"}
+                </span>
+              </div>
+              <span className="text-xs text-slate-500 truncate max-w-[100px]">
+                {session?.user?.name}
+              </span>
+            </div>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setResetModalOpen(true)}
+                disabled={resetting}
+                className="text-[10px] text-slate-700 hover:text-rose-400 transition-colors disabled:opacity-50 flex items-center gap-1"
+              >
+                ↺ Reset
+              </button>
+              <button
+                onClick={() => signOut({ callbackUrl: "/login" })}
+                className="text-[10px] text-slate-700 hover:text-slate-400 transition-colors"
+              >
+                Sair
+              </button>
+            </div>
           </div>
         </div>
       </div>

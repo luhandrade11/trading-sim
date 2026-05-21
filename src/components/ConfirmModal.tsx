@@ -25,23 +25,34 @@ export default function ConfirmModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onCancel} />
-      <div className="relative bg-[#161b22] border border-gray-700 rounded-xl p-6 w-full max-w-sm shadow-2xl">
-        <h3 className="text-white font-semibold text-base mb-2">{title}</h3>
-        <p className="text-gray-400 text-sm mb-6">{message}</p>
-        <div className="flex gap-2 justify-end">
+      <div
+        className="absolute inset-0 bg-[#080c14]/80 backdrop-blur-md"
+        onClick={onCancel}
+      />
+      <div className="relative bg-[#0d1117] border border-[#1e2a42] rounded-2xl p-7 w-full max-w-sm card-shadow">
+        {/* Icon */}
+        <div className={`w-11 h-11 rounded-xl flex items-center justify-center mb-4 ${
+          danger ? "bg-rose-500/10 border border-rose-500/20" : "bg-amber-400/10 border border-amber-400/20"
+        }`}>
+          <span className="text-xl">{danger ? "⚠" : "◆"}</span>
+        </div>
+
+        <h3 className="text-white font-bold text-base mb-2">{title}</h3>
+        <p className="text-slate-400 text-sm leading-relaxed mb-7">{message}</p>
+
+        <div className="flex gap-3">
           <button
             onClick={onCancel}
-            className="px-4 py-2 rounded-lg text-sm text-gray-400 hover:text-white border border-gray-700 hover:border-gray-500 transition-colors"
+            className="flex-1 px-4 py-2.5 rounded-xl text-sm text-slate-400 hover:text-white border border-[#1e2a42] hover:border-[#2d4070] transition-all font-medium"
           >
             {cancelLabel}
           </button>
           <button
             onClick={onConfirm}
-            className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
+            className={`flex-1 px-4 py-2.5 rounded-xl text-sm font-bold transition-all ${
               danger
-                ? "bg-red-500 hover:bg-red-400 text-white"
-                : "bg-green-500 hover:bg-green-400 text-black"
+                ? "bg-gradient-to-r from-rose-600 to-rose-500 hover:from-rose-500 hover:to-rose-400 text-white"
+                : "bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 text-[#080c14]"
             }`}
           >
             {confirmLabel}

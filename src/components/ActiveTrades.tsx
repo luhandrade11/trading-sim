@@ -53,10 +53,8 @@ function CountdownBadge({
           clearInterval(interval);
           onSettle(tradeId, exitPrice);
         } else if (retriesRef.current < 10) {
-          // Price not loaded yet — retry up to 10 times (5s total)
           retriesRef.current++;
         } else {
-          // Give up after 5s of retrying
           settledRef.current = true;
           clearInterval(interval);
         }
@@ -68,18 +66,22 @@ function CountdownBadge({
   }, [tradeId, expiresAt]);
 
   const pct = Math.max(0, Math.min(100, (remaining / duration) * 100));
-  const color =
-    pct > 40 ? "bg-green-400" : pct > 15 ? "bg-yellow-400" : "bg-red-400";
+  const isUrgent = pct <= 15;
+  const isWarning = pct <= 40 && !isUrgent;
 
   return (
     <div className="flex items-center gap-2">
-      <div className="w-20 h-1.5 bg-gray-700 rounded-full overflow-hidden">
+      <div className="w-16 h-1 bg-[#1e2a42] rounded-full overflow-hidden">
         <div
-          className={`h-full ${color} rounded-full transition-all duration-500`}
+          className={`h-full rounded-full transition-all duration-500 ${
+            isUrgent ? "bg-rose-500" : isWarning ? "bg-amber-400" : "bg-emerald-500"
+          }`}
           style={{ width: `${pct}%` }}
         />
       </div>
-      <span className="text-yellow-400 text-xs font-mono tabular-nums w-8 text-right">
+      <span className={`text-xs font-mono tabular-nums w-7 text-right ${
+        isUrgent ? "text-rose-400" : isWarning ? "text-amber-400" : "text-slate-400"
+      }`}>
         {remaining}s
       </span>
     </div>
@@ -99,13 +101,7 @@ export default function ActiveTrades({ trades, currentPrices, onSettle, loading 
     return (
       <div className="space-y-2">
         {[1, 2].map((i) => (
-          <div key={i} className="bg-[#0e1117] rounded-lg p-3 border border-gray-800 animate-pulse">
-            <div className="flex items-center justify-between mb-2">
-              <div className="h-3 w-20 bg-gray-800 rounded" />
-              <div className="h-3 w-12 bg-gray-800 rounded" />
-            </div>
-            <div className="h-2 w-full bg-gray-800 rounded" />
-          </div>
+          <div key={i} className="rounded-xl p-3 border border-[#1e2a42] shimmer h-16" />
         ))}
       </div>
     );
@@ -113,13 +109,14 @@ export default function ActiveTrades({ trades, currentPrices, onSettle, loading 
 
   if (trades.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-8 gap-2">
-        <div className="text-3xl">📊</div>
-        <p className="text-gray-600 text-sm text-center">
-          Nenhuma operação ativa.
-          <br />
-          <span className="text-gray-700">Escolha um ativo e aposte!</span>
-        </p>
+      <div className="flex flex-col items-center justify-center py-10 gap-3">
+        <div className="w-12 h-12 rounded-2xl bg-[#111827] border border-[#1e2a42] flex items-center justify-center">
+          <span className="text-xl">📊</span>
+        </div>
+        <div className="text-center">
+          <p className="text-slate-500 text-sm font-medium">Nenhuma operação ativa</p>
+          <p className="text-slate-700 text-xs mt-0.5">Escolha um ativo e aposte!</p>
+        </div>
       </div>
     );
   }
@@ -135,41 +132,43 @@ export default function ActiveTrades({ trades, currentPrices, onSettle, loading 
         const priceDiff = ((currentPrice - entryPrice) / entryPrice) * 100;
 
         return (
-          <div key={trade.id} className="bg-[#0e1117] rounded-lg p-3 border border-gray-800">
+          <div
+            key={trade.id}
+            className={`rounded-xl p-3 border transition-colors ${
+              isWinning
+                ? "bg-emerald-500/5 border-emerald-500/15"
+                : "bg-rose-500/5 border-rose-500/15"
+            }`}
+          >
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-2">
-                <span className="text-white text-sm font-medium">{trade.asset}</span>
+                <span className="text-white text-xs font-semibold">{trade.asset}</span>
                 <span
-                  className={`text-xs px-2 py-0.5 rounded font-semibold ${
+                  className={`text-[10px] px-1.5 py-0.5 rounded-md font-bold ${
                     trade.direction === "UP"
-                      ? "bg-green-500/20 text-green-400"
-                      : "bg-red-500/20 text-red-400"
+                      ? "bg-emerald-500/15 text-emerald-400"
+                      : "bg-rose-500/15 text-rose-400"
                   }`}
                 >
                   {trade.direction === "UP" ? "▲ CIMA" : "▼ BAIXO"}
                 </span>
               </div>
               <span
-                className={`text-xs font-semibold ${
-                  isWinning ? "text-green-400" : "text-red-400"
+                className={`text-xs font-bold font-mono ${
+                  isWinning ? "text-emerald-400" : "text-rose-400"
                 }`}
               >
-                {priceDiff >= 0 ? "+" : ""}
-                {priceDiff.toFixed(3)}%
+                {priceDiff >= 0 ? "+" : ""}{priceDiff.toFixed(3)}%
               </span>
             </div>
 
             <div className="flex items-center justify-between">
-              <div className="text-xs text-gray-500">
-                <span className="text-gray-400">
-                  $
-                  {entryPrice.toLocaleString("en-US", {
-                    minimumFractionDigits: 2,
-                    maximumFractionDigits: 4,
-                  })}
+              <div className="text-[10px] text-slate-600">
+                <span className="text-slate-500 font-mono">
+                  ${entryPrice.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 4 })}
                 </span>
-                {" · "}
-                <span className="text-white font-medium">${trade.amount.toFixed(2)}</span>
+                <span className="mx-1 text-slate-700">·</span>
+                <span className="text-white font-semibold">${trade.amount.toFixed(2)}</span>
               </div>
               <CountdownBadge
                 tradeId={trade.id}

@@ -155,7 +155,7 @@ function TradeAnnotations({ trades, prices, asset }: {
   return (
     <div className="absolute right-14 top-3 z-10 flex flex-col gap-1.5 pointer-events-none">
       {assetTrades.map((trade) => {
-        const isWin    = trade.direction === "UP" ? current > trade.entryPrice : current < trade.entryPrice;
+        const isWin    = trade.direction === "UP" ? current >= trade.entryPrice : current <= trade.entryPrice;
         const pnl      = isWin ? trade.amount * PAYOUT_RATE : -trade.amount;
         const timeLeft = Math.max(0, Math.ceil((new Date(trade.expiresAt).getTime() - Date.now()) / 1000));
         return (

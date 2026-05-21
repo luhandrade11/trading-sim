@@ -1,5 +1,5 @@
 export const PAYOUT_RATE = 0.85;
-export const STARTING_BALANCE = 1000;
+export const STARTING_BALANCE = 10000;
 export const MAX_TRADE_AMOUNT = 10000;
 export const MIN_TRADE_AMOUNT = 1;
 export const MAX_EXIT_PRICE_MULTIPLIER = 1000;

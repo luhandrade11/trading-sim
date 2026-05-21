@@ -3,6 +3,8 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
+const DEMO_BALANCE = 10000;
+
 export async function POST() {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) {
@@ -13,9 +15,9 @@ export async function POST() {
     prisma.trade.deleteMany({ where: { userId: session.user.id } }),
     prisma.user.update({
       where: { id: session.user.id },
-      data: { balance: 1000 },
+      data: { balance: DEMO_BALANCE },
     }),
   ]);
 
-  return NextResponse.json({ balance: 1000 });
+  return NextResponse.json({ balance: DEMO_BALANCE });
 }

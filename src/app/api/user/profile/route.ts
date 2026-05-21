@@ -15,8 +15,17 @@ export async function PATCH(req: NextRequest) {
   const body = await req.json().catch(() => null);
   if (!body) return NextResponse.json({ error: "Body inválido" }, { status: 400 });
 
-  const { name, currentPassword, newPassword } = body;
-  const updates: { name?: string; password?: string } = {};
+  const { name, currentPassword, newPassword, image } = body;
+  const updates: { name?: string; password?: string; image?: string } = {};
+
+  if (image !== undefined) {
+    if (typeof image !== "string") return NextResponse.json({ error: "Imagem inválida" }, { status: 400 });
+    if (image !== "" && !image.startsWith("data:image/"))
+      return NextResponse.json({ error: "Formato de imagem inválido" }, { status: 400 });
+    if (image.length > 300_000)
+      return NextResponse.json({ error: "Imagem muito grande (máx 200KB)" }, { status: 400 });
+    updates.image = image;
+  }
 
   if (name !== undefined) {
     if (typeof name !== "string" || name.trim().length < 2)
@@ -43,7 +52,7 @@ export async function PATCH(req: NextRequest) {
   const updated = await prisma.user.update({
     where: { id: session.user.id },
     data: updates,
-    select: { id: true, name: true, email: true, balance: true },
+    select: { id: true, name: true, email: true, balance: true, image: true },
   });
 
   return NextResponse.json(updated);

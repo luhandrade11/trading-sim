@@ -388,9 +388,12 @@ export default function TradingChart({
       const vr         = chart.timeScale().getVisibleRange();
 
       const newAnnotations: AnnotPos[] = activeTrades.map((trade) => {
+        // Use tiny tolerance (0.005%) so equal/near-equal prices show as winning
+        // rather than always-red at bet placement moment
+        const epsilon = trade.entryPrice * 0.00005;
         const isWin = trade.direction === "UP"
-          ? simPrice > trade.entryPrice
-          : simPrice < trade.entryPrice;
+          ? simPrice >= trade.entryPrice - epsilon
+          : simPrice <= trade.entryPrice + epsilon;
         const pnl    = isWin ? trade.amount * PAYOUT_RATE : -trade.amount;
         const pnlPct = (pnl / trade.amount) * 100;
         const timeLeft    = Math.max(0, Math.ceil((new Date(trade.expiresAt).getTime() - Date.now()) / 1000));
@@ -443,25 +446,29 @@ export default function TradingChart({
 
   return (
     <div className="relative w-full h-full bg-[#050509]">
-      <div ref={containerRef} className="w-full h-full" />
+      {/* isolation:isolate creates a stacking context that contains lightweight-charts'
+          internal z-indices, so our sibling overlay divs appear on top of the canvas */}
+      <div ref={containerRef} className="w-full h-full" style={{ isolation: "isolate" }} />
 
-      {/* Watermark */}
-      <div className="absolute inset-0 flex items-center justify-center pointer-events-none select-none">
+      {/* Watermark — z-index:1 ensures it paints above the chart canvas stacking context */}
+      <div className="absolute inset-0 flex items-center justify-center pointer-events-none select-none"
+        style={{ zIndex: 1 }}>
         <span
-          className="font-black uppercase tracking-[0.35em] text-5xl"
+          className="font-black uppercase tracking-[0.35em] text-[clamp(1.5rem,5vw,3.5rem)]"
           style={{
             color:            "transparent",
-            WebkitTextStroke: "1px rgba(255,255,255,0.045)",
-            textShadow:       "0 0 120px rgba(251,191,36,0.04)",
+            WebkitTextStroke: "1px rgba(255,255,255,0.07)",
+            textShadow:       "0 0 80px rgba(251,191,36,0.06)",
           }}
         >
           Prime Broker
         </span>
       </div>
 
-      {/* Avalon annotations */}
+      {/* Avalon annotations — z-index:2 keeps them above watermark and canvas */}
       {annotations.map((ann) => (
-        <div key={ann.id} className="absolute inset-0 pointer-events-none overflow-hidden">
+        <div key={ann.id} className="absolute inset-0 pointer-events-none overflow-hidden"
+          style={{ zIndex: 2 }}>
 
           {/* Horizontal dashed entry price line */}
           {ann.entryY !== null && ann.entryY > 20 && (

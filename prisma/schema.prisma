@@ -1,0 +1,34 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String
+  password  String
+  balance   Float    @default(1000)
+  trades    Trade[]
+  createdAt DateTime @default(now())
+}
+
+model Trade {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id])
+  asset      String
+  direction  String
+  amount     Float
+  entryPrice Float
+  exitPrice  Float?
+  duration   Int
+  result     String   @default("PENDING")
+  profit     Float    @default(0)
+  createdAt  DateTime @default(now())
+  expiresAt  DateTime
+}

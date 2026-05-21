@@ -1,10 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
+import { rateLimit } from "@/lib/rateLimit";
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+function getIp(req: NextRequest): string {
+  return req.headers.get("x-forwarded-for")?.split(",")[0].trim() ?? "unknown";
+}
+
 export async function POST(req: NextRequest) {
+  if (!rateLimit(`register:${getIp(req)}`, 5, 3_600_000))
+    return NextResponse.json({ error: "Muitas tentativas. Tente mais tarde." }, { status: 429 });
+
   const body = await req.json().catch(() => null);
   if (!body) {
     return NextResponse.json({ error: "Body inválido" }, { status: 400 });

@@ -3,16 +3,8 @@
 import { useEffect, useState } from "react";
 import { formatPrice } from "@/lib/utils";
 import { PAYOUT_RATE } from "@/lib/constants";
-
-interface Trade {
-  id: string;
-  asset: string;
-  direction: string;
-  amount: number;
-  entryPrice: number;
-  duration: number;
-  expiresAt: string;
-}
+import { ALL_ASSETS } from "@/lib/constants";
+import type { Trade } from "@/types/trade";
 
 interface Props {
   trades: Trade[];
@@ -40,11 +32,14 @@ function TradeRow({ trade, currentPrices }: { trade: Trade; currentPrices: Recor
   const pct     = ((currentPrice - entry) / entry) * 100;
   const urgency = remaining <= 10 ? "text-rose-400" : remaining <= 30 ? "text-amber-400" : "text-slate-400";
 
+  const assetInfo = ALL_ASSETS.find((a) => a.symbol === trade.asset);
+  const isForex   = assetInfo?.type === "forex";
+
   return (
     <tr className="border-b border-[#1e2a42]/50 hover:bg-[#111827]/60 transition-colors group">
       <td className="px-4 py-2">
         <div className="flex items-center gap-2">
-          <div className={`w-1.5 h-1.5 rounded-full ${trade.asset.includes("/") && !["EUR","GBP","AUD","USD"].some(f => trade.asset.startsWith(f)) ? "bg-amber-400" : "bg-blue-400"} group-hover:animate-pulse`} />
+          <div className={`w-1.5 h-1.5 rounded-full ${isForex ? "bg-blue-400" : "bg-amber-400"} group-hover:animate-pulse`} />
           <span className="text-xs font-semibold text-white">{trade.asset}</span>
         </div>
       </td>
@@ -63,7 +58,7 @@ function TradeRow({ trade, currentPrices }: { trade: Trade; currentPrices: Recor
       <td className="px-4 py-2 text-xs text-white font-mono">${trade.amount.toFixed(2)}</td>
       <td className="px-4 py-2 text-xs text-slate-400 font-mono">{formatPrice(entry, trade.asset)}</td>
       <td className="px-4 py-2 text-xs font-mono">
-        <span className={`${isWinning ? "text-emerald-400" : "text-rose-400"}`}>
+        <span className={isWinning ? "text-emerald-400" : "text-rose-400"}>
           {formatPrice(currentPrice, trade.asset)}
           <span className="text-[9px] ml-1 opacity-60">({pct >= 0 ? "+" : ""}{pct.toFixed(3)}%)</span>
         </span>
@@ -83,7 +78,7 @@ export default function PositionsTable({ trades, currentPrices }: Props) {
   if (trades.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center h-full gap-2">
-        <p className="text-slate-600 text-xs">Você não tem operações abertas.</p>
+        <p className="text-slate-600 text-xs">Nenhuma operação aberta.</p>
       </div>
     );
   }

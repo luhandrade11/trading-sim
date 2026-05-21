@@ -14,6 +14,7 @@ body {
   box-shadow: 0 0 0 1px rgba(30, 42, 66, 0.5), 0 20px 60px -10px rgba(0, 0, 0, 0.8);
 }
 
+/* Trade buttons */
 .btn-up {
   box-shadow: 0 4px 18px rgba(16, 185, 129, 0.25);
   transition: box-shadow 0.2s, transform 0.1s, background-color 0.15s;
@@ -42,34 +43,48 @@ body {
   box-shadow: 0 0 20px rgba(251, 191, 36, 0.15);
 }
 
+/* Scrollbar */
 .scrollbar-hide {
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
-.scrollbar-hide::-webkit-scrollbar {
-  display: none;
-}
+.scrollbar-hide::-webkit-scrollbar { display: none; }
 
-::-webkit-scrollbar {
-  width: 3px;
-}
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-::-webkit-scrollbar-thumb {
-  background: #1e2a42;
-  border-radius: 2px;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: #2d4070;
-}
+::-webkit-scrollbar { width: 3px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #1e2a42; border-radius: 2px; }
+::-webkit-scrollbar-thumb:hover { background: #2d4070; }
 
+/* Loading skeleton */
 @keyframes shimmer {
-  0% { background-position: -200% 0; }
-  100% { background-position: 200% 0; }
+  0%   { background-position: -200% 0; }
+  100% { background-position:  200% 0; }
 }
 .shimmer {
   background: linear-gradient(90deg, #1e2a42 25%, #2d3f5e 50%, #1e2a42 75%);
   background-size: 200% 100%;
   animation: shimmer 1.5s infinite;
+}
+
+/* Price flash animation */
+@keyframes flash-up {
+  0%   { background-color: rgba(16, 185, 129, 0.25); }
+  100% { background-color: transparent; }
+}
+@keyframes flash-down {
+  0%   { background-color: rgba(244, 63, 94, 0.25); }
+  100% { background-color: transparent; }
+}
+.price-flash-up   { animation: flash-up   0.6s ease-out; border-radius: 4px; }
+.price-flash-down { animation: flash-down 0.6s ease-out; border-radius: 4px; }
+
+/* Fullscreen chart container */
+:-webkit-full-screen .w-full { width: 100vw !important; }
+:-webkit-full-screen .h-full { height: 100vh !important; }
+:fullscreen .w-full { width: 100vw !important; }
+:fullscreen .h-full { height: 100vh !important; }
+
+/* Smooth focus rings */
+input:focus, select:focus, button:focus-visible {
+  outline: none;
 }

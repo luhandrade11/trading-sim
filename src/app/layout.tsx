@@ -15,8 +15,17 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "Prime Broker — Simulador de Trading",
-  description: "Plataforma profissional de simulação de opções binárias",
-  icons: { icon: "/favicon.svg" },
+  description: "Plataforma profissional de simulação de trading com dados de mercado em tempo real. Cripto e Forex.",
+  keywords: ["trading", "simulador", "cripto", "forex", "bitcoin", "opções binárias"],
+  icons: {
+    icon: "/favicon.svg",
+    shortcut: "/favicon.svg",
+  },
+  openGraph: {
+    title: "Prime Broker — Simulador de Trading",
+    description: "Opera cripto e forex com $1.000 virtuais. Dados reais. Sem risco.",
+    type: "website",
+  },
 };
 
 export default function RootLayout({

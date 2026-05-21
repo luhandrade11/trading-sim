@@ -1,16 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-
-interface Trade {
-  id: string;
-  asset: string;
-  direction: string;
-  amount: number;
-  entryPrice: number;
-  duration: number;
-  expiresAt: string;
-}
+import type { Trade } from "@/types/trade";
 
 interface Props {
   trades: Trade[];
@@ -20,12 +11,7 @@ interface Props {
 }
 
 function CountdownBadge({
-  tradeId,
-  duration,
-  expiresAt,
-  asset,
-  currentPrices,
-  onSettle,
+  tradeId, duration, expiresAt, asset, currentPrices, onSettle,
 }: {
   tradeId: string;
   duration: number;
@@ -42,7 +28,7 @@ function CountdownBadge({
 
   useEffect(() => {
     const interval = setInterval(() => {
-      const secs = Math.ceil((new Date(expiresAt).getTime() - Date.now()) / 1000);
+      const secs    = Math.ceil((new Date(expiresAt).getTime() - Date.now()) / 1000);
       const clamped = Math.max(0, secs);
       setRemaining(clamped);
 
@@ -60,13 +46,12 @@ function CountdownBadge({
         }
       }
     }, 500);
-
     return () => clearInterval(interval);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tradeId, expiresAt]);
 
-  const pct = Math.max(0, Math.min(100, (remaining / duration) * 100));
-  const isUrgent = pct <= 15;
+  const pct       = Math.max(0, Math.min(100, (remaining / duration) * 100));
+  const isUrgent  = pct <= 15;
   const isWarning = pct <= 40 && !isUrgent;
 
   return (
@@ -125,11 +110,11 @@ export default function ActiveTrades({ trades, currentPrices, onSettle, loading 
     <div className="space-y-2">
       {trades.map((trade) => {
         const currentPrice = currentPrices[trade.asset]?.price ?? trade.entryPrice;
-        const entryPrice = trade.entryPrice || 1;
-        const isWinning =
-          (trade.direction === "UP" && currentPrice > entryPrice) ||
+        const entryPrice   = trade.entryPrice || 1;
+        const isWinning    =
+          (trade.direction === "UP"   && currentPrice > entryPrice) ||
           (trade.direction === "DOWN" && currentPrice < entryPrice);
-        const priceDiff = ((currentPrice - entryPrice) / entryPrice) * 100;
+        const priceDiff    = ((currentPrice - entryPrice) / entryPrice) * 100;
 
         return (
           <div
@@ -143,21 +128,15 @@ export default function ActiveTrades({ trades, currentPrices, onSettle, loading 
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-2">
                 <span className="text-white text-xs font-semibold">{trade.asset}</span>
-                <span
-                  className={`text-[10px] px-1.5 py-0.5 rounded-md font-bold ${
-                    trade.direction === "UP"
-                      ? "bg-emerald-500/15 text-emerald-400"
-                      : "bg-rose-500/15 text-rose-400"
-                  }`}
-                >
+                <span className={`text-[10px] px-1.5 py-0.5 rounded-md font-bold ${
+                  trade.direction === "UP"
+                    ? "bg-emerald-500/15 text-emerald-400"
+                    : "bg-rose-500/15 text-rose-400"
+                }`}>
                   {trade.direction === "UP" ? "▲ CIMA" : "▼ BAIXO"}
                 </span>
               </div>
-              <span
-                className={`text-xs font-bold font-mono ${
-                  isWinning ? "text-emerald-400" : "text-rose-400"
-                }`}
-              >
+              <span className={`text-xs font-bold font-mono ${isWinning ? "text-emerald-400" : "text-rose-400"}`}>
                 {priceDiff >= 0 ? "+" : ""}{priceDiff.toFixed(3)}%
               </span>
             </div>

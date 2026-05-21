@@ -169,9 +169,13 @@ export default function TradingChart({
   const seriesRef     = useRef<ISeriesApi<any> | null>(null);
   const candlesRef    = useRef<CandlestickData[]>([]);
   const lineRef       = useRef<{ time: Time; value: number }[]>([]);
-  const lastPriceRef  = useRef<number>(currentPrice || 100);
-  const simPriceRef   = useRef<number>(currentPrice || 100);
-  const modeRef       = useRef(chartType);
+  const lastPriceRef      = useRef<number>(currentPrice || 100);
+  const simPriceRef       = useRef<number>(currentPrice || 100);
+  const modeRef           = useRef(chartType);
+  // Simulated price at the exact moment each trade was placed — used for isWin + Y coord
+  const simEntryPricesRef = useRef<Map<string, number>>(new Map());
+  // Max expiry timestamp (seconds) among active trades, kept up-to-date for scrollInterval
+  const maxExpiryRef      = useRef<number>(0);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [annotations,  setAnnotations]  = useState<AnnotPos[]>([]);
 
@@ -313,21 +317,20 @@ export default function TradingChart({
       }
     }, 800);
 
-    // Scroll time scale forward as time passes (keeps "now" in view)
+    // Scroll time scale forward every 10s — also respects active trade expiry times
     const scrollInterval = setInterval(() => {
       if (!chartRef.current) return;
-      const nowSec = Math.floor(Date.now() / 1000);
-      const vr = chartRef.current.timeScale().getVisibleRange();
-      if (!vr) return;
-      const span = Number(vr.to) - Number(vr.from);
-      // Shift the window forward to keep current time centered-right
+      const nowSec    = Math.floor(Date.now() / 1000);
+      const maxExpiry = maxExpiryRef.current;
+      // Keep at least FUTURE_BUFFER_SECS ahead, or all the way to last trade expiry + 30s
+      const futureTo  = maxExpiry > nowSec + FUTURE_BUFFER_SECS
+        ? maxExpiry + 30
+        : nowSec + FUTURE_BUFFER_SECS;
       chartRef.current.timeScale().setVisibleRange({
-        from: (nowSec - HISTORY_SECS)       as Time,
-        to:   (nowSec + FUTURE_BUFFER_SECS) as Time,
+        from: (nowSec - HISTORY_SECS) as Time,
+        to:   futureTo               as Time,
       });
-      // Restore if trades need more future space (handled in activeTrades effect)
-      void span;
-    }, 10_000); // gentle shift every 10s
+    }, 10_000);
 
     const handleResize = () => {
       if (containerRef.current) {
@@ -354,25 +357,32 @@ export default function TradingChart({
     if (currentPrice > 0) lastPriceRef.current = currentPrice;
   }, [currentPrice]);
 
-  // ── Extend visible range when trades are placed ───────────────────────────
+  // ── Sync active trades: capture sim entry prices + extend visible range ──────
   useEffect(() => {
+    // 1. Capture the current simulated price for any brand-new trade
+    const map      = simEntryPricesRef.current;
+    const activeIds = new Set(activeTrades.map((t) => t.id));
+    for (const trade of activeTrades) {
+      if (!map.has(trade.id)) map.set(trade.id, simPriceRef.current);
+    }
+    // Remove prices for trades that have been settled/removed
+    for (const id of [...map.keys()]) {
+      if (!activeIds.has(id)) map.delete(id);
+    }
+
+    // 2. Keep maxExpiryRef updated so scrollInterval maintains the right range
+    maxExpiryRef.current = activeTrades.length > 0
+      ? Math.max(...activeTrades.map((t) => new Date(t.expiresAt).getTime() / 1000))
+      : 0;
+
+    // 3. Extend visible range immediately (don't wait for next scrollInterval tick)
     if (!chartRef.current || activeTrades.length === 0) return;
     const nowSec    = Math.floor(Date.now() / 1000);
-    const maxExpiry = Math.max(...activeTrades.map((t) =>
-      Math.floor(new Date(t.expiresAt).getTime() / 1000)
-    ));
-    if (maxExpiry <= nowSec) return;
-
-    // Need future buffer = time until last expiry + 30s padding
-    const futureSecs = (maxExpiry - nowSec) + 30;
-    const vr = chartRef.current.timeScale().getVisibleRange();
-    if (!vr) return;
-
-    const desiredTo = (nowSec + futureSecs) as Time;
-    if (futureSecs > FUTURE_BUFFER_SECS || Number(vr.to) < nowSec + futureSecs) {
+    const maxExpiry = maxExpiryRef.current;
+    if (maxExpiry > nowSec) {
       chartRef.current.timeScale().setVisibleRange({
         from: (nowSec - HISTORY_SECS) as Time,
-        to:   desiredTo,
+        to:   (maxExpiry + 30)        as Time,
       });
     }
   }, [activeTrades]);
@@ -384,16 +394,21 @@ export default function TradingChart({
       const chart       = chartRef.current;
       const series      = seriesRef.current;
       const simPrice    = simPriceRef.current;
-      const marketPrice = lastPriceRef.current; // real API price for win/loss
       const chartHeight = containerRef.current.clientHeight;
       const chartWidth  = containerRef.current.clientWidth;
       const vr          = chart.timeScale().getVisibleRange();
 
       const newAnnotations: AnnotPos[] = activeTrades.map((trade) => {
-        // Win/loss uses real market price vs stored entry price — matches settlement
+        // simEntryPrice = the simulated chart price at the exact moment this bet was placed.
+        // Using it (not the real API entryPrice) ensures isWin and Y coord are consistent
+        // with what the user sees on the simulated chart.
+        const simEntryPrice = simEntryPricesRef.current.get(trade.id) ?? simPrice;
+
+        // isWin: did the simulated price move in the bet's direction since placement?
+        // >= / <= so price == entry shows as winning (green) rather than immediately red
         const isWin = trade.direction === "UP"
-          ? marketPrice >= trade.entryPrice
-          : marketPrice <= trade.entryPrice;
+          ? simPrice >= simEntryPrice
+          : simPrice <= simEntryPrice;
         const pnl    = isWin ? trade.amount * PAYOUT_RATE : -trade.amount;
         const pnlPct = (pnl / trade.amount) * 100;
         const timeLeft    = Math.max(0, Math.ceil((new Date(trade.expiresAt).getTime() - Date.now()) / 1000));
@@ -401,24 +416,11 @@ export default function TradingChart({
           (new Date(trade.expiresAt).getTime() - new Date(trade.createdAt).getTime()) / 1000
         ));
 
-        // Y: interpolate entry price position using simulated price as anchor.
-        // priceToCoordinate(entryPrice) can return null when real price diverges from
-        // the simulated chart range, so we compute the offset from the sim price instead.
+        // Y: map simEntryPrice onto the chart — always valid since the sim generated it
         let entryY: number | null = null;
         try {
-          const y0 = series.priceToCoordinate(simPrice);      // Y of current sim price
-          const y1 = series.priceToCoordinate(simPrice * 1.001); // Y of sim price +0.1%
-          if (y0 != null && y1 != null) {
-            // Higher price = smaller Y (screen). pxPer001 = pixels per 0.1% price move.
-            const pxPer001 = y0 - y1; // positive: sim +0.1% is higher on screen
-            const diffPct  = (trade.entryPrice - simPrice) / simPrice; // can be positive or negative
-            const candidate = y0 - diffPct * 1000 * pxPer001;
-            if (candidate > 5 && candidate < chartHeight - 30) entryY = candidate;
-          } else {
-            // Fallback to direct lookup
-            const direct = series.priceToCoordinate(trade.entryPrice);
-            if (direct != null && direct > 5 && direct < chartHeight - 30) entryY = direct;
-          }
+          const raw = series.priceToCoordinate(simEntryPrice);
+          if (raw != null && raw > 10 && raw < chartHeight - 30) entryY = raw;
         } catch { /* chart not ready yet */ }
 
         // X: expiry vertical line — manual pixel calc from visible time range

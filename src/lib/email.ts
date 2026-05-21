@@ -1,27 +1,12 @@
-import nodemailer from "nodemailer";
+// Email delivery priority:
+//   1. Resend  — RESEND_API_KEY env var
+//   2. SMTP    — SMTP_HOST + SMTP_USER + SMTP_PASS env vars
+//   3. Console — development fallback (logs link, no actual send)
 
-function createTransport() {
-  // Supports any SMTP provider via env vars:
-  //   SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_FROM
-  // If not configured, emails are logged to console (dev mode).
-  if (!process.env.SMTP_HOST) return null;
-  return nodemailer.createTransport({
-    host:   process.env.SMTP_HOST,
-    port:   Number(process.env.SMTP_PORT ?? 587),
-    secure: process.env.SMTP_SECURE === "true",
-    auth: {
-      user: process.env.SMTP_USER,
-      pass: process.env.SMTP_PASS,
-    },
-  });
-}
+const FROM_DEFAULT = "Prime Broker <onboarding@resend.dev>";
 
-export async function sendVerificationEmail(to: string, name: string, token: string): Promise<void> {
-  const baseUrl   = process.env.NEXTAUTH_URL ?? "http://localhost:3000";
-  const verifyUrl = `${baseUrl}/api/auth/verify-email?token=${token}`;
-  const from      = process.env.SMTP_FROM ?? "Prime Broker <noreply@primebroker.app>";
-
-  const html = `
+function buildHtml(name: string, verifyUrl: string): string {
+  return `
     <div style="font-family:Arial,sans-serif;max-width:520px;margin:0 auto;background:#050509;color:#fff;padding:32px;border-radius:16px;">
       <div style="text-align:center;margin-bottom:24px;">
         <div style="display:inline-block;background:linear-gradient(135deg,#f59e0b,#d97706);width:56px;height:56px;border-radius:14px;line-height:56px;font-weight:900;font-size:18px;color:#080c14;">PB</div>
@@ -38,17 +23,52 @@ export async function sendVerificationEmail(to: string, name: string, token: str
           ✅ Confirmar Email
         </a>
       </div>
-      <p style="color:#6b7280;font-size:11px;text-align:center;">
+      <p style="color:#4b5563;font-size:11px;text-align:center;word-break:break-all;">
+        Ou acesse diretamente: <a href="${verifyUrl}" style="color:#6b7280;">${verifyUrl}</a>
+      </p>
+      <p style="color:#374151;font-size:11px;text-align:center;margin-top:16px;">
         Link válido por 24 horas. Se você não se cadastrou, ignore este email.
       </p>
     </div>
   `;
+}
 
-  const transport = createTransport();
-  if (!transport) {
-    // No SMTP configured — log link for local development
-    console.log(`[EMAIL] Verify link for ${to}: ${verifyUrl}`);
+async function sendViaResend(to: string, subject: string, html: string): Promise<void> {
+  const { Resend } = await import("resend");
+  const resend = new Resend(process.env.RESEND_API_KEY);
+  const from   = process.env.EMAIL_FROM ?? FROM_DEFAULT;
+  const { error } = await resend.emails.send({ from, to, subject, html });
+  if (error) throw new Error(`Resend error: ${error.message}`);
+}
+
+async function sendViaSMTP(to: string, subject: string, html: string): Promise<void> {
+  const nodemailer = await import("nodemailer");
+  const transport  = nodemailer.default.createTransport({
+    host:   process.env.SMTP_HOST!,
+    port:   Number(process.env.SMTP_PORT ?? 587),
+    secure: process.env.SMTP_SECURE === "true",
+    auth:   { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
+  });
+  const from = process.env.EMAIL_FROM ?? process.env.SMTP_USER ?? FROM_DEFAULT;
+  await transport.sendMail({ from, to, subject, html });
+}
+
+export async function sendVerificationEmail(to: string, name: string, token: string): Promise<void> {
+  const baseUrl   = process.env.NEXTAUTH_URL ?? "http://localhost:3000";
+  const verifyUrl = `${baseUrl}/api/auth/verify-email?token=${token}`;
+  const subject   = "✅ Confirme seu email — Prime Broker";
+  const html      = buildHtml(name, verifyUrl);
+
+  if (process.env.RESEND_API_KEY) {
+    await sendViaResend(to, subject, html);
     return;
   }
-  await transport.sendMail({ from, to, subject: "✅ Confirme seu email — Prime Broker", html });
+
+  if (process.env.SMTP_HOST) {
+    await sendViaSMTP(to, subject, html);
+    return;
+  }
+
+  // Dev fallback: just log the link
+  console.log(`[EMAIL] No provider configured. Verify link for ${to}:\n  ${verifyUrl}`);
 }

@@ -176,6 +176,73 @@ function TradeAnnotations({ trades, prices, asset }: {
   );
 }
 
+// ─── Chart loading overlay ───────────────────────────────────────────────────
+
+const LOADING_STEPS = [
+  "Conectando ao servidor de dados…",
+  "Carregando histórico de preços…",
+  "Sincronizando feed em tempo real…",
+  "Calibrando indicadores…",
+];
+
+function ChartLoadingOverlay({ asset }: { asset: string }) {
+  const [step, setStep] = useState(0);
+  const [fadeOut, setFadeOut] = useState(false);
+
+  useEffect(() => {
+    const timers = [
+      setTimeout(() => setStep(1),  700),
+      setTimeout(() => setStep(2), 1500),
+      setTimeout(() => setStep(3), 2300),
+      setTimeout(() => setFadeOut(true), 2800),
+    ];
+    return () => timers.forEach(clearTimeout);
+  }, []);
+
+  return (
+    <div
+      className="absolute inset-0 z-30 flex flex-col items-center justify-center gap-5 bg-[#050509] transition-opacity duration-500"
+      style={{ opacity: fadeOut ? 0 : 1, pointerEvents: fadeOut ? "none" : "auto" }}
+    >
+      {/* Logo */}
+      <div className="w-14 h-14 bg-gradient-to-br from-amber-400 to-amber-600 rounded-2xl flex items-center justify-center shadow-xl shadow-amber-500/20">
+        <span className="text-[#080c14] font-black text-base">PB</span>
+      </div>
+
+      {/* Asset name */}
+      <div className="text-center">
+        <div className="text-white font-black text-lg tracking-tight">{asset}</div>
+        <div className="text-white/30 text-xs mt-0.5">Carregando gráfico</div>
+      </div>
+
+      {/* Steps */}
+      <div className="flex flex-col items-start gap-2 min-w-[220px]">
+        {LOADING_STEPS.map((s, i) => (
+          <div key={i} className={`flex items-center gap-2 text-xs transition-all duration-300 ${i <= step ? "opacity-100" : "opacity-0"}`}>
+            <div className={`w-3.5 h-3.5 rounded-full flex items-center justify-center shrink-0 ${
+              i < step ? "bg-emerald-500/20" : i === step ? "bg-amber-400/20 animate-pulse" : "bg-white/5"
+            }`}>
+              {i < step
+                ? <svg className="w-2 h-2 text-emerald-400" fill="currentColor" viewBox="0 0 12 12"><path d="M10 3L5 8.5 2 5.5" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round"/></svg>
+                : <div className={`w-1.5 h-1.5 rounded-full ${i === step ? "bg-amber-400" : "bg-white/10"}`} />
+              }
+            </div>
+            <span className={i < step ? "text-white/50" : i === step ? "text-white/80" : "text-white/20"}>{s}</span>
+          </div>
+        ))}
+      </div>
+
+      {/* Progress bar */}
+      <div className="w-48 h-0.5 bg-white/5 rounded-full overflow-hidden">
+        <div
+          className="h-full bg-gradient-to-r from-amber-500 to-amber-400 rounded-full transition-all duration-700 ease-out"
+          style={{ width: `${((step + 1) / LOADING_STEPS.length) * 100}%` }}
+        />
+      </div>
+    </div>
+  );
+}
+
 // ─── Trade result overlay ────────────────────────────────────────────────────
 
 function TradeResultOverlay({ result, onDone }: { result: TradeResult; onDone: () => void }) {
@@ -816,6 +883,9 @@ export default function DashboardPage() {
   const [mobileTab,        setMobileTab]        = useState<"chart" | "trade" | "panels">("chart");
   const [emailVerified,    setEmailVerified]    = useState<boolean | null>(null);
   const [showDepositCta,   setShowDepositCta]   = useState(false);
+  const [chartLoading,     setChartLoading]     = useState(true);
+  const chartLoadTimerRef  = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const prevAssetRef       = useRef<string>("");
 
   const notifTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const staleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -862,6 +932,15 @@ export default function DashboardPage() {
   useEffect(() => { if (!openAssets.includes(selectedAsset) && openAssets.length > 0) setSelectedAsset(openAssets[0]); }, [openAssets, selectedAsset]);
   useEffect(() => { if (status === "unauthenticated") router.push("/login"); }, [status, router]);
 
+  // Chart loading overlay — 3s on initial load + every asset switch
+  useEffect(() => {
+    if (prevAssetRef.current === selectedAsset) return;
+    prevAssetRef.current = selectedAsset;
+    setChartLoading(true);
+    if (chartLoadTimerRef.current) clearTimeout(chartLoadTimerRef.current);
+    chartLoadTimerRef.current = setTimeout(() => setChartLoading(false), 3100);
+    return () => { if (chartLoadTimerRef.current) clearTimeout(chartLoadTimerRef.current); };
+  }, [selectedAsset]);
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -1391,15 +1470,18 @@ export default function DashboardPage() {
               <TradeResultOverlay result={tradeResult} onDone={() => setTradeResult(null)} />
             )}
 
-            {/* Chart */}
-            {currentPrice > 0
-              ? <TradingChart key={selectedAsset} currentPrice={currentPrice} asset={selectedAsset} chartType={chartType} activeTrades={activeTradesForChart} onOhlcChange={setOhlc} />
-              : (
-                <div className="w-full h-full flex items-center justify-center bg-[#050509]">
-                  <div className="w-5 h-5 border-2 border-white/10 border-t-white/40 rounded-full animate-spin" />
-                </div>
-              )
-            }
+            {/* Chart — always mounted so it initialises behind the loading overlay */}
+            <TradingChart
+              key={selectedAsset + "-" + chartType}
+              currentPrice={currentPrice}
+              asset={selectedAsset}
+              chartType={chartType}
+              activeTrades={chartLoading ? [] : activeTradesForChart}
+              onOhlcChange={setOhlc}
+            />
+
+            {/* Chart loading overlay (3 s) */}
+            {chartLoading && <ChartLoadingOverlay asset={selectedAsset} />}
 
             {/* P&L badges */}
             {currentPrice > 0 && (

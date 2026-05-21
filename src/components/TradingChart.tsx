@@ -381,19 +381,19 @@ export default function TradingChart({
   useEffect(() => {
     const update = () => {
       if (!chartRef.current || !seriesRef.current || !containerRef.current) return;
-      const chart      = chartRef.current;
-      const series     = seriesRef.current;
-      const simPrice   = simPriceRef.current;
-      const chartWidth = containerRef.current.clientWidth;
-      const vr         = chart.timeScale().getVisibleRange();
+      const chart       = chartRef.current;
+      const series      = seriesRef.current;
+      const simPrice    = simPriceRef.current;
+      const marketPrice = lastPriceRef.current; // real API price for win/loss
+      const chartHeight = containerRef.current.clientHeight;
+      const chartWidth  = containerRef.current.clientWidth;
+      const vr          = chart.timeScale().getVisibleRange();
 
       const newAnnotations: AnnotPos[] = activeTrades.map((trade) => {
-        // Use tiny tolerance (0.005%) so equal/near-equal prices show as winning
-        // rather than always-red at bet placement moment
-        const epsilon = trade.entryPrice * 0.00005;
+        // Win/loss uses real market price vs stored entry price — matches settlement
         const isWin = trade.direction === "UP"
-          ? simPrice >= trade.entryPrice - epsilon
-          : simPrice <= trade.entryPrice + epsilon;
+          ? marketPrice >= trade.entryPrice
+          : marketPrice <= trade.entryPrice;
         const pnl    = isWin ? trade.amount * PAYOUT_RATE : -trade.amount;
         const pnlPct = (pnl / trade.amount) * 100;
         const timeLeft    = Math.max(0, Math.ceil((new Date(trade.expiresAt).getTime() - Date.now()) / 1000));
@@ -401,20 +401,34 @@ export default function TradingChart({
           (new Date(trade.expiresAt).getTime() - new Date(trade.createdAt).getTime()) / 1000
         ));
 
-        // Y: entry price horizontal line
+        // Y: interpolate entry price position using simulated price as anchor.
+        // priceToCoordinate(entryPrice) can return null when real price diverges from
+        // the simulated chart range, so we compute the offset from the sim price instead.
         let entryY: number | null = null;
-        try { entryY = series.priceToCoordinate(trade.entryPrice) ?? null; } catch {}
+        try {
+          const y0 = series.priceToCoordinate(simPrice);      // Y of current sim price
+          const y1 = series.priceToCoordinate(simPrice * 1.001); // Y of sim price +0.1%
+          if (y0 != null && y1 != null) {
+            // Higher price = smaller Y (screen). pxPer001 = pixels per 0.1% price move.
+            const pxPer001 = y0 - y1; // positive: sim +0.1% is higher on screen
+            const diffPct  = (trade.entryPrice - simPrice) / simPrice; // can be positive or negative
+            const candidate = y0 - diffPct * 1000 * pxPer001;
+            if (candidate > 5 && candidate < chartHeight - 30) entryY = candidate;
+          } else {
+            // Fallback to direct lookup
+            const direct = series.priceToCoordinate(trade.entryPrice);
+            if (direct != null && direct > 5 && direct < chartHeight - 30) entryY = direct;
+          }
+        } catch { /* chart not ready yet */ }
 
-        // X: expiry vertical line — manual calculation using visible range
+        // X: expiry vertical line — manual pixel calc from visible time range
         let expiryX: number | null = null;
         if (vr && chartWidth > 0) {
-          const fromSec  = Number(vr.from);
-          const toSec    = Number(vr.to);
-          const span     = toSec - fromSec;
+          const fromSec = Number(vr.from);
+          const span    = Number(vr.to) - fromSec;
           if (span > 0) {
             const expSec = new Date(trade.expiresAt).getTime() / 1000;
             const rawX   = ((expSec - fromSec) / span) * chartWidth;
-            // Only show if within the chart's drawable area
             if (rawX > 5 && rawX < chartWidth - 2) expiryX = rawX;
           }
         }

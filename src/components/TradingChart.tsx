@@ -7,6 +7,7 @@ import {
   ISeriesApi,
   CandlestickData,
   CandlestickSeries,
+  AreaSeries,
   Time,
   ColorType,
 } from "lightweight-charts";
@@ -14,132 +15,153 @@ import {
 interface Props {
   currentPrice: number;
   asset: string;
+  chartType?: "candle" | "line";
 }
 
-function generateInitialCandles(basePrice: number): CandlestickData[] {
+function generateCandles(basePrice: number): CandlestickData[] {
   const candles: CandlestickData[] = [];
-  const now = Math.floor(Date.now() / 1000);
-  const currentMinute = Math.floor(now / 60) * 60;
+  const currentMinute = Math.floor(Date.now() / 60000) * 60;
   let price = basePrice * 0.97;
-
   for (let i = 59; i >= 0; i--) {
     const time = (currentMinute - i * 60) as Time;
-    const open = price;
     const volatility = basePrice * 0.003;
     const change = (Math.random() - 0.5) * volatility * 2;
-    const close = open + change;
-    const high = Math.max(open, close) + Math.random() * volatility * 0.5;
-    const low = Math.min(open, close) - Math.random() * volatility * 0.5;
-    candles.push({ time, open, high, low, close });
+    const close = price + change;
+    const high = Math.max(price, close) + Math.random() * volatility * 0.5;
+    const low  = Math.min(price, close) - Math.random() * volatility * 0.5;
+    candles.push({ time, open: price, high, low, close });
     price = close;
   }
-
   return candles;
 }
 
-export default function TradingChart({ currentPrice, asset }: Props) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const chartRef = useRef<IChartApi | null>(null);
-  const seriesRef = useRef<ISeriesApi<"Candlestick"> | null>(null);
-  const candlesRef = useRef<CandlestickData[]>([]);
-  const lastPriceRef = useRef(currentPrice);
+function generateLine(basePrice: number): { time: Time; value: number }[] {
+  const data: { time: Time; value: number }[] = [];
+  const nowSec = Math.floor(Date.now() / 1000);
+  let price = basePrice * 0.97;
+  for (let i = 299; i >= 0; i--) {
+    const time = (nowSec - i * 5) as Time;
+    const volatility = basePrice * 0.0008;
+    price += (Math.random() - 0.5) * volatility * 2;
+    data.push({ time, value: price });
+  }
+  return data;
+}
 
+export default function TradingChart({ currentPrice, asset, chartType = "candle" }: Props) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const chartRef     = useRef<IChartApi | null>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const seriesRef    = useRef<ISeriesApi<any> | null>(null);
+  const candlesRef   = useRef<CandlestickData[]>([]);
+  const lineRef      = useRef<{ time: Time; value: number }[]>([]);
+  const lastPriceRef = useRef(currentPrice);
+  const modeRef      = useRef(chartType);
+
+  // Rebuild chart when asset or chartType changes
   useEffect(() => {
     if (!containerRef.current) return;
+    modeRef.current = chartType;
 
     const chart = createChart(containerRef.current, {
       layout: {
         background: { type: ColorType.Solid, color: "#080c14" },
-        textColor: "#475569",
+        textColor: "#3d4f6b",
         fontFamily: "var(--font-geist-mono), monospace",
         fontSize: 11,
       },
       grid: {
-        vertLines: { color: "#0f1829" },
-        horzLines: { color: "#0f1829" },
+        vertLines: { color: "#0d1424" },
+        horzLines: { color: "#0d1424" },
       },
       crosshair: {
         vertLine: { color: "#2d4070", width: 1, style: 2 },
         horzLine: { color: "#2d4070", width: 1, style: 2 },
       },
-      rightPriceScale: {
-        borderColor: "#0f1829",
-        textColor: "#475569",
-      },
-      timeScale: {
-        borderColor: "#0f1829",
-        timeVisible: true,
-        secondsVisible: false,
-        fixLeftEdge: false,
-        fixRightEdge: false,
-      },
-      width: containerRef.current.clientWidth,
+      rightPriceScale: { borderColor: "#0d1424", textColor: "#3d4f6b" },
+      timeScale:       { borderColor: "#0d1424", timeVisible: true, secondsVisible: false },
+      width:  containerRef.current.clientWidth,
       height: containerRef.current.clientHeight,
     });
 
-    const series = chart.addSeries(CandlestickSeries, {
-      upColor: "#10b981",
-      downColor: "#f43f5e",
-      borderUpColor: "#10b981",
-      borderDownColor: "#f43f5e",
-      wickUpColor: "#10b981",
-      wickDownColor: "#f43f5e",
-    });
+    if (chartType === "candle") {
+      const series = chart.addSeries(CandlestickSeries, {
+        upColor:        "#10b981",
+        downColor:      "#f43f5e",
+        borderUpColor:  "#10b981",
+        borderDownColor:"#f43f5e",
+        wickUpColor:    "#10b981",
+        wickDownColor:  "#f43f5e",
+      });
+      const candles = generateCandles(currentPrice);
+      candlesRef.current = candles;
+      series.setData(candles);
+      seriesRef.current = series;
+    } else {
+      const series = chart.addSeries(AreaSeries, {
+        lineColor:   "#10b981",
+        topColor:    "rgba(16, 185, 129, 0.12)",
+        bottomColor: "rgba(16, 185, 129, 0)",
+        lineWidth:   2,
+        crosshairMarkerVisible: true,
+        crosshairMarkerRadius: 4,
+      });
+      const lineData = generateLine(currentPrice);
+      lineRef.current = lineData;
+      series.setData(lineData);
+      seriesRef.current = series;
+    }
 
-    chartRef.current = chart;
-    seriesRef.current = series;
-
-    const candles = generateInitialCandles(currentPrice);
-    candlesRef.current = candles;
-    series.setData(candles);
     chart.timeScale().fitContent();
+    chartRef.current = chart;
 
     const handleResize = () => {
       if (containerRef.current) {
         chart.applyOptions({
-          width: containerRef.current.clientWidth,
+          width:  containerRef.current.clientWidth,
           height: containerRef.current.clientHeight,
         });
       }
     };
     window.addEventListener("resize", handleResize);
-
-    return () => {
-      window.removeEventListener("resize", handleResize);
-      chart.remove();
-    };
+    return () => { window.removeEventListener("resize", handleResize); chart.remove(); };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [asset]);
+  }, [asset, chartType]);
 
+  // Update on price tick
   useEffect(() => {
-    if (!seriesRef.current || candlesRef.current.length === 0) return;
-    if (currentPrice === 0) return;
+    if (!seriesRef.current || currentPrice === 0) return;
 
-    const candles = candlesRef.current;
-    const last = candles[candles.length - 1];
-    const nowSec = Math.floor(Date.now() / 1000);
-    const currentMinute = (Math.floor(nowSec / 60) * 60) as Time;
-
-    if (last.time === currentMinute) {
-      const updated: CandlestickData = {
-        time: currentMinute,
-        open: last.open,
-        high: Math.max(last.high, currentPrice),
-        low: Math.min(last.low, currentPrice),
-        close: currentPrice,
-      };
-      candles[candles.length - 1] = updated;
-      seriesRef.current.update(updated);
+    if (modeRef.current === "candle") {
+      if (candlesRef.current.length === 0) return;
+      const last = candlesRef.current[candlesRef.current.length - 1];
+      const currentMinute = (Math.floor(Date.now() / 60000) * 60) as Time;
+      if (last.time === currentMinute) {
+        const updated: CandlestickData = {
+          time:  currentMinute,
+          open:  last.open,
+          high:  Math.max(last.high, currentPrice),
+          low:   Math.min(last.low, currentPrice),
+          close: currentPrice,
+        };
+        candlesRef.current[candlesRef.current.length - 1] = updated;
+        seriesRef.current.update(updated);
+      } else {
+        const newCandle: CandlestickData = {
+          time:  currentMinute,
+          open:  lastPriceRef.current,
+          high:  Math.max(lastPriceRef.current, currentPrice),
+          low:   Math.min(lastPriceRef.current, currentPrice),
+          close: currentPrice,
+        };
+        candlesRef.current.push(newCandle);
+        seriesRef.current.update(newCandle);
+      }
     } else {
-      const newCandle: CandlestickData = {
-        time: currentMinute,
-        open: lastPriceRef.current,
-        high: Math.max(lastPriceRef.current, currentPrice),
-        low: Math.min(lastPriceRef.current, currentPrice),
-        close: currentPrice,
-      };
-      candles.push(newCandle);
-      seriesRef.current.update(newCandle);
+      const nowSec = Math.floor(Date.now() / 1000) as Time;
+      const point = { time: nowSec, value: currentPrice };
+      lineRef.current.push(point);
+      seriesRef.current.update(point);
     }
 
     lastPriceRef.current = currentPrice;

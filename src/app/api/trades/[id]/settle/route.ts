@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { PAYOUT_RATE } from "@/lib/constants";
+import { PAYOUT_RATE, MAX_EXIT_PRICE_MULTIPLIER } from "@/lib/constants";
 
 export async function POST(
   req: NextRequest,
@@ -14,10 +14,10 @@ export async function POST(
   }
 
   const { id } = await params;
+  if (!id) return NextResponse.json({ error: "ID inválido" }, { status: 400 });
+
   const body = await req.json().catch(() => null);
-  if (!body) {
-    return NextResponse.json({ error: "Body inválido" }, { status: 400 });
-  }
+  if (!body) return NextResponse.json({ error: "Body inválido" }, { status: 400 });
 
   const { exitPrice } = body;
   if (typeof exitPrice !== "number" || exitPrice <= 0) {
@@ -29,7 +29,13 @@ export async function POST(
     return NextResponse.json({ error: "Operação não encontrada" }, { status: 404 });
   }
   if (trade.result !== "PENDING") {
-    return NextResponse.json({ error: "Operação já finalizada" }, { status: 400 });
+    // Already settled — return existing result (idempotent)
+    return NextResponse.json(trade);
+  }
+
+  // Sanity cap: exit price can't be unrealistically high
+  if (exitPrice > trade.entryPrice * MAX_EXIT_PRICE_MULTIPLIER) {
+    return NextResponse.json({ error: "Preço de saída suspeito" }, { status: 400 });
   }
 
   const won =
@@ -40,10 +46,7 @@ export async function POST(
   const result = won ? "WIN" : "LOSS";
 
   const [updated] = await prisma.$transaction([
-    prisma.trade.update({
-      where: { id },
-      data: { exitPrice, result, profit },
-    }),
+    prisma.trade.update({ where: { id }, data: { exitPrice, result, profit } }),
     prisma.user.update({
       where: { id: session.user.id },
       data: { balance: { increment: won ? trade.amount + profit : 0 } },

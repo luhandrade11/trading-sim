@@ -16,6 +16,7 @@ interface Props {
   trades: Trade[];
   currentPrices: Record<string, { price: number }>;
   onSettle: (id: string, exitPrice: number) => void;
+  loading?: boolean;
 }
 
 function CountdownBadge({
@@ -37,6 +38,7 @@ function CountdownBadge({
     Math.max(0, Math.ceil((new Date(expiresAt).getTime() - Date.now()) / 1000))
   );
   const settledRef = useRef(false);
+  const retriesRef = useRef(0);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -45,11 +47,18 @@ function CountdownBadge({
       setRemaining(clamped);
 
       if (clamped <= 0 && !settledRef.current) {
-        settledRef.current = true;
-        clearInterval(interval);
         const exitPrice = currentPrices[asset]?.price ?? 0;
         if (exitPrice > 0) {
+          settledRef.current = true;
+          clearInterval(interval);
           onSettle(tradeId, exitPrice);
+        } else if (retriesRef.current < 10) {
+          // Price not loaded yet — retry up to 10 times (5s total)
+          retriesRef.current++;
+        } else {
+          // Give up after 5s of retrying
+          settledRef.current = true;
+          clearInterval(interval);
         }
       }
     }, 500);
@@ -59,7 +68,8 @@ function CountdownBadge({
   }, [tradeId, expiresAt]);
 
   const pct = Math.max(0, Math.min(100, (remaining / duration) * 100));
-  const color = pct > 40 ? "bg-green-400" : pct > 15 ? "bg-yellow-400" : "bg-red-400";
+  const color =
+    pct > 40 ? "bg-green-400" : pct > 15 ? "bg-yellow-400" : "bg-red-400";
 
   return (
     <div className="flex items-center gap-2">
@@ -76,7 +86,7 @@ function CountdownBadge({
   );
 }
 
-export default function ActiveTrades({ trades, currentPrices, onSettle }: Props) {
+export default function ActiveTrades({ trades, currentPrices, onSettle, loading }: Props) {
   const settlingRef = useRef<Set<string>>(new Set());
 
   const handleSettle = (id: string, exitPrice: number) => {
@@ -85,12 +95,29 @@ export default function ActiveTrades({ trades, currentPrices, onSettle }: Props)
     onSettle(id, exitPrice);
   };
 
+  if (loading) {
+    return (
+      <div className="space-y-2">
+        {[1, 2].map((i) => (
+          <div key={i} className="bg-[#0e1117] rounded-lg p-3 border border-gray-800 animate-pulse">
+            <div className="flex items-center justify-between mb-2">
+              <div className="h-3 w-20 bg-gray-800 rounded" />
+              <div className="h-3 w-12 bg-gray-800 rounded" />
+            </div>
+            <div className="h-2 w-full bg-gray-800 rounded" />
+          </div>
+        ))}
+      </div>
+    );
+  }
+
   if (trades.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-8 gap-2">
         <div className="text-3xl">📊</div>
         <p className="text-gray-600 text-sm text-center">
-          Nenhuma operação ativa.<br />
+          Nenhuma operação ativa.
+          <br />
           <span className="text-gray-700">Escolha um ativo e aposte!</span>
         </p>
       </div>
@@ -101,10 +128,11 @@ export default function ActiveTrades({ trades, currentPrices, onSettle }: Props)
     <div className="space-y-2">
       {trades.map((trade) => {
         const currentPrice = currentPrices[trade.asset]?.price ?? trade.entryPrice;
+        const entryPrice = trade.entryPrice || 1;
         const isWinning =
-          (trade.direction === "UP" && currentPrice > trade.entryPrice) ||
-          (trade.direction === "DOWN" && currentPrice < trade.entryPrice);
-        const priceDiff = ((currentPrice - trade.entryPrice) / trade.entryPrice) * 100;
+          (trade.direction === "UP" && currentPrice > entryPrice) ||
+          (trade.direction === "DOWN" && currentPrice < entryPrice);
+        const priceDiff = ((currentPrice - entryPrice) / entryPrice) * 100;
 
         return (
           <div key={trade.id} className="bg-[#0e1117] rounded-lg p-3 border border-gray-800">
@@ -122,7 +150,9 @@ export default function ActiveTrades({ trades, currentPrices, onSettle }: Props)
                 </span>
               </div>
               <span
-                className={`text-xs font-semibold ${isWinning ? "text-green-400" : "text-red-400"}`}
+                className={`text-xs font-semibold ${
+                  isWinning ? "text-green-400" : "text-red-400"
+                }`}
               >
                 {priceDiff >= 0 ? "+" : ""}
                 {priceDiff.toFixed(3)}%
@@ -132,7 +162,8 @@ export default function ActiveTrades({ trades, currentPrices, onSettle }: Props)
             <div className="flex items-center justify-between">
               <div className="text-xs text-gray-500">
                 <span className="text-gray-400">
-                  ${trade.entryPrice.toLocaleString("en-US", {
+                  $
+                  {entryPrice.toLocaleString("en-US", {
                     minimumFractionDigits: 2,
                     maximumFractionDigits: 4,
                   })}

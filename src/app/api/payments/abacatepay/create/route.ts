@@ -71,8 +71,9 @@ export async function POST(req: NextRequest) {
   const data = await res.json();
 
   if (!res.ok || !data.success) {
-    console.error("[AbacatePay] Create error:", JSON.stringify(data));
-    return NextResponse.json({ error: "Erro ao gerar PIX" }, { status: 502 });
+    const msg = data?.error ?? data?.message ?? JSON.stringify(data);
+    console.error("[AbacatePay] Create error:", msg);
+    return NextResponse.json({ error: `PIX indisponível: ${msg}` }, { status: 502 });
   }
 
   const charge = data.data;

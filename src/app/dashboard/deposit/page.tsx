@@ -87,16 +87,6 @@ function AmountStep({ onNext, isBR }: { onNext: (amount: number) => void; isBR: 
           <span className="pr-4 text-white/20 text-xs">{suffix}</span>
         </div>
 
-        {/* For BR users: show USD equivalent */}
-        {isBR && (
-          <div className="flex items-center justify-center gap-1.5 text-white/25 text-xs">
-            <span>≈</span>
-            <span className="font-mono font-semibold text-white/40">
-              ${(amount / BRL_RATE).toFixed(2)} USD
-            </span>
-            <span>creditados na sua conta</span>
-          </div>
-        )}
 
         {amount >= 200 && (
           <div className="flex items-center gap-2 p-3 bg-emerald-500/8 border border-emerald-500/20 rounded-xl">
@@ -158,11 +148,6 @@ function MethodStep({
           <h1 className="text-xl font-black text-white">Método de pagamento</h1>
           <p className="text-sm text-white/30">
             Depósito de <span className="text-emerald-400 font-bold">{prefix}{amount}</span>
-            {isBR && (
-              <span className="text-white/20 ml-1 text-xs">
-                (≈ ${(amount / BRL_RATE).toFixed(2)} USD na conta)
-              </span>
-            )}
           </p>
         </div>
       </div>
@@ -340,7 +325,7 @@ function PixModal({ onClose, amount, isBR }: { onClose: () => void; amount: numb
             <div className="w-16 h-16 rounded-full bg-emerald-500/20 flex items-center justify-center text-4xl">✅</div>
             <div className="text-center">
               <div className="text-white font-black text-lg">Pagamento confirmado!</div>
-              <div className="text-emerald-400 text-sm mt-1">${charge?.amountUsd} creditado na sua conta real</div>
+              <div className="text-emerald-400 text-sm mt-1">R$ {charge?.amountBrl} creditado na sua conta real</div>
             </div>
             <button onClick={onClose}
               className="w-full py-3 bg-gradient-to-r from-emerald-600 to-emerald-500 text-white font-bold rounded-xl text-sm">
@@ -358,7 +343,7 @@ function PixModal({ onClose, amount, isBR }: { onClose: () => void; amount: numb
               </div>
               <div className="p-3 bg-white/3 border border-white/8 rounded-xl">
                 <div className="text-[9px] text-white/30 uppercase tracking-wider mb-1">Você recebe</div>
-                <div className="text-xl font-black text-emerald-400">${charge.amountUsd}</div>
+                <div className="text-xl font-black text-emerald-400">R$ {charge.amountBrl}</div>
               </div>
             </div>
 
@@ -456,7 +441,7 @@ function CardModal({ onClose, amount, isBR }: { onClose: () => void; amount: num
             </div>
             <div className="p-3 bg-white/3 border border-white/8 rounded-xl text-center">
               <div className="text-[9px] text-white/30 uppercase tracking-wider mb-1">Você recebe</div>
-              <div className="text-xl font-black text-emerald-400">${amountUSD}</div>
+              <div className="text-xl font-black text-emerald-400">R$ {amountBRL}</div>
             </div>
           </div>
         ) : (

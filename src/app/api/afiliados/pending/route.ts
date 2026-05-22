@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAffiliateSession } from "@/lib/affiliateAuth";
 import { prisma } from "@/lib/prisma";
+import { sendAffiliateApprovedEmail, sendAffiliateRejectedEmail } from "@/lib/email";
+import { writeAuditLog } from "@/lib/auditLog";
 
 export async function GET() {
   const affiliateId = await getAffiliateSession();
@@ -39,15 +41,25 @@ export async function PATCH(req: NextRequest) {
   if (sub.status !== "PENDING")
     return NextResponse.json({ error: "Sub-afiliado não está pendente" }, { status: 400 });
 
+  const subFull = await prisma.affiliate.findUnique({ where: { id: subId }, select: { name: true, email: true } });
+
   if (action === "approve") {
     const rate = commissionRate !== undefined ? Number(commissionRate) / 100 : 0.90;
     if (isNaN(rate) || rate < 0 || rate > me.commissionRate)
       return NextResponse.json({ error: `Taxa inválida (máx: ${Math.round(me.commissionRate * 100)}%)` }, { status: 400 });
 
     await prisma.affiliate.update({ where: { id: subId }, data: { status: "ACTIVE", commissionRate: rate } });
+    if (subFull) {
+      sendAffiliateApprovedEmail(subFull.email, subFull.name);
+      writeAuditLog(affiliateId, "affiliate", "affiliate_approved", subId, { subName: subFull.name, rate });
+    }
     return NextResponse.json({ ok: true, status: "ACTIVE" });
   } else {
     await prisma.affiliate.update({ where: { id: subId }, data: { status: "REJECTED" } });
+    if (subFull) {
+      sendAffiliateRejectedEmail(subFull.email, subFull.name);
+      writeAuditLog(affiliateId, "affiliate", "affiliate_rejected", subId, { subName: subFull.name });
+    }
     return NextResponse.json({ ok: true, status: "REJECTED" });
   }
 }

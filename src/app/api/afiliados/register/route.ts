@@ -3,6 +3,7 @@ import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { createAffiliateToken, AFFILIATE_COOKIE } from "@/lib/affiliateAuth";
 import { rateLimit } from "@/lib/rateLimit";
+import { sendNewSubAffiliateEmail } from "@/lib/email";
 
 function getIp(req: NextRequest) {
   return req.headers.get("x-forwarded-for")?.split(",")[0].trim() ?? "unknown";
@@ -57,6 +58,15 @@ export async function POST(req: NextRequest) {
       ...(parentAffiliateId ? { parentAffiliateId } : {}),
     },
   });
+
+  // Notify parent affiliate about the pending sub-affiliate
+  if (parentAffiliateId) {
+    const parent = await prisma.affiliate.findUnique({
+      where: { id: parentAffiliateId },
+      select: { email: true, name: true },
+    }).catch(() => null);
+    if (parent) sendNewSubAffiliateEmail(parent.email, parent.name, name.trim());
+  }
 
   // Return pending — no cookie, user must wait for approval
   return NextResponse.json({ ok: true, pending: true });

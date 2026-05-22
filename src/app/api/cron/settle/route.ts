@@ -3,7 +3,9 @@ import { prisma } from "@/lib/prisma";
 import { getCachedPrices } from "@/lib/priceCache";
 import { PAYOUT_RATE } from "@/lib/constants";
 
-// Called by Vercel Cron every minute — settles any trades the client missed
+const BATCH_SIZE = 200;
+
+// Called by Vercel Cron every minute — settles ALL expired trades
 export async function GET(req: NextRequest) {
   const authHeader = req.headers.get("authorization");
   if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
@@ -14,35 +16,40 @@ export async function GET(req: NextRequest) {
   if (!prices) return NextResponse.json({ settled: 0, reason: "no price cache" });
 
   const now = new Date();
-  const expired = await prisma.trade.findMany({
-    where: { result: "PENDING", expiresAt: { lte: now } },
-    take: 50,
-  });
+  let totalSettled = 0;
+  let hasMore = true;
 
-  if (expired.length === 0) return NextResponse.json({ settled: 0 });
+  while (hasMore) {
+    const expired = await prisma.trade.findMany({
+      where: { result: "PENDING", expiresAt: { lte: now } },
+      take: BATCH_SIZE,
+    });
 
-  let settled = 0;
-  for (const trade of expired) {
-    const exitPrice = prices[trade.asset]?.price;
-    if (!exitPrice || exitPrice <= 0) continue;
+    if (expired.length === 0) break;
+    hasMore = expired.length === BATCH_SIZE;
 
-    const won =
-      (trade.direction === "UP"   && exitPrice > trade.entryPrice) ||
-      (trade.direction === "DOWN" && exitPrice < trade.entryPrice);
+    for (const trade of expired) {
+      const exitPrice = prices[trade.asset]?.price;
+      if (!exitPrice || exitPrice <= 0) continue;
 
-    const profit = won ? trade.amount * PAYOUT_RATE : 0;
-    const result = won ? "WIN" : "LOSS";
+      const won =
+        (trade.direction === "UP"   && exitPrice > trade.entryPrice) ||
+        (trade.direction === "DOWN" && exitPrice < trade.entryPrice);
 
-    const balanceField = trade.mode === "real" ? "realBalance" : "balance";
-    await prisma.$transaction([
-      prisma.trade.update({ where: { id: trade.id }, data: { exitPrice, result, profit } }),
-      prisma.user.update({
-        where: { id: trade.userId },
-        data: { [balanceField]: { increment: won ? trade.amount + profit : 0 } },
-      }),
-    ]);
-    settled++;
+      const profit = won ? trade.amount * PAYOUT_RATE : 0;
+      const result = won ? "WIN" : "LOSS";
+
+      const balanceField = trade.mode === "real" ? "realBalance" : "balance";
+      await prisma.$transaction([
+        prisma.trade.update({ where: { id: trade.id }, data: { exitPrice, result, profit } }),
+        prisma.user.update({
+          where: { id: trade.userId },
+          data: { [balanceField]: { increment: won ? trade.amount + profit : 0 } },
+        }),
+      ]);
+      totalSettled++;
+    }
   }
 
-  return NextResponse.json({ settled });
+  return NextResponse.json({ settled: totalSettled });
 }

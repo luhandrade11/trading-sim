@@ -57,6 +57,14 @@ export async function POST(req: NextRequest) {
     }
   }
 
+  // Check welcome bonus settings
+  const bonusSettings = await prisma.adminSettings.findMany({
+    where: { key: { in: ["welcomeBonusDemo", "welcomeBonusReal"] } },
+  }).catch(() => []);
+  const bonusMap = Object.fromEntries(bonusSettings.map((s) => [s.key, Number(s.value)]));
+  const welcomeDemo = bonusMap.welcomeBonusDemo ?? 0;
+  const welcomeReal = bonusMap.welcomeBonusReal ?? 0;
+
   const user = await prisma.user.create({
     data: {
       name:         name.trim(),
@@ -65,6 +73,8 @@ export async function POST(req: NextRequest) {
       verifyToken,
       emailVerified: false,
       referralCode,
+      ...(welcomeDemo > 0 ? { balance: 5000 + welcomeDemo } : {}),
+      ...(welcomeReal > 0 ? { realBalance: welcomeReal } : {}),
       ...(referredBy ? { referredBy } : {}),
       ...(affiliateId ? { affiliateId, affiliateLinkSlug } : {}),
     },

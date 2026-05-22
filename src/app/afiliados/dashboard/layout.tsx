@@ -5,13 +5,15 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 
 const BASE_NAV = [
-  { href: "/afiliados/dashboard",          label: "Visão geral",   icon: "◈" },
-  { href: "/afiliados/dashboard/links",    label: "Meus links",    icon: "⛓" },
-  { href: "/afiliados/dashboard/players",  label: "Jogadores",     icon: "👥" },
-  { href: "/afiliados/dashboard/rede",     label: "Minha rede",    icon: "🌐" },
-  { href: "/afiliados/dashboard/revenues", label: "Receitas",      icon: "◎" },
-  { href: "/afiliados/dashboard/saques",   label: "Saques",        icon: "↗" },
-  { href: "/afiliados/dashboard/perfil",   label: "Perfil",        icon: "◉" },
+  { href: "/afiliados/dashboard",           label: "Visão geral",   icon: "◈" },
+  { href: "/afiliados/dashboard/links",     label: "Meus links",    icon: "⛓" },
+  { href: "/afiliados/dashboard/players",   label: "Jogadores",     icon: "👥" },
+  { href: "/afiliados/dashboard/rede",      label: "Minha rede",    icon: "🌐" },
+  { href: "/afiliados/dashboard/ranking",   label: "Ranking",       icon: "🏆" },
+  { href: "/afiliados/dashboard/revenues",  label: "Receitas",      icon: "◎" },
+  { href: "/afiliados/dashboard/saques",    label: "Saques",        icon: "↗" },
+  { href: "/afiliados/dashboard/suporte",   label: "Suporte",       icon: "🎫" },
+  { href: "/afiliados/dashboard/perfil",    label: "Perfil",        icon: "◉" },
 ];
 
 interface Me {

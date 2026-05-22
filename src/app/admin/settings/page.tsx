@@ -3,18 +3,22 @@
 import { useEffect, useState } from "react";
 
 interface Settings {
-  globalDemoRate: string;
-  globalRealRate: string;
-  pixGateway: string;
+  globalDemoRate:  string;
+  globalRealRate:  string;
+  pixGateway:      string;
   maintenanceMode: string;
+  welcomeBonusDemo: string;
+  welcomeBonusReal: string;
 }
 
 export default function AdminSettings() {
   const [settings, setSettings] = useState<Settings>({
-    globalDemoRate:  "60",
-    globalRealRate:  "35",
-    pixGateway:      "abacatepay",
-    maintenanceMode: "false",
+    globalDemoRate:   "60",
+    globalRealRate:   "35",
+    pixGateway:       "abacatepay",
+    maintenanceMode:  "false",
+    welcomeBonusDemo: "0",
+    welcomeBonusReal: "0",
   });
   const [loading, setLoading] = useState(true);
   const [saving,  setSaving]  = useState(false);
@@ -35,10 +39,12 @@ export default function AdminSettings() {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        globalDemoRate:  Number(settings.globalDemoRate),
-        globalRealRate:  Number(settings.globalRealRate),
-        pixGateway:      settings.pixGateway,
-        maintenanceMode: settings.maintenanceMode,
+        globalDemoRate:   Number(settings.globalDemoRate),
+        globalRealRate:   Number(settings.globalRealRate),
+        pixGateway:       settings.pixGateway,
+        maintenanceMode:  settings.maintenanceMode,
+        welcomeBonusDemo: Number(settings.welcomeBonusDemo),
+        welcomeBonusReal: Number(settings.welcomeBonusReal),
       }),
     });
 
@@ -157,6 +163,51 @@ export default function AdminSettings() {
                 <p className="text-slate-500 text-xs mt-1">{opt.desc}</p>
               </label>
             ))}
+          </div>
+        </div>
+
+        {/* Welcome bonus */}
+        <div className="bg-[#0d0a1a] border border-[#1e1532] rounded-2xl p-6">
+          <h2 className="text-white font-bold mb-1">Bônus de Boas-Vindas</h2>
+          <p className="text-slate-500 text-xs mb-5">
+            Crédito extra concedido a cada novo usuário no cadastro.
+            Demo: somado aos $5.000 iniciais. Real: adicionado ao saldo real.
+          </p>
+          <div className="grid grid-cols-2 gap-6">
+            <div>
+              <label className="text-xs text-slate-400 uppercase font-semibold tracking-wide">Bônus Demo (USD)</label>
+              <div className="relative mt-2">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 font-bold">$</span>
+                <input
+                  type="number" min="0" step="1"
+                  value={settings.welcomeBonusDemo}
+                  onChange={(e) => setSettings((s) => ({ ...s, welcomeBonusDemo: e.target.value }))}
+                  className="w-full bg-[#080c14] border border-[#1e1532] rounded-xl pl-7 pr-4 py-2.5 text-white text-sm focus:outline-none focus:border-violet-500/40"
+                />
+              </div>
+              <p className="text-slate-600 text-xs mt-1">
+                {Number(settings.welcomeBonusDemo) > 0
+                  ? `Conta demo começa com $${5000 + Number(settings.welcomeBonusDemo)}`
+                  : "Sem bônus demo (padrão $5.000)"}
+              </p>
+            </div>
+            <div>
+              <label className="text-xs text-slate-400 uppercase font-semibold tracking-wide">Bônus Real (USD)</label>
+              <div className="relative mt-2">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 font-bold">$</span>
+                <input
+                  type="number" min="0" step="1"
+                  value={settings.welcomeBonusReal}
+                  onChange={(e) => setSettings((s) => ({ ...s, welcomeBonusReal: e.target.value }))}
+                  className="w-full bg-[#080c14] border border-[#1e1532] rounded-xl pl-7 pr-4 py-2.5 text-white text-sm focus:outline-none focus:border-violet-500/40"
+                />
+              </div>
+              <p className="text-slate-600 text-xs mt-1">
+                {Number(settings.welcomeBonusReal) > 0
+                  ? `Usuário inicia com $${Number(settings.welcomeBonusReal)} reais`
+                  : "Sem bônus real"}
+              </p>
+            </div>
           </div>
         </div>
 

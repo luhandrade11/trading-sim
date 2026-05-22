@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAdminSession } from "@/lib/adminAuth";
 import { prisma } from "@/lib/prisma";
+import { writeAuditLog } from "@/lib/auditLog";
 
 export async function PATCH(
   req: NextRequest,
@@ -34,6 +35,8 @@ export async function PATCH(
 
   const user = await prisma.user.update({ where: { id }, data }).catch(() => null);
   if (!user) return NextResponse.json({ error: "Usuário não encontrado" }, { status: 404 });
+
+  writeAuditLog("admin", "admin", "user_updated", id, data);
 
   return NextResponse.json({ ok: true });
 }

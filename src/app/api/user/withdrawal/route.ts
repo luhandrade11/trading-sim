@@ -25,9 +25,10 @@ export async function POST(req: NextRequest) {
   let withdrawal;
   try {
     withdrawal = await prisma.$transaction(async (tx) => {
-      const user = await tx.user.findUnique({ where: { id: session.user.id }, select: { realBalance: true, isBlocked: true } });
+      const user = await tx.user.findUnique({ where: { id: session.user.id }, select: { realBalance: true, isBlocked: true, emailVerified: true } });
       if (!user) throw Object.assign(new Error("not_found"), { code: 404 });
       if (user.isBlocked) throw Object.assign(new Error("blocked"), { code: 403 });
+      if (!user.emailVerified) throw Object.assign(new Error("email_unverified"), { code: 403 });
       if (user.realBalance < amount) throw Object.assign(new Error("insufficient"), { code: 400 });
 
       // Block concurrent duplicates: no other PENDING withdrawal for this user
@@ -45,10 +46,11 @@ export async function POST(req: NextRequest) {
     });
   } catch (err: unknown) {
     const e = err as Error & { code?: number };
-    if (e.message === "not_found")     return NextResponse.json({ error: "Usuário não encontrado" }, { status: 404 });
-    if (e.message === "blocked")       return NextResponse.json({ error: "Conta bloqueada" }, { status: 403 });
-    if (e.message === "insufficient")  return NextResponse.json({ error: "Saldo real insuficiente" }, { status: 400 });
-    if (e.message === "pending_exists") return NextResponse.json({ error: "Você já tem um saque pendente" }, { status: 400 });
+    if (e.message === "not_found")        return NextResponse.json({ error: "Usuário não encontrado" }, { status: 404 });
+    if (e.message === "blocked")          return NextResponse.json({ error: "Conta bloqueada" }, { status: 403 });
+    if (e.message === "email_unverified") return NextResponse.json({ error: "Confirme seu email para solicitar saques" }, { status: 403 });
+    if (e.message === "insufficient")     return NextResponse.json({ error: "Saldo real insuficiente" }, { status: 400 });
+    if (e.message === "pending_exists")   return NextResponse.json({ error: "Você já tem um saque pendente" }, { status: 400 });
     throw err;
   }
 

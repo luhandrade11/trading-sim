@@ -140,6 +140,12 @@ input:focus, select:focus, button:focus-visible { outline: none; }
   .mobile-trade-bar { padding-bottom: env(safe-area-inset-bottom); }
 }
 
+/* Landscape on phones: hide mobile bars, reveal desktop-style layout */
+@media (orientation: landscape) and (max-height: 500px) {
+  .mobile-trade-bar { display: none !important; }
+  .mobile-header-only { display: none !important; }
+}
+
 /* Theme transition */
 *, *::before, *::after {
   transition-property: background-color, border-color, color;

@@ -258,14 +258,19 @@ function TradeResultOverlay({ result, onDone }: { result: TradeResult; onDone: (
   return (
     <div className="absolute inset-0 z-40 flex items-center justify-center pointer-events-none">
       <div className="result-anim flex flex-col items-center gap-3 text-center">
-        <div className="text-6xl">{isWin ? "🏆" : "💸"}</div>
+        <div className={`w-16 h-16 rounded-2xl flex items-center justify-center ${isWin ? "bg-emerald-500/20" : "bg-rose-500/20"}`}>
+          {isWin
+            ? <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-emerald-400"><path d="M6 9H4.5a2.5 2.5 0 010-5H6"/><path d="M18 9h1.5a2.5 2.5 0 000-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0012 0V2z"/></svg>
+            : <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-rose-400"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></svg>
+          }
+        </div>
         <div className={`text-4xl font-black ${isWin ? "text-emerald-400" : "text-rose-400"}`}>
           {isWin ? "+" : "-"}{formatCurrency(Math.abs(result.profit))}
         </div>
-        <div className={`text-lg font-bold tracking-widest uppercase ${isWin ? "text-emerald-300" : "text-rose-300"}`}>
-          {isWin ? "VITÓRIA!" : "PERDEU"}
+        <div className={`text-sm font-bold tracking-widest uppercase ${isWin ? "text-emerald-300/60" : "text-rose-300/60"}`}>
+          {isWin ? "GANHOU" : "PERDEU"}
         </div>
-        <div className="text-xs text-white/30">{result.asset}</div>
+        <div className="text-xs text-white/20">{result.asset}</div>
       </div>
     </div>
   );
@@ -295,7 +300,7 @@ function HistoryPanel({ trades, loading, onClose }: { trades: Trade[]; loading: 
         <div className="flex items-center justify-center h-24 text-white/20 text-sm">{t("loading")}</div>
       ) : settled.length === 0 ? (
         <div className="flex flex-col items-center justify-center h-32 gap-3">
-          <span className="text-4xl">📊</span>
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2" className="text-white/15"><path d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
           <p className="text-white/20 text-sm">{t("history_empty")}</p>
         </div>
       ) : (
@@ -1631,48 +1636,67 @@ export default function DashboardPage() {
           </div>
           <button onClick={() => router.push("/dashboard/deposit")}
             className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-white text-sm font-bold rounded-xl transition-all shadow-lg shadow-emerald-500/25">
-            <span>💰</span> {t("deposit")}
+            {t("deposit")}
           </button>
           {/* Theme toggle */}
           <button onClick={toggleTheme} title={isDark ? "Modo claro" : "Modo escuro"}
-            className="w-9 h-9 flex items-center justify-center rounded-xl bg-white/5 hover:bg-white/10 text-white/50 hover:text-white transition-all text-base">
-            {isDark ? "☀" : "🌙"}
+            className="w-9 h-9 flex items-center justify-center rounded-xl bg-white/5 hover:bg-white/10 text-white/50 hover:text-white transition-all">
+            {isDark
+              ? <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+              : <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+            }
           </button>
         </div>
       </header>
 
       {/* ── HEADER (mobile) ── */}
-      <header className="md:hidden h-12 bg-[#0a0c14] border-b border-white/5 flex items-center px-3 gap-2 shrink-0 z-10">
-        {/* Logo */}
-        <div className="w-8 h-8 bg-gradient-to-br from-amber-400 to-amber-600 rounded-xl flex items-center justify-center shrink-0">
-          <span className="text-[#080c14] font-black text-[10px]">PB</span>
+      <header className="mobile-header-only md:hidden bg-[#0a0c14] border-b border-white/5 shrink-0 z-10">
+        {/* Row 1: logo · asset/price · menu */}
+        <div className="h-12 flex items-center px-4 gap-2">
+          <div className="w-7 h-7 bg-gradient-to-br from-amber-400 to-amber-600 rounded-lg flex items-center justify-center shrink-0">
+            <span className="text-[#080c14] font-black text-[9px]">PB</span>
+          </div>
+          <button onClick={() => setShowAssetPicker(true)} className="flex items-center gap-1.5 flex-1 min-w-0">
+            <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${assetInfo?.type === "forex" ? "bg-blue-400" : "bg-amber-400"}`} />
+            <span className="text-white text-sm font-bold">{selectedAsset}</span>
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-white/30 shrink-0"><polyline points="6 9 12 15 18 9"/></svg>
+            <span className={`text-sm font-bold font-mono ml-0.5 ${priceFlash === "up" ? "text-emerald-400" : priceFlash === "down" ? "text-rose-400" : "text-white/60"}`}>
+              {currentPrice > 0 ? `$${formatPrice(currentPrice, selectedAsset)}` : <span className="text-white/20">—</span>}
+            </span>
+          </button>
+          <button onClick={() => setMobileMenuOpen(true)}
+            className="w-8 h-8 flex items-center justify-center rounded-lg text-white/40 hover:text-white transition-colors shrink-0">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>
+          </button>
         </div>
-        {/* Asset selector */}
-        <button onClick={() => setShowAssetPicker(true)} className="flex items-center gap-1.5 flex-1 min-w-0">
-          <div className={`w-2 h-2 rounded-full shrink-0 ${assetInfo?.type === "forex" ? "bg-blue-400" : "bg-amber-400"}`} />
-          <span className="text-white text-sm font-bold">{selectedAsset}</span>
-          <span className="text-white/30 text-[10px]">▾</span>
-          <span className={`text-sm font-bold font-mono ml-1 ${priceFlash === "up" ? "text-emerald-400" : priceFlash === "down" ? "text-rose-400" : "text-white/70"}`}>
-            {currentPrice > 0 ? `$${formatPrice(currentPrice, selectedAsset)}` : <span className="text-white/20">—</span>}
-          </span>
-        </button>
-        {/* Theme toggle */}
-        <button onClick={toggleTheme}
-          className="w-8 h-8 flex items-center justify-center rounded-lg bg-white/5 text-white/50 hover:text-white transition-colors shrink-0 text-sm">
-          {isDark ? "☀" : "🌙"}
-        </button>
-        {/* Dots menu */}
-        <button onClick={() => setMobileMenuOpen(true)}
-          className="w-8 h-8 flex items-center justify-center rounded-lg bg-white/5 text-white/60 hover:text-white transition-colors shrink-0 text-lg leading-none">
-          ⋯
-        </button>
+        {/* Row 2: mode badge · balance · deposit button */}
+        <div className="flex items-center justify-between px-4 py-2 border-t border-white/4">
+          <div className="flex items-center gap-2.5">
+            <div className={`flex items-center gap-1.5 px-2 py-1 rounded-md text-[9px] font-bold uppercase tracking-widest border ${
+              isReal
+                ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
+                : "bg-amber-500/10 text-amber-400 border-amber-500/20"
+            }`}>
+              <div className={`w-1 h-1 rounded-full ${isReal ? "bg-emerald-400" : "bg-amber-400"} animate-pulse`} />
+              {isReal ? "Real" : "Demo"}
+            </div>
+            <span className={`text-base font-black font-mono tracking-tight ${activeBalance === null ? "text-white/20 animate-pulse" : "text-white"}`}>
+              {activeBalanceFmt}
+            </span>
+          </div>
+          <button onClick={() => router.push("/dashboard/deposit")}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500/15 border border-emerald-500/25 hover:bg-emerald-500/20 text-emerald-400 font-bold text-xs rounded-lg transition-colors">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Depositar
+          </button>
+        </div>
       </header>
 
       {/* ── BANNERS ── */}
       {emailVerified === false && (
         <div className="bg-amber-500/10 border-b border-amber-500/20 px-4 py-2 flex items-center justify-between gap-3 shrink-0">
           <div className="flex items-center gap-2 min-w-0">
-            <span className="text-amber-400 text-sm shrink-0">📧</span>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="text-amber-400 shrink-0"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
             <p className="text-xs text-amber-300/80 truncate">
               Confirme seu email para ativar todas as funcionalidades.
             </p>
@@ -1691,7 +1715,7 @@ export default function DashboardPage() {
       {showDepositCta && emailVerified && (
         <div className="bg-emerald-500/10 border-b border-emerald-500/20 px-4 py-2 flex items-center justify-between gap-3 shrink-0">
           <div className="flex items-center gap-2 min-w-0">
-            <span className="text-emerald-400 text-sm shrink-0">💎</span>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="text-emerald-400 shrink-0"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
             <p className="text-xs text-emerald-300/80 truncate">
               Você está no modo demo. Faça um depósito para ativar sua conta real.
             </p>
@@ -1933,56 +1957,59 @@ export default function DashboardPage() {
       </div>
 
       {/* ── MOBILE FIXED TRADE BAR ── */}
-      <div className="mobile-trade-bar md:hidden fixed bottom-0 left-0 right-0 z-20 bg-[#0a0c14]/98 backdrop-blur-md border-t border-white/8">
-        <div className="px-3 pt-2 pb-2">
-          {/* Account + Balance row */}
-          <div className="flex items-center gap-2 mb-2">
+      <div className="mobile-trade-bar md:hidden fixed bottom-0 left-0 right-0 z-20 bg-[#0a0c14]/98 backdrop-blur-xl border-t border-white/8">
+        <div className="px-4 pt-3 pb-4">
+          {/* Duration + payout + mode toggle */}
+          <div className="flex items-center gap-2 mb-3">
             {/* Demo/Real toggle */}
-            <div className="flex items-center bg-[#0d1117] border border-white/10 rounded-lg p-0.5 gap-0.5 shrink-0">
+            <div className="flex items-center bg-white/5 border border-white/8 rounded-lg p-0.5 gap-0.5 shrink-0">
               {(["demo", "real"] as const).map((m) => (
                 <button key={m} onClick={() => setAccountMode(m)}
-                  className={`px-2.5 py-1 rounded-md text-[9px] font-black uppercase tracking-widest transition-all ${
+                  className={`px-2.5 py-1 rounded-[5px] text-[9px] font-bold uppercase tracking-widest transition-all ${
                     accountMode === m
                       ? m === "demo" ? "bg-amber-400/15 text-amber-400" : "bg-emerald-500/15 text-emerald-400"
-                      : "text-white/30"
+                      : "text-white/25"
                   }`}>{m}</button>
               ))}
             </div>
-            {/* Balance */}
-            <div className="flex items-center gap-1.5 flex-1 min-w-0">
-              <div className={`w-1.5 h-1.5 rounded-full shrink-0 animate-pulse ${isReal ? "bg-emerald-400" : "bg-amber-400"}`} />
-              <span className={`text-sm font-black font-mono ${activeBalance === null ? "text-slate-600 animate-pulse" : "text-white"}`}>{activeBalanceFmt}</span>
-            </div>
-            {/* Payout */}
-            <span className="text-[10px] text-emerald-400 font-bold shrink-0">+{(PAYOUT_RATE * 100).toFixed(0)}%</span>
-            {/* Duration quick select */}
-            <div className="flex items-center gap-0.5 shrink-0">
-              {DURATIONS.slice(0, 3).map((d) => (
+            {/* Duration pills */}
+            <div className="flex items-center gap-1 flex-1">
+              {DURATIONS.map((d) => (
                 <button key={d.value} onClick={() => setSelectedDuration(d.value)}
-                  className={`px-1.5 py-0.5 rounded text-[8px] font-bold transition-all ${selectedDuration === d.value ? "bg-amber-400/15 text-amber-400" : "text-white/25 hover:text-white/60"}`}>
-                  {d.label}
-                </button>
+                  className={`flex-1 py-1.5 rounded-md text-[10px] font-bold transition-all ${
+                    selectedDuration === d.value
+                      ? "bg-white/12 text-white border border-white/15"
+                      : "text-white/25 hover:text-white/50"
+                  }`}>{d.label}</button>
               ))}
             </div>
-          </div>
-          {/* Amount + Buy/Sell row */}
-          <div className="flex items-center gap-2">
-            {/* Amount control */}
-            <div className="flex items-center bg-white/5 border border-white/10 rounded-xl overflow-hidden shrink-0">
-              <button onClick={() => setAmount((a) => Math.max(1, a - 5))} className="w-8 h-10 text-white/40 hover:text-white text-lg font-bold transition-colors">−</button>
-              <input type="number" value={amount} onChange={(e) => setAmount(Math.max(1, Number(e.target.value)))} min={1}
-                className="w-14 bg-transparent text-center text-white text-sm font-mono focus:outline-none py-2" />
-              <button onClick={() => setAmount((a) => a + 5)} className="w-8 h-10 text-white/40 hover:text-white text-lg font-bold transition-colors">+</button>
+            {/* Payout badge */}
+            <div className="flex items-center gap-1 px-2 py-1 bg-emerald-500/10 border border-emerald-500/20 rounded-md shrink-0">
+              <span className="text-[10px] font-bold text-emerald-400">+{(PAYOUT_RATE * 100).toFixed(0)}%</span>
             </div>
-            {/* BUY */}
+          </div>
+          {/* Amount + BUY / SELL */}
+          <div className="flex items-center gap-2.5">
+            {/* Amount stepper */}
+            <div className="flex items-center bg-white/5 border border-white/10 rounded-xl overflow-hidden shrink-0">
+              <button onClick={() => setAmount((a) => Math.max(1, a - 5))}
+                className="w-10 h-12 text-white/40 hover:text-white text-xl font-light transition-colors flex items-center justify-center">−</button>
+              <input type="number" value={amount} onChange={(e) => setAmount(Math.max(1, Number(e.target.value)))} min={1}
+                className="w-16 bg-transparent text-center text-white text-sm font-mono font-bold focus:outline-none" />
+              <button onClick={() => setAmount((a) => a + 5)}
+                className="w-10 h-12 text-white/40 hover:text-white text-xl font-light transition-colors flex items-center justify-center">+</button>
+            </div>
+            {/* COMPRAR */}
             <button onClick={() => placeTrade("UP")} disabled={!canTrade}
-              className="btn-up flex-1 h-10 rounded-xl bg-gradient-to-b from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 disabled:opacity-25 disabled:cursor-not-allowed text-white font-black text-sm flex items-center justify-center gap-1.5 active:scale-95 transition-transform">
-              <span className="text-base leading-none">▲</span> {t("buy")}
+              className="btn-up flex-1 h-12 rounded-xl bg-emerald-500 hover:bg-emerald-400 active:scale-[0.98] disabled:opacity-20 disabled:cursor-not-allowed text-white font-black text-sm flex items-center justify-center gap-2 transition-all">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="18 15 12 9 6 15"/></svg>
+              {t("buy")}
             </button>
-            {/* SELL */}
+            {/* VENDER */}
             <button onClick={() => placeTrade("DOWN")} disabled={!canTrade}
-              className="btn-down flex-1 h-10 rounded-xl bg-gradient-to-b from-rose-500 to-rose-600 hover:from-rose-400 hover:to-rose-500 disabled:opacity-25 disabled:cursor-not-allowed text-white font-black text-sm flex items-center justify-center gap-1.5 active:scale-95 transition-transform">
-              <span className="text-base leading-none">▼</span> {t("sell")}
+              className="btn-down flex-1 h-12 rounded-xl bg-rose-500 hover:bg-rose-400 active:scale-[0.98] disabled:opacity-20 disabled:cursor-not-allowed text-white font-black text-sm flex items-center justify-center gap-2 transition-all">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="6 9 12 15 18 9"/></svg>
+              {t("sell")}
             </button>
           </div>
         </div>
@@ -1990,46 +2017,78 @@ export default function DashboardPage() {
 
       {/* ── MOBILE MENU OVERLAY ── */}
       {mobileMenuOpen && (
-        <div className="fixed inset-0 z-40 md:hidden flex flex-col">
-          <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setMobileMenuOpen(false)} />
-          <div className="relative mt-auto bg-[#0a0c14] border-t border-white/10 rounded-t-3xl p-5 pb-8 max-h-[80vh] overflow-y-auto">
+        <div className="fixed inset-0 z-40 md:hidden">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setMobileMenuOpen(false)} />
+          <div className="absolute bottom-0 left-0 right-0 bg-[#0d0f17] rounded-t-2xl overflow-hidden shadow-2xl">
             {/* Handle */}
-            <div className="w-10 h-1 bg-white/15 rounded-full mx-auto mb-5" />
-            {/* Balance card */}
-            <div className="bg-white/4 border border-white/8 rounded-2xl p-4 flex items-center justify-between mb-4">
-              <div>
-                <div className={`text-[9px] font-bold uppercase tracking-widest mb-0.5 ${isReal ? "text-emerald-400" : "text-amber-400"}`}>{isReal ? "Conta Real" : "Conta Demo"}</div>
-                <div className="text-2xl font-black text-white font-mono">{activeBalanceFmt}</div>
-              </div>
-              <button onClick={() => { router.push("/dashboard/deposit"); setMobileMenuOpen(false); }}
-                className="px-4 py-2.5 bg-gradient-to-r from-emerald-600 to-emerald-500 text-white font-bold rounded-xl text-sm">
-                💰 Depositar
-              </button>
+            <div className="flex justify-center pt-3 pb-1">
+              <div className="w-8 h-1 bg-white/10 rounded-full" />
             </div>
-            {/* Menu grid */}
-            <div className="grid grid-cols-3 gap-2.5">
-              {[
-                { panel: "history" as ActivePanel,    label: t("history"),    icon: "🕐", color: "text-blue-400",   bg: "bg-blue-500/8   border-blue-500/15" },
-                { panel: "ranking" as ActivePanel,    label: t("ranking"),    icon: "🏆", color: "text-amber-400",  bg: "bg-amber-500/8  border-amber-500/15" },
-                { panel: "analysis" as ActivePanel,   label: t("analysis"),   icon: "📊", color: "text-violet-400", bg: "bg-violet-500/8 border-violet-500/15" },
-                { panel: "affiliate" as ActivePanel,  label: t("affiliate"),  icon: "🔗", color: "text-cyan-400",   bg: "bg-cyan-500/8   border-cyan-500/15" },
-                { panel: "support" as ActivePanel,    label: t("support"),    icon: "💬", color: "text-sky-400",    bg: "bg-sky-500/8    border-sky-500/15" },
-                { panel: "profile" as ActivePanel,    label: t("profile"),    icon: "👤", color: "text-rose-400",   bg: "bg-rose-500/8   border-rose-500/15" },
-                { panel: "withdrawal" as ActivePanel, label: t("withdrawal"), icon: "💸", color: "text-green-400",  bg: "bg-green-500/8  border-green-500/15" },
-              ].map(({ panel, label, icon, color, bg }) => (
-                <button key={panel}
+
+            {/* Account summary */}
+            <div className="px-5 pt-3 pb-4 border-b border-white/6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className={`text-[10px] font-semibold uppercase tracking-widest mb-1 ${isReal ? "text-emerald-400" : "text-amber-400/80"}`}>
+                    Conta {isReal ? "Real" : "Demo"}
+                  </div>
+                  <div className="text-2xl font-black text-white font-mono">{activeBalanceFmt}</div>
+                </div>
+                <button
+                  onClick={() => { router.push("/dashboard/deposit"); setMobileMenuOpen(false); }}
+                  className="px-5 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-white font-bold rounded-xl text-sm transition-colors"
+                >
+                  Depositar
+                </button>
+              </div>
+            </div>
+
+            {/* Menu — vertical list */}
+            <div className="divide-y divide-white/5 max-h-[52vh] overflow-y-auto">
+              {([
+                { panel: "history"    as ActivePanel, label: t("history"),    icon: <IcoHistory /> },
+                { panel: "ranking"    as ActivePanel, label: t("ranking"),    icon: <IcoTrophy /> },
+                { panel: "analysis"   as ActivePanel, label: t("analysis"),   icon: <IcoStats /> },
+                { panel: "affiliate"  as ActivePanel, label: t("affiliate"),  icon: <IcoAffiliate /> },
+                { panel: "withdrawal" as ActivePanel, label: t("withdrawal"), icon: <IcoCash /> },
+                { panel: "support"    as ActivePanel, label: t("support"),    icon: <IcoSupport /> },
+                { panel: "profile"    as ActivePanel, label: t("profile"),    icon: <IcoUser /> },
+              ]).map(({ panel, label, icon }) => (
+                <button
+                  key={panel}
                   onClick={() => { setActivePanel(panel); setMobileMenuOpen(false); }}
-                  className={`flex flex-col items-center justify-center gap-2 py-4 border rounded-2xl hover:opacity-80 transition-opacity ${bg}`}>
-                  <span className="text-2xl">{icon}</span>
-                  <span className={`text-[10px] font-bold ${color}`}>{label}</span>
+                  className="w-full flex items-center justify-between px-5 py-4 hover:bg-white/3 active:bg-white/5 transition-colors"
+                >
+                  <div className="flex items-center gap-4">
+                    <span className="text-slate-500 [&>svg]:w-[18px] [&>svg]:h-[18px]">{icon}</span>
+                    <span className="text-sm font-medium text-white">{label}</span>
+                  </div>
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-white/15"><path d="M9 18l6-6-6-6"/></svg>
                 </button>
               ))}
-              <button onClick={toggleTheme}
-                className="flex flex-col items-center justify-center gap-2 py-4 bg-white/4 border border-white/8 rounded-2xl">
-                <span className="text-2xl">{isDark ? "☀" : "🌙"}</span>
-                <span className="text-[10px] font-bold text-white/40">{isDark ? "Modo claro" : "Modo escuro"}</span>
+            </div>
+
+            {/* Theme toggle row */}
+            <div className="px-5 py-4 border-t border-white/6 flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <span className="text-slate-500">
+                  {isDark
+                    ? <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+                    : <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+                  }
+                </span>
+                <span className="text-sm font-medium text-white">{isDark ? "Modo Claro" : "Modo Escuro"}</span>
+              </div>
+              <button
+                onClick={toggleTheme}
+                className={`relative w-12 h-6 rounded-full transition-colors duration-200 ${isDark ? "bg-amber-400/30" : "bg-white/12"}`}
+              >
+                <div className={`absolute top-1 w-4 h-4 rounded-full bg-white shadow-sm transition-all duration-200 ${isDark ? "left-7" : "left-1"}`} />
               </button>
             </div>
+
+            {/* Safe area */}
+            <div className="h-5" />
           </div>
         </div>
       )}

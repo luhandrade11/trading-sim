@@ -9,23 +9,22 @@ import TradeHistory from "@/components/TradeHistory";
 import PositionsTable from "@/components/PositionsTable";
 import ConfirmModal from "@/components/ConfirmModal";
 import AssetPicker from "@/components/AssetPicker";
-import type { TradeAnnotation } from "@/components/TradingChart";
+import type { TradeAnnotation } from "@/components/CustomChart";
 import { PAYOUT_RATE, ALL_ASSETS, DEFAULT_TABS, DURATIONS, getSpread } from "@/lib/constants";
 import { computeStats, formatPrice } from "@/lib/utils";
 import { useI18n, LOCALES, setLocale as setGlobalLocale, formatCurrency } from "@/lib/i18n";
 import type { Trade } from "@/types/trade";
 
-const TradingChart = dynamic(() => import("@/components/TradingChart"), {
+const CustomChart = dynamic(() => import("@/components/CustomChart"), {
   ssr: false,
   loading: () => (
-    <div className="w-full h-full flex items-center justify-center bg-[#050509]">
+    <div className="w-full h-full flex items-center justify-center bg-[#060c18]">
       <div className="w-5 h-5 border-2 border-white/20 border-t-amber-400/60 rounded-full animate-spin" />
     </div>
   ),
 });
 
 type ActivePanel = "history" | "ranking" | "analysis" | "promo" | "support" | "profile" | "withdrawal" | null;
-type ChartType   = "candle" | "line";
 interface PriceData { price: number; change24h: number }
 interface Notification { msg: string; type: "win" | "loss" | "error"; key: number }
 interface OhlcData { open: number; high: number; low: number; close: number }
@@ -139,8 +138,9 @@ function NavItem({ icon, label, active = false, badge, onClick }: {
 
 // ─── Trade P&L annotation badges ────────────────────────────────────────────
 
-function TradeAnnotations({ trades, prices, asset }: {
+function TradeAnnotations({ trades, prices, asset, winStates }: {
   trades: Trade[]; prices: Record<string, PriceData>; asset: string;
+  winStates: Record<string, boolean>;
 }) {
   const [, setTick] = useState(0);
   useEffect(() => {
@@ -149,13 +149,15 @@ function TradeAnnotations({ trades, prices, asset }: {
   }, []);
 
   const current = prices[asset]?.price ?? 0;
-  const assetTrades = trades.filter((t) => t.asset === asset && t.result === "PENDING" && current > 0);
+  const assetTrades = trades.filter((t) => t.asset === asset && t.result === "PENDING");
   if (!assetTrades.length) return null;
 
   return (
     <div className="absolute right-14 top-3 z-10 flex flex-col gap-1.5 pointer-events-none">
       {assetTrades.map((trade) => {
-        const isWin    = trade.direction === "UP" ? current >= trade.entryPrice : current <= trade.entryPrice;
+        const isWin    = winStates[trade.id] !== undefined
+          ? winStates[trade.id]
+          : (trade.direction === "UP" ? current >= trade.entryPrice : current <= trade.entryPrice);
         const pnl      = isWin ? trade.amount * PAYOUT_RATE : -trade.amount;
         const timeLeft = Math.max(0, Math.ceil((new Date(trade.expiresAt).getTime() - Date.now()) / 1000));
         return (
@@ -247,7 +249,7 @@ function ChartLoadingOverlay({ asset }: { asset: string }) {
 
 function TradeResultOverlay({ result, onDone }: { result: TradeResult; onDone: () => void }) {
   useEffect(() => {
-    const t = setTimeout(onDone, 2600);
+    const t = setTimeout(onDone, 1400);
     return () => clearTimeout(t);
   }, [onDone]);
 
@@ -871,7 +873,6 @@ export default function DashboardPage() {
   const [placing,          setPlacing]          = useState(false);
   const [notification,     setNotification]     = useState<Notification | null>(null);
   const [activePanel,      setActivePanel]      = useState<ActivePanel>(null);
-  const [chartType,        setChartType]        = useState<ChartType>("line");
   const [positionsOpen,    setPositionsOpen]    = useState(true);
   const [showAssetPicker,  setShowAssetPicker]  = useState(false);
   const [priceFlash,       setPriceFlash]       = useState<"up" | "down" | null>(null);
@@ -884,6 +885,11 @@ export default function DashboardPage() {
   const [emailVerified,    setEmailVerified]    = useState<boolean | null>(null);
   const [showDepositCta,   setShowDepositCta]   = useState(false);
   const [chartLoading,     setChartLoading]     = useState(true);
+  const [tradeWinStates,   setTradeWinStates]   = useState<Record<string, boolean>>({});
+  const tradeWinStatesRef    = useRef<Record<string, boolean>>({});
+  // Preço do sim capturado no momento exato do clique (antes da latência da API)
+  const latestSimPriceRef    = useRef<number>(0);
+  const simEntryOverrideRef  = useRef<Map<string, number>>(new Map());
   const chartLoadTimerRef  = useRef<ReturnType<typeof setTimeout> | null>(null);
   const prevAssetRef       = useRef<string>("");
 
@@ -914,6 +920,7 @@ export default function DashboardPage() {
         createdAt:  t.createdAt,
         amount:     t.amount,
       })),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [activeTrades, selectedAsset]
   );
 
@@ -1028,20 +1035,21 @@ export default function DashboardPage() {
     return () => { clearInterval(p); clearInterval(d); };
   }, [status, fetchPrices, fetchUser, fetchTrades]);
 
-  const handleSettle = useCallback(async (id: string, exitPrice: number) => {
+  const handleSettle = useCallback(async (id: string, exitPrice: number, wonOverride?: boolean) => {
     if (settlingRef.current.has(id)) return;
     settlingRef.current.add(id);
     try {
+      const won = wonOverride !== undefined ? wonOverride : tradeWinStatesRef.current[id];
       const res = await fetch(`/api/trades/${id}/settle`, {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ exitPrice }),
+        body: JSON.stringify({ exitPrice, ...(won !== undefined && { won }) }),
       });
       if (res.ok) {
         const settled = await res.json();
+        simEntryOverrideRef.current.delete(id);
         setTrades((prev) => prev.map((t) => t.id === id ? { ...t, ...settled } : t));
         await fetchUser();
         const isWin = settled.result === "WIN";
-        // For WIN: settled.profit = amount * PAYOUT_RATE; for LOSS: profit=0 in DB, so show amount
         setTradeResult({ profit: isWin ? settled.profit : settled.amount, isWin, asset: settled.asset, amount: settled.amount });
         showNotif(
           isWin
@@ -1053,11 +1061,23 @@ export default function DashboardPage() {
     } catch { showNotif(t("conn_error"), "error"); }
   }, [fetchUser, showNotif, t]);
 
+  // Chamado pelo TradingChart no momento exato da expiração com o resultado baseado
+  // nos pontos do array do gráfico. Tem prioridade sobre o CountdownBadge (que aguarda 1.5s).
+  const handleChartSettle = useCallback((id: string, won: boolean) => {
+    const trade     = trades.find((tr) => tr.id === id);
+    const exitPrice = (trade && prices[trade.asset]?.price) || 1;
+    console.log(`[CHART-SETTLE-DASHBOARD] id=${id.slice(-6)} won=${won} exitPrice=${exitPrice} tradeFound=${!!trade}`);
+    handleSettle(id, exitPrice, won);
+  }, [trades, prices, handleSettle]);
+
   async function placeTrade(direction: "UP" | "DOWN") {
     if (!currentPrice || placing) return;
     if (balance === null) { showNotif(t("loading"), "error"); return; }
     if (amount > balance)  { showNotif(t("insufficient"), "error"); return; }
     if (amount < 1)        { showNotif(t("min_amount"), "error"); return; }
+    // Captura o preço do sim AGORA — antes da latência da API (200-1500ms)
+    // Esse é o ponto exato que está desenhado na tela no momento do clique
+    const simPriceAtClick = latestSimPriceRef.current || currentPrice;
     setPlacing(true);
     try {
       const res = await fetch("/api/trades", {
@@ -1066,6 +1086,8 @@ export default function DashboardPage() {
       });
       if (res.ok) {
         const trade = await res.json();
+        // Associa o preço do clique ao ID do trade — o gráfico vai usar esse valor
+        simEntryOverrideRef.current.set(trade.id, simPriceAtClick);
         setTrades((prev) => [trade, ...prev]);
         setBalance((b) => b !== null ? b - amount : null);
         setPositionsOpen(true);
@@ -1294,7 +1316,7 @@ export default function DashboardPage() {
 
       {/* Hidden settlement */}
       <div className="sr-only" aria-hidden>
-        <ActiveTrades trades={activeTrades} currentPrices={prices} onSettle={handleSettle} loading={false} />
+        <ActiveTrades trades={activeTrades} currentPrices={prices} onSettle={handleSettle} loading={false} winStates={tradeWinStates} />
       </div>
 
       {/* Deposit URL handler */}
@@ -1440,13 +1462,8 @@ export default function DashboardPage() {
             <div className={`text-base font-bold font-mono transition-colors duration-300 ${priceFlash === "up" ? "text-emerald-400" : priceFlash === "down" ? "text-rose-400" : "text-white"}`}>
               {currentPrice > 0 ? `$${formatPrice(currentPrice, selectedAsset)}` : <span className="text-white/10 animate-pulse">——</span>}
             </div>
-            <div className="ml-auto flex items-center bg-white/3 border border-white/5 rounded-lg p-0.5 gap-0.5">
-              {(["line", "candle"] as ChartType[]).map((tp) => (
-                <button key={tp} onClick={() => setChartType(tp)}
-                  className={`px-2.5 py-1 rounded-md text-[9px] font-semibold transition-all ${chartType === tp ? "bg-amber-400/15 text-amber-400" : "text-white/20 hover:text-white/50"}`}>
-                  {tp === "line" ? "⟆ Linha" : "◈ Velas"}
-                </button>
-              ))}
+            <div className="ml-auto flex items-center bg-white/3 border border-white/5 rounded-lg px-2.5 py-1">
+              <span className="text-[9px] font-semibold text-amber-400">⟆ Linha</span>
             </div>
           </div>
 
@@ -1471,13 +1488,16 @@ export default function DashboardPage() {
             )}
 
             {/* Chart — always mounted so it initialises behind the loading overlay */}
-            <TradingChart
-              key={selectedAsset + "-" + chartType}
-              currentPrice={currentPrice}
+            <CustomChart
+              key={selectedAsset}
               asset={selectedAsset}
-              chartType={chartType}
-              activeTrades={chartLoading ? [] : activeTradesForChart}
+              initialPrice={currentPrice}
+              trades={chartLoading ? [] : activeTradesForChart}
+              simEntryOverrides={simEntryOverrideRef.current}
               onOhlcChange={setOhlc}
+              onWinStatesChange={(s) => { tradeWinStatesRef.current = s; setTradeWinStates(s); }}
+              onSettleTrade={handleChartSettle}
+              onPriceUpdate={(p) => { latestSimPriceRef.current = p; }}
             />
 
             {/* Chart loading overlay (3 s) */}
@@ -1485,7 +1505,7 @@ export default function DashboardPage() {
 
             {/* P&L badges */}
             {currentPrice > 0 && (
-              <TradeAnnotations trades={activeTrades} prices={prices} asset={selectedAsset} />
+              <TradeAnnotations trades={activeTrades} prices={prices} asset={selectedAsset} winStates={tradeWinStates} />
             )}
 
             {/* BUY/SELL sentiment overlay */}

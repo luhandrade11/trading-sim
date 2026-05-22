@@ -21,7 +21,7 @@ export async function POST(
   const body = await req.json().catch(() => null);
   if (!body) return NextResponse.json({ error: "Body inválido" }, { status: 400 });
 
-  const { exitPrice } = body;
+  const { exitPrice, won: wonOverride } = body;
   if (typeof exitPrice !== "number" || exitPrice <= 0)
     return NextResponse.json({ error: "Preço de saída inválido" }, { status: 400 });
 
@@ -36,9 +36,12 @@ export async function POST(
   if (exitPrice > trade.entryPrice * MAX_EXIT_PRICE_MULTIPLIER)
     return NextResponse.json({ error: "Preço de saída suspeito" }, { status: 400 });
 
-  const won =
-    (trade.direction === "UP"   && exitPrice > trade.entryPrice) ||
-    (trade.direction === "DOWN" && exitPrice < trade.entryPrice);
+  // Use the sim-chart verdict when available (client compared sim entry vs sim exit price).
+  // Fall back to real-price comparison only when the client didn't supply a verdict.
+  const won = typeof wonOverride === "boolean"
+    ? wonOverride
+    : (trade.direction === "UP"   && exitPrice >= trade.entryPrice) ||
+      (trade.direction === "DOWN" && exitPrice <= trade.entryPrice);
 
   const profit = won ? trade.amount * PAYOUT_RATE : 0;
   const result = won ? "WIN" : "LOSS";

@@ -50,9 +50,9 @@ function generateLine(endPrice: number, asset: string): { time: Time; value: num
   for (let i = 0; i < 300; i++) {
     pts.unshift(p);
     const vol = endPrice * 0.0004;
-    const mr  = (endPrice - p) * 0.018; // gentle mean reversion toward endPrice
-    p = p - (rand() - 0.5) * vol * 2 - mr;
-    p = Math.max(p, endPrice * 0.001);
+    const mr  = (endPrice - p) * 0.06;
+    p = p - (rand() - 0.5) * vol * 2 + mr;
+    p = Math.max(Math.min(p, endPrice * 1.06), endPrice * 0.94);
   }
 
   return pts.map((v, i) => ({
@@ -70,9 +70,9 @@ function generateCandles(endPrice: number, asset: string): CandlestickData[] {
   for (let i = 0; i < 60; i++) {
     closes.unshift(p);
     const vol = endPrice * 0.0025;
-    const mr  = (endPrice - p) * 0.05;
-    p = p - (rand() - 0.5) * vol * 2 - mr;
-    p = Math.max(p, endPrice * 0.001);
+    const mr  = (endPrice - p) * 0.12;
+    p = p - (rand() - 0.5) * vol * 2 + mr;
+    p = Math.max(Math.min(p, endPrice * 1.04), endPrice * 0.96);
   }
 
   return closes.map((close, i) => {
@@ -84,7 +84,7 @@ function generateCandles(endPrice: number, asset: string): CandlestickData[] {
       time:  (now - (59 - i) * 60) as Time,
       open,
       high,
-      low:   Math.max(low, endPrice * 0.001),
+      low:   Math.max(low, endPrice * 0.96),
       close,
     };
   });
@@ -120,6 +120,12 @@ interface Props {
   chartType?: "candle" | "line";
   activeTrades?: TradeAnnotation[];
   onOhlcChange?: (ohlc: OhlcData | null) => void;
+  onWinStatesChange?: (states: Record<string, boolean>) => void;
+  onSettleTrade?: (id: string, won: boolean) => void;
+  // Called every sim tick so the dashboard can capture the price at click-time
+  onSimPriceChange?: (price: number) => void;
+  // Pre-captured sim entry prices (keyed by trade ID), set by the dashboard at click-time
+  simEntryOverrides?: Map<string, number>;
 }
 
 // ── Countdown circle ─────────────────────────────────────────────────────────
@@ -162,6 +168,10 @@ export default function TradingChart({
   chartType = "line",
   activeTrades = [],
   onOhlcChange,
+  onWinStatesChange,
+  onSettleTrade,
+  onSimPriceChange,
+  simEntryOverrides,
 }: Props) {
   const containerRef  = useRef<HTMLDivElement>(null);
   const chartRef      = useRef<IChartApi | null>(null);
@@ -173,7 +183,15 @@ export default function TradingChart({
   const simPriceRef       = useRef<number>(currentPrice || 100);
   const modeRef           = useRef(chartType);
   // Simulated price at the exact moment each trade was placed — used for isWin + Y coord
-  const simEntryPricesRef = useRef<Map<string, number>>(new Map());
+  const simEntryPricesRef  = useRef<Map<string, number>>(new Map());
+  const onWinStatesChangeRef = useRef(onWinStatesChange);
+  onWinStatesChangeRef.current = onWinStatesChange;
+  const onSettleTradeRef    = useRef(onSettleTrade);
+  onSettleTradeRef.current  = onSettleTrade;
+  const onSimPriceChangeRef = useRef(onSimPriceChange);
+  onSimPriceChangeRef.current = onSimPriceChange;
+  // Tracks trades that have already been settled so we fire exactly once per trade
+  const settledIdsRef     = useRef<Set<string>>(new Set());
   // Max expiry timestamp (seconds) among active trades, kept up-to-date for scrollInterval
   const maxExpiryRef      = useRef<number>(0);
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -278,6 +296,7 @@ export default function TradingChart({
       const drift  = (target - base) * 0.35; // 35%/tick → reflects real direction in ~2s
       simPriceRef.current = Math.max(base + drift + (Math.random() - 0.5) * vol * 2, base * 0.001);
       const price = simPriceRef.current;
+      onSimPriceChangeRef.current?.(price);
 
       if (modeRef.current === "candle") {
         if (!candlesRef.current.length) return;
@@ -363,11 +382,17 @@ export default function TradingChart({
     const map      = simEntryPricesRef.current;
     const activeIds = new Set(activeTrades.map((t) => t.id));
     for (const trade of activeTrades) {
-      if (!map.has(trade.id)) map.set(trade.id, simPriceRef.current);
+      if (!map.has(trade.id)) {
+        map.set(trade.id, simPriceRef.current);
+        console.log(`[ENTRY-CAPTURE] id=${trade.id.slice(-6)} dir=${trade.direction} simEntryPrice=${simPriceRef.current.toFixed(4)}`);
+      }
     }
-    // Remove prices for trades that have been settled/removed
+    // Remove prices and settled flags for trades that have been settled/removed
     for (const id of [...map.keys()]) {
       if (!activeIds.has(id)) map.delete(id);
+    }
+    for (const id of [...settledIdsRef.current]) {
+      if (!activeIds.has(id)) settledIdsRef.current.delete(id);
     }
 
     // 2. Keep maxExpiryRef updated so scrollInterval maintains the right range
@@ -399,20 +424,40 @@ export default function TradingChart({
       const vr          = chart.timeScale().getVisibleRange();
 
       const newAnnotations: AnnotPos[] = activeTrades.map((trade) => {
-        // simEntryPrice = simulated price captured the moment the bet was placed.
-        // Used for both isWin AND the Y coordinate of the horizontal line.
-        const simEntryPrice = simEntryPricesRef.current.get(trade.id) ?? simPrice;
+        // Prioridade: preço capturado pelo dashboard no clique → fallback: capturado no efeito React
+        const simEntryPrice = simEntryOverrides?.get(trade.id)
+          ?? simEntryPricesRef.current.get(trade.id)
+          ?? simPrice;
 
-        // isWin: real market price vs real entry price, using >= / <=.
-        // >= means "at-the-money = winning" which is standard binary options convention
-        // and avoids the "always red" bug caused by the server's 30s price cache keeping
-        // lastPriceRef === entryPrice for most of a short trade's duration.
+        // Live win/loss — compara preço atual do sim com o preço sim da entrada
         const isWin = trade.direction === "UP"
-          ? lastPriceRef.current >= trade.entryPrice
-          : lastPriceRef.current <= trade.entryPrice;
+          ? simPrice > simEntryPrice
+          : simPrice < simEntryPrice;
         const pnl    = isWin ? trade.amount * PAYOUT_RATE : -trade.amount;
         const pnlPct = (pnl / trade.amount) * 100;
-        const timeLeft    = Math.max(0, Math.ceil((new Date(trade.expiresAt).getTime() - Date.now()) / 1000));
+        const timeLeft = Math.max(0, Math.ceil((new Date(trade.expiresAt).getTime() - Date.now()) / 1000));
+
+        // ── Liquidação na expiração ───────────────────────────────────────────
+        // Lê o ÚLTIMO PONTO do array que alimenta o gráfico visual e compara
+        // diretamente com o ponto capturado no momento da aposta.
+        // Isso é exatamente o que está desenhado na tela — não usa preço de API.
+        if (timeLeft === 0 && !settledIdsRef.current.has(trade.id)) {
+          settledIdsRef.current.add(trade.id);
+          const finalValue = modeRef.current === "candle"
+            ? (candlesRef.current.at(-1)?.close ?? simPrice)
+            : (lineRef.current.at(-1)?.value  ?? simPrice);
+          const wonFinal = trade.direction === "UP"
+            ? finalValue > simEntryPrice
+            : finalValue < simEntryPrice;
+          console.log(
+            `[CHART-SETTLE] id=${trade.id.slice(-6)} dir=${trade.direction}`,
+            `entrySimPrice=${simEntryPrice.toFixed(4)}`,
+            `finalValue=${finalValue.toFixed(4)}`,
+            `wonFinal=${wonFinal}`,
+            `hasCallback=${!!onSettleTradeRef.current}`
+          );
+          onSettleTradeRef.current?.(trade.id, wonFinal);
+        }
         const maxDuration = Math.max(1, Math.round(
           (new Date(trade.expiresAt).getTime() - new Date(trade.createdAt).getTime()) / 1000
         ));
@@ -440,6 +485,9 @@ export default function TradingChart({
       });
 
       setAnnotations(newAnnotations);
+      onWinStatesChangeRef.current?.(
+        Object.fromEntries(newAnnotations.map((a) => [a.id, a.isWin]))
+      );
     };
 
     update();

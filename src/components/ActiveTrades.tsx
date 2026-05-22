@@ -8,6 +8,7 @@ interface Props {
   currentPrices: Record<string, { price: number }>;
   onSettle: (id: string, exitPrice: number) => void;
   loading?: boolean;
+  winStates?: Record<string, boolean>;
 }
 
 function CountdownBadge({
@@ -23,8 +24,10 @@ function CountdownBadge({
   const [remaining, setRemaining] = useState(() =>
     Math.max(0, Math.ceil((new Date(expiresAt).getTime() - Date.now()) / 1000))
   );
-  const settledRef = useRef(false);
-  const retriesRef = useRef(0);
+  const settledRef       = useRef(false);
+  // Ref mantém currentPrices sempre atualizado dentro do interval (sem stale closure)
+  const currentPricesRef = useRef(currentPrices);
+  currentPricesRef.current = currentPrices;
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -33,17 +36,15 @@ function CountdownBadge({
       setRemaining(clamped);
 
       if (clamped <= 0 && !settledRef.current) {
-        const exitPrice = currentPrices[asset]?.price ?? 0;
-        if (exitPrice > 0) {
-          settledRef.current = true;
-          clearInterval(interval);
-          onSettle(tradeId, exitPrice);
-        } else if (retriesRef.current < 10) {
-          retriesRef.current++;
-        } else {
-          settledRef.current = true;
-          clearInterval(interval);
-        }
+        settledRef.current = true;
+        clearInterval(interval);
+        // Aguarda 1.5s para deixar o TradingChart disparar primeiro (ele tem prioridade).
+        // Se o gráfico já liquidou, handleSettle no dashboard vai ignorar via settlingRef.
+        // Este fallback serve para apostas em ativos não visíveis no gráfico.
+        setTimeout(() => {
+          const exitPrice = currentPricesRef.current[asset]?.price ?? 0;
+          onSettle(tradeId, exitPrice > 0 ? exitPrice : 1);
+        }, 1500);
       }
     }, 500);
     return () => clearInterval(interval);
@@ -73,7 +74,7 @@ function CountdownBadge({
   );
 }
 
-export default function ActiveTrades({ trades, currentPrices, onSettle, loading }: Props) {
+export default function ActiveTrades({ trades, currentPrices, onSettle, loading, winStates }: Props) {
   const settlingRef = useRef<Set<string>>(new Set());
 
   const handleSettle = (id: string, exitPrice: number) => {
@@ -111,9 +112,10 @@ export default function ActiveTrades({ trades, currentPrices, onSettle, loading 
       {trades.map((trade) => {
         const currentPrice = currentPrices[trade.asset]?.price ?? trade.entryPrice;
         const entryPrice   = trade.entryPrice || 1;
-        const isWinning    =
-          (trade.direction === "UP"   && currentPrice > entryPrice) ||
-          (trade.direction === "DOWN" && currentPrice < entryPrice);
+        // Usa o estado do gráfico (sim) quando disponível, preço real como fallback
+        const isWinning    = winStates?.[trade.id] !== undefined
+          ? winStates[trade.id]
+          : (trade.direction === "UP" ? currentPrice > entryPrice : currentPrice < entryPrice);
         const priceDiff    = ((currentPrice - entryPrice) / entryPrice) * 100;
 
         return (

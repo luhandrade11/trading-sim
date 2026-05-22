@@ -22,6 +22,11 @@ export async function PATCH(req: Request) {
   const affiliateId = await getAffiliateSession();
   if (!affiliateId) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
 
+  // Verify account is still active before allowing profile updates
+  const check = await prisma.affiliate.findUnique({ where: { id: affiliateId }, select: { status: true } });
+  if (!check || check.status !== "ACTIVE")
+    return NextResponse.json({ error: "Conta não ativa" }, { status: 403 });
+
   const body = await req.json().catch(() => null);
   if (!body) return NextResponse.json({ error: "Body inválido" }, { status: 400 });
 

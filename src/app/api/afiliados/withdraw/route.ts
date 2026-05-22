@@ -45,18 +45,25 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  if (affiliate.balance < amount)
-    return NextResponse.json({ error: "Saldo insuficiente" }, { status: 400 });
+  // Atomic balance check + deduct to prevent race conditions
+  try {
+    await prisma.$transaction(async (tx) => {
+      const fresh = await tx.affiliate.findUnique({ where: { id: affiliateId }, select: { balance: true } });
+      if (!fresh || fresh.balance < amount) throw new Error("insufficient");
 
-  await prisma.$transaction([
-    prisma.affiliate.update({
-      where: { id: affiliateId },
-      data: { balance: { decrement: amount }, lastWithdrawalAt: new Date() },
-    }),
-    prisma.affiliateWithdrawal.create({
-      data: { affiliateId, amount, pixKey, status: "PENDING" },
-    }),
-  ]);
+      await tx.affiliate.update({
+        where: { id: affiliateId },
+        data: { balance: { decrement: amount }, lastWithdrawalAt: new Date() },
+      });
+      await tx.affiliateWithdrawal.create({
+        data: { affiliateId, amount, pixKey: pixKey.slice(0, 200), status: "PENDING" },
+      });
+    });
+  } catch (err: unknown) {
+    if ((err as Error).message === "insufficient")
+      return NextResponse.json({ error: "Saldo insuficiente" }, { status: 400 });
+    throw err;
+  }
 
   return NextResponse.json({ ok: true });
 }

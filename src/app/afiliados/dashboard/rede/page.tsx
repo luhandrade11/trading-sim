@@ -68,17 +68,22 @@ export default function AfiliadosRedePage() {
   const baseUrl = typeof window !== "undefined" ? window.location.origin : "";
 
   async function load() {
-    const [meRes, subsRes, netRes, pendingRes] = await Promise.all([
-      fetch("/api/afiliados/me").then((r) => r.json()),
-      fetch("/api/afiliados/subafiliados").then((r) => r.json()),
-      fetch("/api/afiliados/network").then((r) => r.json()),
-      fetch("/api/afiliados/pending").then((r) => r.json()),
-    ]);
-    setMe(meRes);
-    setSubs(Array.isArray(subsRes) ? subsRes : []);
-    setTree(netRes.tree ?? []);
-    setPending(Array.isArray(pendingRes) ? pendingRes : []);
-    setLoading(false);
+    try {
+      const [meRes, subsRes, netRes, pendingRes] = await Promise.all([
+        fetch("/api/afiliados/me").then((r) => r.json()),
+        fetch("/api/afiliados/subafiliados").then((r) => r.json()),
+        fetch("/api/afiliados/network").then((r) => r.json()),
+        fetch("/api/afiliados/pending").then((r) => r.json()),
+      ]);
+      setMe(meRes);
+      setSubs(Array.isArray(subsRes) ? subsRes : []);
+      setTree(netRes.tree ?? []);
+      setPending(Array.isArray(pendingRes) ? pendingRes : []);
+    } catch {
+      // Keep previous state on network error
+    } finally {
+      setLoading(false);
+    }
   }
 
   useEffect(() => { load(); }, []);

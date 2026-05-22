@@ -31,9 +31,17 @@ export default function AfiliadosDashboardLayout({ children }: { children: React
 
   useEffect(() => {
     fetch("/api/afiliados/me")
-      .then((r) => r.json())
-      .then((d) => {
-        if (d.error) { router.push("/afiliados/login"); return; }
+      .then(async (r) => {
+        const d = await r.json();
+        if (!r.ok) {
+          // 403 = blocked/pending/rejected — pass statusCode so login can show the right message
+          if (r.status === 403 && d.statusCode) {
+            router.push(`/afiliados/login?status=${d.statusCode}`);
+          } else {
+            router.push("/afiliados/login");
+          }
+          return;
+        }
         setMe(d);
       })
       .catch(() => router.push("/afiliados/login"));

@@ -29,12 +29,16 @@ export default function AfiliadosRevenuesPage() {
       .then((d) => {
         setRows(d.rows ?? []);
         setTotal(d.total ?? 0);
-        if (page === 1 && d.rows?.length) {
+        // totalEarned comes from the API total field across all pages, not just this page
+        if (d.totalAmount !== undefined) setTotalEarned(d.totalAmount);
+        else if (page === 1 && d.rows?.length) {
+          // fallback: sum current page only
           const sum = d.rows.reduce((acc: number, r: Revenue) => acc + r.amount, 0);
           setTotalEarned(sum);
         }
-        setLoading(false);
-      });
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
   }, [page]);
 
   const pages = Math.ceil(total / 30);

@@ -114,7 +114,9 @@ export default function AdminAfiliadosPage() {
     setLoadingList(true);
     fetch(`/api/admin/afiliados?page=${page}&q=${encodeURIComponent(q)}`)
       .then((r) => r.json())
-      .then((d) => { setAffiliates(d.affiliates ?? []); setTotal(d.total ?? 0); setLoadingList(false); });
+      .then((d) => { setAffiliates(d.affiliates ?? []); setTotal(d.total ?? 0); })
+      .catch(() => {})
+      .finally(() => setLoadingList(false));
   }, [page, q]);
 
   useEffect(() => { loadList(); }, [loadList]);
@@ -137,7 +139,9 @@ export default function AdminAfiliadosPage() {
     setLoadingW(true);
     fetch(`/api/admin/afiliados/withdrawals?status=${wTab}`)
       .then((r) => r.json())
-      .then((d) => { setWithdrawals(Array.isArray(d) ? d : []); setLoadingW(false); });
+      .then((d) => { setWithdrawals(Array.isArray(d) ? d : []); })
+      .catch(() => {})
+      .finally(() => setLoadingW(false));
   }, [wTab]);
 
   useEffect(() => { if (tab === "withdrawals") loadWithdrawals(); }, [tab, loadWithdrawals]);
@@ -146,7 +150,9 @@ export default function AdminAfiliadosPage() {
     setLoadingPending(true);
     fetch("/api/admin/afiliados?pending=1")
       .then((r) => r.json())
-      .then((d) => { setPendingAffs(d.affiliates ?? []); setLoadingPending(false); });
+      .then((d) => { setPendingAffs(d.affiliates ?? []); })
+      .catch(() => {})
+      .finally(() => setLoadingPending(false));
   }, []);
 
   // Load pending on mount to show badge count
@@ -159,14 +165,16 @@ export default function AdminAfiliadosPage() {
     setSaving(true);
     const rate = Number(editRate) / 100;
     const lvl  = Math.min(4, Math.max(1, Number(editLevel)));
-    await fetch(`/api/admin/afiliados/${selectedId}`, {
+    const r = await fetch(`/api/admin/afiliados/${selectedId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ commissionRate: rate, balance: Number(editBalance), level: lvl }),
-    });
+    }).catch(() => null);
     setSaving(false);
+    if (!r?.ok) { alert("Erro ao salvar. Tente novamente."); return; }
     setSelectedId(null);
     loadList();
+    loadPending();
   }
 
   async function handleFixLevels() {

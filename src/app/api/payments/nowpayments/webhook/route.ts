@@ -9,9 +9,16 @@ import { prisma } from "@/lib/prisma";
 
 function verifySignature(body: string, signature: string): boolean {
   const secret = process.env.NOWPAYMENTS_IPN_SECRET;
-  if (!secret) return true; // skip in dev if not configured
+  if (!secret) {
+    // Reject in production if secret not configured; allow in dev only
+    return process.env.NODE_ENV !== "production";
+  }
   const hmac = crypto.createHmac("sha512", secret).update(body).digest("hex");
-  return hmac === signature;
+  try {
+    return crypto.timingSafeEqual(Buffer.from(hmac, "hex"), Buffer.from(signature, "hex"));
+  } catch {
+    return false;
+  }
 }
 
 // USD amount credited per confirmed payment status

@@ -33,11 +33,12 @@ export async function GET(req: NextRequest) {
     const profit = won ? trade.amount * PAYOUT_RATE : 0;
     const result = won ? "WIN" : "LOSS";
 
+    const balanceField = trade.mode === "real" ? "realBalance" : "balance";
     await prisma.$transaction([
       prisma.trade.update({ where: { id: trade.id }, data: { exitPrice, result, profit } }),
       prisma.user.update({
         where: { id: trade.userId },
-        data: { balance: { increment: won ? trade.amount + profit : 0 } },
+        data: { [balanceField]: { increment: won ? trade.amount + profit : 0 } },
       }),
     ]);
     settled++;

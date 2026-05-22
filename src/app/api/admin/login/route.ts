@@ -1,8 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { createAdminToken, COOKIE_NAME } from "@/lib/adminAuth";
+import { rateLimit } from "@/lib/rateLimit";
+
+function getIp(req: NextRequest) {
+  return req.headers.get("x-forwarded-for")?.split(",")[0].trim() ?? "unknown";
+}
 
 export async function POST(req: NextRequest) {
+  // 5 attempts per 15 minutes per IP
+  if (!rateLimit(`admin-login:${getIp(req)}`, 5, 15 * 60_000))
+    return NextResponse.json({ error: "Muitas tentativas. Aguarde 15 minutos." }, { status: 429 });
+
   const body = await req.json().catch(() => null);
   if (!body) return NextResponse.json({ error: "Body inválido" }, { status: 400 });
 

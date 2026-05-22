@@ -2,8 +2,17 @@ import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { createAffiliateToken, AFFILIATE_COOKIE } from "@/lib/affiliateAuth";
+import { rateLimit } from "@/lib/rateLimit";
+
+function getIp(req: NextRequest) {
+  return req.headers.get("x-forwarded-for")?.split(",")[0].trim() ?? "unknown";
+}
 
 export async function POST(req: NextRequest) {
+  // 10 attempts per 15 minutes per IP
+  if (!rateLimit(`aff-login:${getIp(req)}`, 10, 15 * 60_000))
+    return NextResponse.json({ error: "Muitas tentativas. Aguarde 15 minutos." }, { status: 429 });
+
   const body = await req.json().catch(() => null);
   if (!body?.email || !body?.password)
     return NextResponse.json({ error: "Dados inválidos" }, { status: 400 });

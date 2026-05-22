@@ -67,6 +67,7 @@ export async function POST(req: NextRequest) {
     trade = await prisma.$transaction(async (tx) => {
       const user = await tx.user.findUnique({ where: { id: session.user.id } });
       if (!user) throw Object.assign(new Error("not_found"), { status: 404 });
+      if (user.isBlocked) throw Object.assign(new Error("blocked"), { status: 403 });
       const activeBalance = mode === "real" ? user.realBalance : user.balance;
       if (activeBalance < amount) throw Object.assign(new Error("insufficient"), { status: 400 });
 
@@ -87,6 +88,7 @@ export async function POST(req: NextRequest) {
   } catch (err: unknown) {
     const e = err as Error & { status?: number };
     if (e.message === "not_found")     return NextResponse.json({ error: "Usuário não encontrado" }, { status: 404 });
+    if (e.message === "blocked")       return NextResponse.json({ error: "Conta bloqueada" }, { status: 403 });
     if (e.message === "insufficient")  return NextResponse.json({ error: "Saldo insuficiente" }, { status: 400 });
     if (e.message === "max_trades")    return NextResponse.json({ error: `Máximo de ${MAX_CONCURRENT_TRADES} operações simultâneas` }, { status: 400 });
     throw err;

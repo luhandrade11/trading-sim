@@ -73,7 +73,11 @@ export async function proxy(req: NextRequest) {
   const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
   if (!token) {
     const url = new URL("/login", req.url);
-    url.searchParams.set("from", req.nextUrl.pathname);
+    // Only allow internal paths to prevent open-redirect attacks
+    const from = req.nextUrl.pathname;
+    if (from.startsWith("/") && !from.startsWith("//")) {
+      url.searchParams.set("from", from);
+    }
     return NextResponse.redirect(url);
   }
   return NextResponse.next();

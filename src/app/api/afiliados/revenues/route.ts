@@ -11,8 +11,9 @@ export async function GET(req: NextRequest) {
   const take = 30;
   const skip = (page - 1) * take;
 
-  const [total, revenues] = await Promise.all([
+  const [total, totalAmountAgg, revenues] = await Promise.all([
     prisma.affiliateRevenue.count({ where: { affiliateId } }),
+    prisma.affiliateRevenue.aggregate({ where: { affiliateId }, _sum: { amount: true } }),
     prisma.affiliateRevenue.findMany({
       where: { affiliateId },
       orderBy: { createdAt: "desc" },
@@ -38,5 +39,5 @@ export async function GET(req: NextRequest) {
 
   const rows = revenues.map((r) => ({ ...r, playerName: userMap[r.userId] ?? "—" }));
 
-  return NextResponse.json({ total, page, rows });
+  return NextResponse.json({ total, page, rows, totalAmount: totalAmountAgg._sum.amount ?? 0 });
 }

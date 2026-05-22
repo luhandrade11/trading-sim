@@ -42,24 +42,29 @@ export default function AfiliadosSaquesPage() {
   const [nextAt, setNextAt]           = useState<string | null>(null);
 
   async function load() {
-    const [meRes, wRes] = await Promise.all([
-      fetch("/api/afiliados/me"),
-      fetch("/api/afiliados/withdraw"),
-    ]);
-    const meData = await meRes.json();
-    const wData  = await wRes.json();
-    setMe(meData);
-    setPixKey(meData.pixKey ?? "");
-    setWithdrawals(Array.isArray(wData) ? wData : []);
+    try {
+      const [meRes, wRes] = await Promise.all([
+        fetch("/api/afiliados/me"),
+        fetch("/api/afiliados/withdraw"),
+      ]);
+      const meData = await meRes.json();
+      const wData  = await wRes.json();
+      setMe(meData);
+      setPixKey(meData.pixKey ?? "");
+      setWithdrawals(Array.isArray(wData) ? wData : []);
 
-    // Compute next withdrawal from lastWithdrawalAt
-    if (meData.lastWithdrawalAt) {
-      const next = new Date(meData.lastWithdrawalAt);
-      next.setDate(next.getDate() + 7);
-      if (next > new Date()) setNextAt(next.toISOString());
-      else setNextAt(null);
+      // Compute next withdrawal from lastWithdrawalAt
+      if (meData.lastWithdrawalAt) {
+        const next = new Date(meData.lastWithdrawalAt);
+        next.setDate(next.getDate() + 7);
+        if (next > new Date()) setNextAt(next.toISOString());
+        else setNextAt(null);
+      }
+    } catch {
+      // Network error — keep showing whatever we have
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   }
 
   useEffect(() => { load(); }, []);

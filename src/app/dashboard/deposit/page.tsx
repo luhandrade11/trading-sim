@@ -4,6 +4,8 @@ import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 
+const BRL_RATE = 5.20; // client-side estimate for display only
+
 function isBrazilianUser(): boolean {
   try {
     const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
@@ -22,13 +24,17 @@ function isBrazilianUser(): boolean {
 }
 
 // ─── Step 1: Amount ────────────────────────────────────────────────────────────
-function AmountStep({ onNext }: { onNext: (amount: number) => void }) {
-  const [amount, setAmount] = useState(100);
-  const presets = [20, 50, 100, 200, 500, 1000];
+function AmountStep({ onNext, isBR }: { onNext: (amount: number) => void; isBR: boolean }) {
+  const [amount, setAmount] = useState(isBR ? 100 : 100);
+  const presets = isBR ? [50, 100, 200, 500, 1000, 2500] : [20, 50, 100, 200, 500, 1000];
+  const minVal  = isBR ? 50 : 10;
 
   const bonus = amount >= 500 ? Math.round(amount * 0.5)
               : amount >= 200 ? Math.round(amount * 0.25)
               : amount;
+
+  const prefix = isBR ? "R$" : "$";
+  const suffix = isBR ? "BRL" : "USD";
 
   return (
     <div className="space-y-6">
@@ -58,7 +64,9 @@ function AmountStep({ onNext }: { onNext: (amount: number) => void }) {
 
       {/* Amount card */}
       <div className="bg-[#0d1117] border border-white/8 rounded-2xl p-5 space-y-4">
-        <div className="text-xs font-bold text-white/40 uppercase tracking-widest">Valor (USD)</div>
+        <div className="text-xs font-bold text-white/40 uppercase tracking-widest">
+          Valor ({suffix})
+        </div>
         <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
           {presets.map(p => (
             <button key={p} onClick={() => setAmount(p)}
@@ -66,16 +74,30 @@ function AmountStep({ onNext }: { onNext: (amount: number) => void }) {
                 amount === p
                   ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/40"
                   : "bg-white/3 text-white/40 border-white/8 hover:border-white/15 hover:text-white"
-              }`}>${p}</button>
+              }`}>
+              {prefix}{p}
+            </button>
           ))}
         </div>
         <div className="flex items-center bg-white/5 border border-white/10 rounded-xl overflow-hidden focus-within:border-emerald-400/40 transition-colors">
-          <span className="pl-4 text-white/40 text-sm font-medium">$</span>
-          <input type="number" min={10} value={amount}
-            onChange={e => setAmount(Math.max(10, Number(e.target.value)))}
+          <span className="pl-4 text-white/40 text-sm font-medium">{prefix}</span>
+          <input type="number" min={minVal} value={amount}
+            onChange={e => setAmount(Math.max(minVal, Number(e.target.value)))}
             className="flex-1 bg-transparent px-2 py-3.5 text-white text-base font-bold focus:outline-none" />
-          <span className="pr-4 text-white/20 text-xs">USD</span>
+          <span className="pr-4 text-white/20 text-xs">{suffix}</span>
         </div>
+
+        {/* For BR users: show USD equivalent */}
+        {isBR && (
+          <div className="flex items-center justify-center gap-1.5 text-white/25 text-xs">
+            <span>≈</span>
+            <span className="font-mono font-semibold text-white/40">
+              ${(amount / BRL_RATE).toFixed(2)} USD
+            </span>
+            <span>creditados na sua conta</span>
+          </div>
+        )}
+
         {amount >= 200 && (
           <div className="flex items-center gap-2 p-3 bg-emerald-500/8 border border-emerald-500/20 rounded-xl">
             <span className="text-emerald-400">🎁</span>
@@ -89,9 +111,9 @@ function AmountStep({ onNext }: { onNext: (amount: number) => void }) {
       {/* Preview */}
       <div className="grid grid-cols-3 gap-3 text-center">
         {[
-          { label: "Você deposita", val: `$${amount}`,         accent: "text-white" },
-          { label: "Bônus",         val: `+$${bonus}`,         accent: "text-emerald-400" },
-          { label: "Total",         val: `$${amount + bonus}`, accent: "text-amber-400" },
+          { label: "Você deposita", val: `${prefix}${amount}`,         accent: "text-white" },
+          { label: "Bônus",         val: `+${prefix}${bonus}`,         accent: "text-emerald-400" },
+          { label: "Total",         val: `${prefix}${amount + bonus}`, accent: "text-amber-400" },
         ].map(item => (
           <div key={item.label} className="bg-white/3 border border-white/8 rounded-2xl p-4">
             <div className={`text-lg font-black ${item.accent}`}>{item.val}</div>
@@ -102,12 +124,14 @@ function AmountStep({ onNext }: { onNext: (amount: number) => void }) {
 
       <button onClick={() => onNext(amount)}
         className="w-full py-4 bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-white font-black text-base rounded-2xl transition-all shadow-lg shadow-emerald-900/30 flex items-center justify-center gap-2">
-        Continuar — ${amount}
+        Continuar — {prefix}{amount}
         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" />
         </svg>
       </button>
-      <p className="text-center text-[9px] text-white/20">Depósito mínimo: $10 · Seguro e criptografado</p>
+      <p className="text-center text-[9px] text-white/20">
+        Depósito mínimo: {prefix}{minVal} · Seguro e criptografado
+      </p>
     </div>
   );
 }
@@ -119,6 +143,8 @@ function MethodStep({
   amount: number; isBR: boolean; onBack: () => void;
   onPix: () => void; onCard: () => void;
 }) {
+  const prefix = isBR ? "R$" : "$";
+
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-3">
@@ -130,7 +156,14 @@ function MethodStep({
         </button>
         <div>
           <h1 className="text-xl font-black text-white">Método de pagamento</h1>
-          <p className="text-sm text-white/30">Depósito de <span className="text-emerald-400 font-bold">${amount}</span></p>
+          <p className="text-sm text-white/30">
+            Depósito de <span className="text-emerald-400 font-bold">{prefix}{amount}</span>
+            {isBR && (
+              <span className="text-white/20 ml-1 text-xs">
+                (≈ ${(amount / BRL_RATE).toFixed(2)} USD na conta)
+              </span>
+            )}
+          </p>
         </div>
       </div>
 
@@ -177,6 +210,27 @@ function MethodStep({
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
           </svg>
         </button>
+
+        {/* Apple Pay */}
+        <button onClick={onCard}
+          className="flex items-center gap-3 p-4 bg-white/3 border border-white/8 rounded-2xl hover:border-white/20 hover:bg-white/5 transition-all text-left group w-full">
+          <div className="w-12 h-12 rounded-xl bg-white/8 flex items-center justify-center shrink-0">
+            {/* Apple logo */}
+            <svg className="w-6 h-6 text-white" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/>
+            </svg>
+          </div>
+          <div className="flex-1">
+            <div className="text-sm font-bold text-white group-hover:text-white transition-colors">Apple Pay</div>
+            <div className="text-[10px] text-white/30 mt-0.5">Face ID · Touch ID · Um toque</div>
+          </div>
+          <div className="shrink-0">
+            <div className="text-[9px] font-semibold px-2 py-1 rounded-full bg-white/5 text-white/30">1–3 min</div>
+          </div>
+          <svg className="w-4 h-4 text-white/20 group-hover:text-white/50 transition-colors shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+          </svg>
+        </button>
       </div>
 
       <div className="text-center py-2">
@@ -198,7 +252,7 @@ type PixCharge = {
   amountBrl: string; amountUsd: number; expiresAt: string;
 };
 
-function PixModal({ onClose, amount }: { onClose: () => void; amount: number }) {
+function PixModal({ onClose, amount, isBR }: { onClose: () => void; amount: number; isBR: boolean }) {
   const [loading,  setLoading]  = useState(true);
   const [error,    setError]    = useState("");
   const [charge,   setCharge]   = useState<PixCharge | null>(null);
@@ -206,26 +260,32 @@ function PixModal({ onClose, amount }: { onClose: () => void; amount: number }) 
   const [paid,     setPaid]     = useState(false);
   const pollRef = useRef<ReturnType<typeof setInterval> | undefined>(undefined);
 
-  // Create charge on mount
   useEffect(() => {
     async function create() {
       try {
+        // For BR users the amount is already in BRL; otherwise it's USD
+        const body = isBR
+          ? { amountBrl: amount }
+          : { amount };
+
         const res  = await fetch("/api/payments/abacatepay/create", {
           method: "POST", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ amount }),
+          body: JSON.stringify(body),
         });
         const data = await res.json();
         if (!res.ok) { setError(data.error ?? "Erro ao gerar PIX"); setLoading(false); return; }
         setCharge(data);
         setLoading(false);
-        // Start polling for payment confirmation
+
         pollRef.current = setInterval(async () => {
-          const r  = await fetch(`/api/payments/abacatepay/status?id=${data.id}`);
-          const s  = await r.json();
-          if (s.status === "PAID" || s.status === "APPROVED") {
-            clearInterval(pollRef.current);
-            setPaid(true);
-          }
+          try {
+            const r = await fetch(`/api/payments/abacatepay/status?id=${data.id}`);
+            const s = await r.json();
+            if (s.status === "PAID" || s.status === "APPROVED" || s.status === "COMPLETED") {
+              clearInterval(pollRef.current);
+              setPaid(true);
+            }
+          } catch { /* ignore poll errors */ }
         }, 4000);
       } catch {
         setError("Erro de conexão. Tente novamente.");
@@ -250,7 +310,6 @@ function PixModal({ onClose, amount }: { onClose: () => void; amount: number }) 
       <div className="relative bg-[#0d1117] border border-white/10 rounded-2xl p-6 w-full max-w-sm max-h-[90vh] overflow-y-auto">
         <button onClick={onClose} className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-xl bg-white/5 hover:bg-white/10 text-white/40 hover:text-white transition-all z-10">✕</button>
 
-        {/* Header */}
         <div className="flex items-center gap-3 mb-5">
           <div className="w-12 h-12 rounded-2xl bg-emerald-500/20 flex items-center justify-center text-2xl shrink-0">⚡</div>
           <div>
@@ -259,7 +318,6 @@ function PixModal({ onClose, amount }: { onClose: () => void; amount: number }) 
           </div>
         </div>
 
-        {/* Loading */}
         {loading && (
           <div className="flex flex-col items-center gap-3 py-10">
             <div className="w-10 h-10 border-2 border-emerald-400/30 border-t-emerald-400 rounded-full animate-spin" />
@@ -267,7 +325,6 @@ function PixModal({ onClose, amount }: { onClose: () => void; amount: number }) 
           </div>
         )}
 
-        {/* Error */}
         {!loading && error && (
           <div className="space-y-3">
             <p className="text-rose-400 text-sm text-center">{error}</p>
@@ -278,7 +335,6 @@ function PixModal({ onClose, amount }: { onClose: () => void; amount: number }) 
           </div>
         )}
 
-        {/* Paid! */}
         {paid && (
           <div className="flex flex-col items-center gap-4 py-6">
             <div className="w-16 h-16 rounded-full bg-emerald-500/20 flex items-center justify-center text-4xl">✅</div>
@@ -293,10 +349,8 @@ function PixModal({ onClose, amount }: { onClose: () => void; amount: number }) 
           </div>
         )}
 
-        {/* QR Code */}
         {!loading && !error && !paid && charge && (
           <div className="space-y-4">
-            {/* Amount */}
             <div className="grid grid-cols-2 gap-2 text-center">
               <div className="p-3 bg-white/3 border border-white/8 rounded-xl">
                 <div className="text-[9px] text-white/30 uppercase tracking-wider mb-1">Você paga</div>
@@ -308,7 +362,6 @@ function PixModal({ onClose, amount }: { onClose: () => void; amount: number }) 
               </div>
             </div>
 
-            {/* QR Code image */}
             {charge.brCodeBase64 && (
               <div className="flex justify-center">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -320,13 +373,11 @@ function PixModal({ onClose, amount }: { onClose: () => void; amount: number }) 
               </div>
             )}
 
-            {/* Waiting indicator */}
             <div className="flex items-center justify-center gap-2 text-white/30 text-[10px]">
               <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse" />
               Aguardando pagamento…
             </div>
 
-            {/* Copia e cola */}
             <div className="space-y-1">
               <div className="text-[9px] text-white/30 uppercase tracking-wider">PIX Copia e Cola</div>
               <div className="flex items-center gap-2 p-3 bg-white/5 border border-white/10 rounded-xl">
@@ -351,16 +402,23 @@ function PixModal({ onClose, amount }: { onClose: () => void; amount: number }) 
 }
 
 // ─── Card Modal ────────────────────────────────────────────────────────────────
-function CardModal({ onClose, amount }: { onClose: () => void; amount: number }) {
+function CardModal({ onClose, amount, isBR }: { onClose: () => void; amount: number; isBR: boolean }) {
   const [loading, setLoading] = useState(false);
   const [error, setError]     = useState("");
+
+  const prefix      = isBR ? "R$" : "$";
+  const amountBRL   = isBR ? amount : null;
+  const amountUSD   = isBR ? (amount / BRL_RATE).toFixed(2) : amount;
 
   async function handle() {
     setLoading(true); setError("");
     try {
       const res  = await fetch("/api/stripe/create-checkout", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ amount, method: "card" }),
+        body: JSON.stringify({
+          amount,
+          currency: isBR ? "brl" : "usd",
+        }),
       });
       const data = await res.json();
       if (data.url) window.location.href = data.url;
@@ -384,22 +442,40 @@ function CardModal({ onClose, amount }: { onClose: () => void; amount: number })
             </svg>
           </div>
           <div>
-            <div className="text-white font-bold">Cartão de Crédito / Débito</div>
-            <div className="text-[10px] text-white/30">Visa · Mastercard · Elo</div>
+            <div className="text-white font-bold">Cartão / Apple Pay</div>
+            <div className="text-[10px] text-white/30">Visa · Mastercard · Elo · 🍎 Apple Pay</div>
           </div>
         </div>
-        <div className="mb-4 p-3 bg-white/3 border border-white/8 rounded-xl text-center">
-          <div className="text-[9px] text-white/30 uppercase tracking-wider mb-1">Valor</div>
-          <div className="text-2xl font-black text-white">${amount}</div>
-        </div>
+
+        {/* Amount display */}
+        {isBR ? (
+          <div className="mb-4 grid grid-cols-2 gap-2">
+            <div className="p-3 bg-white/3 border border-white/8 rounded-xl text-center">
+              <div className="text-[9px] text-white/30 uppercase tracking-wider mb-1">Você paga</div>
+              <div className="text-xl font-black text-white">R$ {amountBRL}</div>
+            </div>
+            <div className="p-3 bg-white/3 border border-white/8 rounded-xl text-center">
+              <div className="text-[9px] text-white/30 uppercase tracking-wider mb-1">Você recebe</div>
+              <div className="text-xl font-black text-emerald-400">${amountUSD}</div>
+            </div>
+          </div>
+        ) : (
+          <div className="mb-4 p-3 bg-white/3 border border-white/8 rounded-xl text-center">
+            <div className="text-[9px] text-white/30 uppercase tracking-wider mb-1">Valor</div>
+            <div className="text-2xl font-black text-white">{prefix}{amount}</div>
+          </div>
+        )}
+
         {error && <p className="text-rose-400 text-xs mb-3">{error}</p>}
         <button onClick={handle} disabled={loading}
           className="flex items-center justify-center gap-2 w-full py-3.5 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white font-bold rounded-xl text-sm transition-all disabled:opacity-40">
           {loading
             ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-            : <>💳 Pagar com Cartão — ${amount}</>}
+            : <>💳 Pagar — {prefix}{amount}</>}
         </button>
-        <p className="text-center text-[9px] text-white/20 mt-3">Processado via Stripe · 3D Secure</p>
+        <p className="text-center text-[9px] text-white/20 mt-3">
+          Processado via Stripe · 3D Secure · Apple Pay disponível no checkout
+        </p>
       </div>
     </div>
   );
@@ -410,10 +486,10 @@ export default function DepositPage() {
   const { status } = useSession();
   const router     = useRouter();
 
-  const [step,  setStep]  = useState<"amount" | "method">("amount");
+  const [step,   setStep]   = useState<"amount" | "method">("amount");
   const [amount, setAmount] = useState(100);
-  const [modal,  setModal] = useState<"pix" | "card" | null>(null);
-  const [isBR,   setIsBR]  = useState(false);
+  const [modal,  setModal]  = useState<"pix" | "card" | null>(null);
+  const [isBR,   setIsBR]   = useState(false);
 
   useEffect(() => { setIsBR(isBrazilianUser()); }, []);
   useEffect(() => { if (status === "unauthenticated") router.push("/login"); }, [status, router]);
@@ -428,8 +504,8 @@ export default function DepositPage() {
 
   return (
     <div className="min-h-screen bg-[#050509] text-white">
-      {modal === "pix"  && <PixModal  amount={amount} onClose={() => setModal(null)} />}
-      {modal === "card" && <CardModal amount={amount} onClose={() => setModal(null)} />}
+      {modal === "pix"  && <PixModal  amount={amount} isBR={isBR} onClose={() => setModal(null)} />}
+      {modal === "card" && <CardModal amount={amount} isBR={isBR} onClose={() => setModal(null)} />}
 
       {/* Header */}
       <header className="h-16 bg-[#0a0c14] border-b border-white/5 flex items-center px-6 gap-4 sticky top-0 z-10">
@@ -447,7 +523,6 @@ export default function DepositPage() {
             <span className="text-white">Prime</span><span className="text-amber-400"> Broker</span>
           </span>
         </div>
-        {/* Step indicator */}
         <div className="ml-auto flex items-center gap-1">
           {[1, 2].map(n => {
             const current = step === "amount" ? 1 : 2;
@@ -469,7 +544,7 @@ export default function DepositPage() {
 
       <div className="max-w-lg mx-auto px-4 py-8">
         {step === "amount" && (
-          <AmountStep onNext={v => { setAmount(v); setStep("method"); }} />
+          <AmountStep isBR={isBR} onNext={v => { setAmount(v); setStep("method"); }} />
         )}
         {step === "method" && (
           <MethodStep

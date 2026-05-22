@@ -24,26 +24,37 @@ export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => null);
   if (!body) return NextResponse.json({ error: "Body inválido" }, { status: 400 });
 
-  const amountUsd = Number(body.amount);
-  if (!amountUsd || amountUsd < 10 || amountUsd > 50_000)
-    return NextResponse.json({ error: "Valor inválido (min $10)" }, { status: 400 });
+  // Accept either amountUsd (USD input) or amountBrl (BRL input from BR users)
+  let amountUsd: number;
+  let amountBrl: number;
 
-  // Convert USD → BRL cents
-  const amountBrl      = amountUsd * BRL_RATE();
-  const amountCents    = Math.round(amountBrl * 100);
-  const externalId     = `${session.user.id}_${Date.now()}`;
-  const baseUrl        = process.env.NEXTAUTH_URL ?? "http://localhost:3000";
+  if (body.amountBrl) {
+    amountBrl = Number(body.amountBrl);
+    if (!amountBrl || amountBrl < 50 || amountBrl > 250_000)
+      return NextResponse.json({ error: "Valor inválido (min R$50)" }, { status: 400 });
+    amountUsd = Math.round((amountBrl / BRL_RATE()) * 100) / 100;
+  } else {
+    amountUsd = Number(body.amount);
+    if (!amountUsd || amountUsd < 10 || amountUsd > 50_000)
+      return NextResponse.json({ error: "Valor inválido (min $10)" }, { status: 400 });
+    amountBrl = amountUsd * BRL_RATE();
+  }
 
+  const amountCents = Math.round(amountBrl * 100);
+  const externalId  = `${session.user.id}_${Date.now()}`;
+  const baseUrl     = process.env.NEXTAUTH_URL ?? "http://localhost:3000";
+
+  // externalId must go inside metadata — it is NOT a valid top-level field
   const payload = {
     method: "PIX",
     data: {
       amount:      amountCents,
-      description: `Depósito Prime Broker — $${amountUsd}`,
-      externalId,
-      expiresIn:   3600, // 1 hour
+      description: `Depósito Prime Broker — $${amountUsd.toFixed(2)}`,
+      expiresIn:   3600,
       metadata: {
-        userId:    session.user.id,
-        amountUsd: String(amountUsd),
+        userId:     session.user.id,
+        amountUsd:  String(amountUsd),
+        externalId,
       },
     },
   };
@@ -60,16 +71,22 @@ export async function POST(req: NextRequest) {
   const data = await res.json();
 
   if (!res.ok || !data.success) {
-    console.error("[AbacatePay] Create error:", data);
+    console.error("[AbacatePay] Create error:", JSON.stringify(data));
     return NextResponse.json({ error: "Erro ao gerar PIX" }, { status: 502 });
   }
 
   const charge = data.data;
 
+  // Ensure brCodeBase64 is a usable data URL
+  const rawB64 = charge.brCodeBase64 ?? "";
+  const brCodeBase64 = rawB64.startsWith("data:")
+    ? rawB64
+    : rawB64 ? `data:image/png;base64,${rawB64}` : "";
+
   return NextResponse.json({
     id:            charge.id,
-    brCode:        charge.brCode,        // PIX copia-e-cola
-    brCodeBase64:  charge.brCodeBase64,  // QR code image (base64 PNG)
+    brCode:        charge.brCode,
+    brCodeBase64,
     amountBrl:     amountBrl.toFixed(2),
     amountUsd,
     expiresAt:     charge.expiresAt,

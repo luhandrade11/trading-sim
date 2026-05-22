@@ -24,7 +24,11 @@ export async function POST(req: NextRequest) {
   if (event.type === "checkout.session.completed") {
     const session = event.data.object as import("stripe").Stripe.Checkout.Session;
     const userId  = session.metadata?.userId;
-    const amount  = Number(session.metadata?.amount);
+
+    // Always read amountUsd — works for both USD charges and BRL charges
+    // (BRL charges store amountUsd separately so we credit the correct USD value)
+    const amount = Number(session.metadata?.amountUsd ?? session.metadata?.amount);
+
     if (!userId || !amount || amount <= 0) return NextResponse.json({ received: true });
 
     // Idempotency: skip if already processed
@@ -32,15 +36,12 @@ export async function POST(req: NextRequest) {
     if (already) return NextResponse.json({ received: true });
 
     await prisma.$transaction(async (tx) => {
-      // Credit real balance (not demo balance)
       await tx.user.update({ where: { id: userId }, data: { realBalance: { increment: amount } } });
 
-      // Log for idempotency
       await tx.depositLog.create({
         data: { userId, externalId: event.id, amount, currency: "usd", provider: "stripe", status: "completed" },
       });
 
-      // Affiliate commission: 10% to referrer
       const user = await tx.user.findUnique({ where: { id: userId }, select: { referredBy: true } });
       if (user?.referredBy) {
         const commission = Math.round(amount * AFFILIATE_RATE * 100) / 100;

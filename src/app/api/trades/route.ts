@@ -54,7 +54,7 @@ export async function POST(req: NextRequest) {
   if (!VALID_DURATIONS.includes(duration))
     return NextResponse.json({ error: "Duração inválida" }, { status: 400 });
   if (typeof amount !== "number" || amount < MIN_TRADE_AMOUNT || amount > MAX_TRADE_AMOUNT)
-    return NextResponse.json({ error: `Valor deve ser entre $${MIN_TRADE_AMOUNT} e $${MAX_TRADE_AMOUNT}` }, { status: 400 });
+    return NextResponse.json({ error: `Valor deve ser entre ${MIN_TRADE_AMOUNT} e ${MAX_TRADE_AMOUNT}` }, { status: 400 });
 
   // Use server-side price: live cache → hardcoded fallback. Never trust client.
   const entryPrice = getPrice(asset);

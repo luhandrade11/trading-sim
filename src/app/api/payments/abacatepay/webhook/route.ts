@@ -72,12 +72,31 @@ export async function POST(req: NextRequest) {
   }).catch(() => null);
   if (existing) return NextResponse.json({ ok: true });
 
+  // Fetch settings for first deposit bonus
+  const settingRow = await prisma.adminSettings.findUnique({ where: { key: "firstDepositBonusPct" } }).catch(() => null);
+  const firstDepositBonusPct = settingRow ? Number(settingRow.value) : 50;
+
   await prisma.$transaction(async (tx) => {
-    // Credit real balance
+    const user = await tx.user.findUnique({
+      where:  { id: userId },
+      select: { referredBy: true, firstDepositDone: true },
+    });
+
+    // Credit real balance + first deposit bonus if applicable
+    const isFirst = user && !user.firstDepositDone;
+    const bonus   = isFirst && firstDepositBonusPct > 0 ? Math.round(amountUsd * (firstDepositBonusPct / 100) * 100) / 100 : 0;
+    const totalCredit = amountUsd + bonus;
+
     await tx.user.update({
       where: { id: userId },
-      data:  { realBalance: { increment: amountUsd } },
+      data: isFirst
+        ? { realBalance: { increment: totalCredit }, firstDepositDone: true, totalDeposited: { increment: amountUsd } }
+        : { realBalance: { increment: amountUsd }, totalDeposited: { increment: amountUsd } },
     });
+
+    if (bonus > 0) {
+      console.log(`[AbacatePay] First deposit bonus: $${bonus} for user ${userId}`);
+    }
 
     // Idempotency log
     await tx.depositLog.create({
@@ -92,10 +111,6 @@ export async function POST(req: NextRequest) {
     });
 
     // Affiliate commission
-    const user = await tx.user.findUnique({
-      where:  { id: userId },
-      select: { referredBy: true },
-    });
     if (user?.referredBy) {
       const commission = Math.round(amountUsd * AFFILIATE_RATE * 100) / 100;
       await tx.user.update({

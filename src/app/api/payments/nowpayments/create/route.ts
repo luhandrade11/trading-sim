@@ -67,14 +67,21 @@ export async function POST(req: NextRequest) {
     is_fee_paid_by_user: false,
   };
 
-  const res = await fetch(`${NOWPAYMENTS_API}/payment`, {
-    method: "POST",
-    headers: {
-      "x-api-key": process.env.NOWPAYMENTS_API_KEY,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(payload),
-  });
+  const ac  = new AbortController();
+  const tid = setTimeout(() => ac.abort(), 10_000);
+  let res: Response;
+  try {
+    res = await fetch(`${NOWPAYMENTS_API}/payment`, {
+      method: "POST",
+      headers: { "x-api-key": process.env.NOWPAYMENTS_API_KEY, "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+      signal: ac.signal,
+    });
+  } catch {
+    clearTimeout(tid);
+    return NextResponse.json({ error: "Pagamento cripto indisponível (timeout)" }, { status: 502 });
+  }
+  clearTimeout(tid);
 
   const data = await res.json();
 

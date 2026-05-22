@@ -1,3 +1,12 @@
+export function getUserLevel(totalDeposited: number): {
+  level: number; name: string; color: string; nextAt: number | null; payoutRate: number;
+} {
+  if (totalDeposited >= 2000) return { level: 4, name: "VIP",    color: "#f59e0b", nextAt: null, payoutRate: 0.91 };
+  if (totalDeposited >= 500)  return { level: 3, name: "Ouro",   color: "#eab308", nextAt: 2000, payoutRate: 0.89 };
+  if (totalDeposited >= 100)  return { level: 2, name: "Prata",  color: "#94a3b8", nextAt: 500,  payoutRate: 0.87 };
+  return                             { level: 1, name: "Bronze", color: "#b45309", nextAt: 100,  payoutRate: 0.85 };
+}
+
 export function formatPrice(price: number, asset: string): string {
   if (!price) return "—";
   // JPY pairs: 3 decimal places

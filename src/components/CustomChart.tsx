@@ -64,7 +64,7 @@ interface Props {
   globalRealRate?:    number | null;   // admin global real win rate override
   globalDemoRate?:    number | null;   // admin global demo win rate override
   onPriceUpdate?:     (p: number) => void;
-  onSettleTrade?:     (id: string, won: boolean) => void;
+  onSettleTrade?:     (id: string, won: boolean, exitPrice: number) => void;
   onWinStatesChange?: (s: Record<string, boolean>) => void;
   onOhlcChange?:      (o: OhlcData | null) => void;
 }
@@ -340,7 +340,7 @@ export default function CustomChart({
         const expMs = new Date(trade.expiresAt).getTime();
         if (nowMs >= expMs && !settledRef.current.has(trade.id)) {
           settledRef.current.add(trade.id);
-          onSettleRef.current?.(trade.id, isWin);
+          onSettleRef.current?.(trade.id, isWin, next);
         }
       }
       onWinRef.current?.(winStates);
@@ -571,10 +571,28 @@ export default function CustomChart({
         const cRed    = "239,68,68";
         const rgb     = isWin ? cGreen : cRed;
 
-        const yE = toY(entry);
+        const yE   = toY(entry);
+        const yCur = toY(cur);
+
+        // ── P&L zone: filled area between entry line and current price ─────
+        // This makes it instantly obvious if the trade is winning or losing.
+        const zoneTop    = Math.min(yE, yCur);
+        const zoneBottom = Math.max(yE, yCur);
+        if (zoneBottom - zoneTop > 1) {
+          const zoneGrad = ctx.createLinearGradient(0, zoneTop, 0, zoneBottom);
+          if (isWin) {
+            zoneGrad.addColorStop(0, "rgba(16,185,129,0.18)");
+            zoneGrad.addColorStop(1, "rgba(16,185,129,0.04)");
+          } else {
+            zoneGrad.addColorStop(0, "rgba(239,68,68,0.04)");
+            zoneGrad.addColorStop(1, "rgba(239,68,68,0.18)");
+          }
+          ctx.fillStyle = zoneGrad;
+          ctx.fillRect(0, zoneTop, W, zoneBottom - zoneTop);
+        }
 
         // ── Full-width horizontal entry price line ─────────────────────────
-        ctx.strokeStyle = `${cSolid}0.5)`; ctx.lineWidth = 1.5; ctx.setLineDash([7, 5]);
+        ctx.strokeStyle = `${cSolid}0.7)`; ctx.lineWidth = 2; ctx.setLineDash([7, 5]);
         ctx.beginPath(); ctx.moveTo(0, yE); ctx.lineTo(W, yE); ctx.stroke();
         ctx.setLineDash([]);
 
@@ -607,17 +625,26 @@ export default function CustomChart({
         }
 
         // ── Entry price badge on the right edge ───────────────────────────
-        const badgeTxt = `${trade.direction === "UP" ? "▲" : "▼"} ${entry.toFixed(dec)}`;
+        const arrow    = trade.direction === "UP" ? "▲" : "▼";
+        const stateStr = isWin ? "✓" : "✗";
+        const badgeTxt = `${arrow} ${entry.toFixed(dec)}`;
         ctx.font = "bold 10px monospace";
-        const bw = ctx.measureText(badgeTxt).width + 10;
+        const bw = ctx.measureText(badgeTxt).width + 28; // extra for state icon
         const bx = W - bw - 4;
-        ctx.fillStyle = `${cSolid}0.9)`;
+        // Badge background
+        ctx.fillStyle = `${cSolid}0.92)`;
         ctx.beginPath();
-        if (ctx.roundRect) ctx.roundRect(bx, yE - 9, bw, 16, 3);
-        else ctx.rect(bx, yE - 9, bw, 16);
+        if (ctx.roundRect) ctx.roundRect(bx, yE - 9, bw, 17, 4);
+        else ctx.rect(bx, yE - 9, bw, 17);
         ctx.fill();
-        ctx.fillStyle = "#fff"; ctx.textAlign = "left";
-        ctx.fillText(badgeTxt, bx + 5, yE + 2);
+        // Win/loss state icon on left side of badge
+        ctx.font = "bold 11px monospace";
+        ctx.fillStyle = "#fff";
+        ctx.textAlign = "left";
+        ctx.fillText(stateStr, bx + 5, yE + 2);
+        // Price + direction text
+        ctx.font = "bold 10px monospace";
+        ctx.fillText(badgeTxt, bx + 18, yE + 2);
 
         // ── Expiry vertical line ──────────────────────────────────────────
         const exMs = new Date(trade.expiresAt).getTime();

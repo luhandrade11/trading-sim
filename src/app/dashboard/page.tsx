@@ -9,6 +9,10 @@ import TradeHistory from "@/components/TradeHistory";
 import PositionsTable from "@/components/PositionsTable";
 import ConfirmModal from "@/components/ConfirmModal";
 import AssetPicker from "@/components/AssetPicker";
+import PostWinPopup from "@/components/PostWinPopup";
+import OnboardingWizard from "@/components/OnboardingWizard";
+import DailyMissions from "@/components/DailyMissions";
+import SignalsChat from "@/components/SignalsChat";
 import type { TradeAnnotation, Timeframe, ChartMode, DrawTool } from "@/components/CustomChart";
 import { PAYOUT_RATE, ALL_ASSETS, DEFAULT_TABS, DURATIONS, getSpread } from "@/lib/constants";
 import { computeStats, formatPrice } from "@/lib/utils";
@@ -24,7 +28,7 @@ const CustomChart = dynamic(() => import("@/components/CustomChart"), {
   ),
 });
 
-type ActivePanel = "history" | "ranking" | "analysis" | "promo" | "support" | "profile" | "withdrawal" | "affiliate" | null;
+type ActivePanel = "history" | "ranking" | "analysis" | "promo" | "support" | "profile" | "withdrawal" | "affiliate" | "missions" | null;
 interface PriceData { price: number; change24h: number }
 interface Notification { msg: string; type: "win" | "loss" | "error"; key: number }
 interface OhlcData { open: number; high: number; low: number; close: number }
@@ -110,6 +114,8 @@ const IcoSupport  = () => <svg className="w-5 h-5" fill="none" stroke="currentCo
 const IcoDeposit  = () => <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>;
 const IcoCash      = () => <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/></svg>;
 const IcoAffiliate = () => <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/></svg>;
+const IcoMissions  = () => <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>;
+const IcoSignals   = () => <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>;
 
 // ─── NavItem ────────────────────────────────────────────────────────────────
 
@@ -996,7 +1002,8 @@ function DepositSuccessHandler({ onSuccess, onVerified }: { onSuccess: () => voi
 export default function DashboardPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
-  const { t, getLocaleConfig } = useI18n();
+  const { t, getLocaleConfig, getLocale } = useI18n();
+  const locale = getLocale();
 
   const [openAssets,       setOpenAssets]       = useState<string[]>(DEFAULT_TABS);
   const [selectedAsset,    setSelectedAsset]    = useState<string>(DEFAULT_TABS[0]);
@@ -1039,9 +1046,14 @@ export default function DashboardPage() {
   const [drawToolsOpen,      setDrawToolsOpen]      = useState(false);
   const [clearTrigger,       setClearTrigger]       = useState(0);
   const [lastDemoReset,      setLastDemoReset]      = useState<string | null>(null);
-  // Preço do sim capturado no momento exato do clique (antes da latência da API)
-  const latestSimPriceRef    = useRef<number>(0);
+  const [showPostWinPopup,   setShowPostWinPopup]   = useState(false);
+  const [postWinData,        setPostWinData]        = useState<{ profit: number; asset: string } | null>(null);
+  const [onboardingDone,     setOnboardingDone]     = useState<boolean | null>(null);
+  const [signalsChatOpen,    setSignalsChatOpen]    = useState(false);
+  const pushSubscribedRef    = useRef(false);
   const simEntryOverrideRef  = useRef<Map<string, number>>(new Map());
+  // Tracks the VISUAL chart price in real-time so we can capture it at click
+  const latestChartPriceRef  = useRef<number>(0);
   const chartLoadTimerRef  = useRef<ReturnType<typeof setTimeout> | null>(null);
   const prevAssetRef       = useRef<string>("");
 
@@ -1205,6 +1217,7 @@ export default function DashboardPage() {
         setWinRateOverride(u.winRateOverride ?? null);
         setGlobalDemoRate(u.globalDemoRate ?? null);
         setGlobalRealRate(u.globalRealRate ?? null);
+        if (typeof u.onboardingDone === "boolean") setOnboardingDone(u.onboardingDone);
         // Show deposit CTA once (demo mode only)
         if (u.balance !== null && u.balance >= 9900) {
           const ctaDismissed = localStorage.getItem("pb-deposit-cta-dismissed");
@@ -1243,14 +1256,61 @@ export default function DashboardPage() {
     return () => { clearInterval(p); clearInterval(d); };
   }, [status, fetchPrices, fetchUser, fetchTrades]);
 
-  const handleSettle = useCallback(async (id: string, exitPrice: number, wonOverride?: boolean) => {
+  // Request PWA push permission once after login
+  useEffect(() => {
+    if (status !== "authenticated" || pushSubscribedRef.current) return;
+    if (!("Notification" in window) || !("serviceWorker" in navigator)) return;
+    if (Notification.permission === "granted") {
+      pushSubscribedRef.current = true;
+      // Attempt to subscribe silently if already granted
+      navigator.serviceWorker.ready.then(async (reg) => {
+        try {
+          const sub = await reg.pushManager.getSubscription();
+          if (sub) {
+            const json = sub.toJSON() as { endpoint?: string; keys?: { p256dh?: string; auth?: string } };
+            if (json.endpoint && json.keys?.p256dh && json.keys?.auth) {
+              fetch("/api/push/subscribe", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ endpoint: json.endpoint, p256dh: json.keys.p256dh, auth: json.keys.auth }) }).catch(() => {});
+            }
+          }
+        } catch {}
+      }).catch(() => {});
+      return;
+    }
+    if (Notification.permission !== "default") return;
+    // Request permission after a short delay to not be immediately intrusive
+    const t = setTimeout(async () => {
+      try {
+        const perm = await Notification.requestPermission();
+        if (perm === "granted") {
+          pushSubscribedRef.current = true;
+          const reg = await navigator.serviceWorker.ready;
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: null as any });
+          if (sub) {
+            const json = sub.toJSON() as { endpoint?: string; keys?: { p256dh?: string; auth?: string } };
+            if (json.endpoint && json.keys?.p256dh && json.keys?.auth) {
+              fetch("/api/push/subscribe", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ endpoint: json.endpoint, p256dh: json.keys.p256dh, auth: json.keys.auth }) }).catch(() => {});
+            }
+          }
+        }
+      } catch {}
+    }, 5000);
+    return () => clearTimeout(t);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [status]);
+
+  const handleSettle = useCallback(async (id: string, exitPrice: number, wonOverride?: boolean, simEntryPrice?: number) => {
     if (settlingRef.current.has(id)) return;
     settlingRef.current.add(id);
     try {
       const won = wonOverride !== undefined ? wonOverride : tradeWinStatesRef.current[id];
       const res = await fetch(`/api/trades/${id}/settle`, {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ exitPrice, ...(won !== undefined && { won }) }),
+        body: JSON.stringify({
+          exitPrice,
+          ...(won !== undefined && { won }),
+          ...(simEntryPrice !== undefined && { simEntryPrice }),
+        }),
       });
       if (res.ok) {
         const settled = await res.json();
@@ -1260,6 +1320,13 @@ export default function DashboardPage() {
         const isWin = settled.result === "WIN";
         setResultKey((k) => k + 1);
         setTradeResult({ profit: isWin ? settled.profit : settled.amount, isWin, asset: settled.asset, amount: settled.amount });
+        // Show PostWinPopup for real account wins
+        if (isWin && accountMode === "real") {
+          setTimeout(() => {
+            setPostWinData({ profit: settled.profit, asset: settled.asset });
+            setShowPostWinPopup(true);
+          }, 500);
+        }
         showNotif(
           isWin
             ? `${t("win_notif")} +${formatCurrency(settled.profit)} em ${settled.asset}`
@@ -1270,13 +1337,13 @@ export default function DashboardPage() {
     } catch { showNotif(t("conn_error"), "error"); }
   }, [fetchUser, showNotif, t]);
 
-  // Chamado pelo TradingChart no momento exato da expiração com o resultado baseado
-  // nos pontos do array do gráfico. Tem prioridade sobre o CountdownBadge (que aguarda 1.5s).
-  const handleChartSettle = useCallback((id: string, won: boolean) => {
-    const trade     = trades.find((tr) => tr.id === id);
-    const exitPrice = (trade && prices[trade.asset]?.price) || 1;
-    console.log(`[CHART-SETTLE-DASHBOARD] id=${id.slice(-6)} won=${won} exitPrice=${exitPrice} tradeFound=${!!trade}`);
-    handleSettle(id, exitPrice, won);
+  // Called by CustomChart at the exact expiry tick with the chart-engine outcome.
+  // Both prices come from the simulated chart so win/loss matches what the user sees.
+  const handleChartSettle = useCallback((id: string, won: boolean, simExitPrice?: number) => {
+    const trade        = trades.find((tr) => tr.id === id);
+    const exitPrice    = simExitPrice ?? (trade && prices[trade.asset]?.price) ?? 1;
+    const simEntryPrice = simEntryOverrideRef.current.get(id);
+    handleSettle(id, exitPrice, won, simEntryPrice);
   }, [trades, prices, handleSettle]);
 
   async function placeTrade(direction: "UP" | "DOWN") {
@@ -1284,7 +1351,9 @@ export default function DashboardPage() {
     if (activeBalance === null) { showNotif(t("loading"), "error"); return; }
     if (amount > activeBalance)  { showNotif(t("insufficient"), "error"); return; }
     if (amount < 1)              { showNotif(t("min_amount"), "error"); return; }
-    const simPriceAtClick = latestSimPriceRef.current || currentPrice;
+    // Capture the VISUAL chart price at the exact moment of click — this is
+    // the reference used for win/loss. Both entry and exit come from the chart.
+    const chartPriceAtClick = latestChartPriceRef.current || currentPrice;
     setPlacing(true);
     try {
       const res = await fetch("/api/trades", {
@@ -1293,7 +1362,8 @@ export default function DashboardPage() {
       });
       if (res.ok) {
         const trade = await res.json();
-        simEntryOverrideRef.current.set(trade.id, simPriceAtClick);
+        // Use the chart's visual price at click (NOT the server's API price)
+        simEntryOverrideRef.current.set(trade.id, chartPriceAtClick);
         setTrades((prev) => [trade, ...prev]);
         if (accountMode === "real") setRealBalance((b) => b !== null ? b - amount : null);
         else setBalance((b) => b !== null ? b - amount : null);
@@ -1565,6 +1635,32 @@ export default function DashboardPage() {
           onAdd={addAsset} onRemove={removeAsset} onClose={() => setShowAssetPicker(false)} />
       )}
 
+      {/* Onboarding wizard */}
+      {onboardingDone === false && (
+        <OnboardingWizard
+          locale={locale}
+          onComplete={() => setOnboardingDone(true)}
+        />
+      )}
+
+      {/* Post-win popup (real trades only) */}
+      {showPostWinPopup && postWinData && (
+        <PostWinPopup
+          profit={postWinData.profit}
+          asset={postWinData.asset}
+          locale={locale}
+          onDeposit={() => { setShowPostWinPopup(false); router.push("/dashboard/deposit"); }}
+          onClose={() => setShowPostWinPopup(false)}
+        />
+      )}
+
+      {/* Signals chat panel */}
+      <SignalsChat
+        locale={locale}
+        isOpen={signalsChatOpen}
+        onClose={() => setSignalsChatOpen(false)}
+      />
+
       {/* Hidden settlement */}
       <div className="sr-only" aria-hidden>
         <ActiveTrades trades={activeTrades} currentPrices={prices} onSettle={handleSettle} loading={false} winStates={tradeWinStates} />
@@ -1749,6 +1845,8 @@ export default function DashboardPage() {
           <NavItem icon={<IcoStats />}      label={t("analysis")}   active={activePanel === "analysis"}   onClick={() => togglePanel("analysis")} />
           <NavItem icon={<IcoAffiliate />}  label={t("affiliate")}  active={activePanel === "affiliate"}  onClick={() => togglePanel("affiliate")} />
           <NavItem icon={<IcoSupport />}    label={t("support")}    active={activePanel === "support"}    onClick={() => togglePanel("support")} />
+          <NavItem icon={<IcoMissions />} label="Missões" active={activePanel === "missions"} onClick={() => togglePanel("missions")} />
+          <NavItem icon={<IcoSignals />}  label="Sinais"  active={signalsChatOpen}             onClick={() => setSignalsChatOpen(o => !o)} />
           {isReal && <NavItem icon={<IcoDeposit />} label={t("deposit")} onClick={() => router.push("/dashboard/deposit")} />}
           <div className="mt-auto flex flex-col gap-0 w-full">
             {isReal && <NavItem icon={<IcoCash />} label={t("withdrawal")} active={activePanel === "withdrawal"} onClick={() => togglePanel("withdrawal")} />}
@@ -1858,6 +1956,17 @@ export default function DashboardPage() {
                 {activePanel === "support"    && <SupportPanel    onClose={() => setActivePanel(null)} />}
                 {activePanel === "profile"    && <ProfilePanel    session={session} balance={balance} trades={trades} onClose={() => setActivePanel(null)} onPhotoUpdate={setUserImage} />}
                 {activePanel === "withdrawal" && <WithdrawalPanel balance={balance} onClose={() => setActivePanel(null)} />}
+                {activePanel === "missions"   && (
+                  <PanelWrap title="Missões de Hoje" onClose={() => setActivePanel(null)}>
+                    <DailyMissions
+                      locale={locale}
+                      onRewardClaimed={(reward) => {
+                        setBalance(b => b !== null ? b + reward : b);
+                        showNotif(`🎯 Missão completa! +${formatCurrency(reward)}`, "win");
+                      }}
+                    />
+                  </PanelWrap>
+                )}
               </>
             )}
 
@@ -1883,10 +1992,10 @@ export default function DashboardPage() {
               winRateOverride={winRateOverride}
               globalDemoRate={globalDemoRate}
               globalRealRate={globalRealRate}
+              onPriceUpdate={(p) => { latestChartPriceRef.current = p; }}
               onOhlcChange={setOhlc}
               onWinStatesChange={(s) => { tradeWinStatesRef.current = s; setTradeWinStates(s); }}
               onSettleTrade={handleChartSettle}
-              onPriceUpdate={(p) => { latestSimPriceRef.current = p; }}
             />
 
             {/* Chart loading overlay (3 s) */}
@@ -2115,6 +2224,17 @@ export default function DashboardPage() {
           {activePanel === "support"    && <SupportPanel    onClose={() => setActivePanel(null)} />}
           {activePanel === "profile"    && <ProfilePanel    session={session} balance={balance} trades={trades} onClose={() => setActivePanel(null)} onPhotoUpdate={setUserImage} />}
           {activePanel === "withdrawal" && <WithdrawalPanel balance={balance} onClose={() => setActivePanel(null)} />}
+          {activePanel === "missions"   && (
+            <PanelWrap title="Missões de Hoje" onClose={() => setActivePanel(null)}>
+              <DailyMissions
+                locale={locale}
+                onRewardClaimed={(reward) => {
+                  setBalance(b => b !== null ? b + reward : b);
+                  showNotif(`🎯 Missão completa! +${formatCurrency(reward)}`, "win");
+                }}
+              />
+            </PanelWrap>
+          )}
         </div>
       )}
     </div>

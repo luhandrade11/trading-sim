@@ -41,6 +41,11 @@ export default function RootLayout({
       <head>
         {/* Prevents theme flash on load */}
         <script dangerouslySetInnerHTML={{ __html: `(function(){var t=localStorage.getItem('pb-theme');if(t==='light')document.documentElement.dataset.theme='light';})();` }} />
+        {/* PWA */}
+        <link rel="manifest" href="/manifest.json" />
+        <meta name="theme-color" content="#050509" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <script dangerouslySetInnerHTML={{ __html: `if('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js');` }} />
       </head>
       <body className="min-h-full bg-[var(--bg-base)] text-[var(--fg-main)] flex flex-col">
         <SessionProvider>{children}</SessionProvider>

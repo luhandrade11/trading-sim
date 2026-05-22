@@ -21,7 +21,9 @@ export async function POST(
   const body = await req.json().catch(() => null);
   if (!body) return NextResponse.json({ error: "Body inválido" }, { status: 400 });
 
-  const { exitPrice } = body;
+  // `simEntryPrice` = visual chart price when user clicked (may differ from trade.entryPrice)
+  // `clientWon`     = outcome determined by the manipulation engine in the chart
+  const { exitPrice, simEntryPrice, won: clientWon } = body;
   if (typeof exitPrice !== "number" || exitPrice <= 0)
     return NextResponse.json({ error: "Preço de saída inválido" }, { status: 400 });
 
@@ -36,14 +38,26 @@ export async function POST(
   if (new Date(trade.expiresAt).getTime() > Date.now() + 10_000)
     return NextResponse.json({ error: "Operação ainda não expirou" }, { status: 400 });
 
-  // Sanity cap
+  // Sanity cap — both exit and (optional) sim entry must be within 2% of stored price
   if (exitPrice > trade.entryPrice * MAX_EXIT_PRICE_MULTIPLIER)
     return NextResponse.json({ error: "Preço de saída suspeito" }, { status: 400 });
 
-  // Always determine outcome server-side from the provided exit price.
+  // Use the visual chart entry price if provided and within ±2% of server entry.
+  // This ensures win/loss matches exactly what the user saw on screen.
+  const refEntry =
+    typeof simEntryPrice === "number" &&
+    simEntryPrice > 0 &&
+    Math.abs(simEntryPrice - trade.entryPrice) / trade.entryPrice <= 0.02
+      ? simEntryPrice
+      : trade.entryPrice;
+
+  // Client sends the chart-engine outcome; accept it when provided.
+  // Fall back to price comparison only when the client doesn't send a result.
   const won =
-    (trade.direction === "UP"   && exitPrice >= trade.entryPrice) ||
-    (trade.direction === "DOWN" && exitPrice <= trade.entryPrice);
+    typeof clientWon === "boolean"
+      ? clientWon
+      : (trade.direction === "UP"   && exitPrice >= refEntry) ||
+        (trade.direction === "DOWN" && exitPrice <= refEntry);
 
   const profit = won ? trade.amount * PAYOUT_RATE : 0;
   const result = won ? "WIN" : "LOSS";

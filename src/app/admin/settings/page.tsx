@@ -3,22 +3,30 @@
 import { useEffect, useState } from "react";
 
 interface Settings {
-  globalDemoRate:  string;
-  globalRealRate:  string;
-  pixGateway:      string;
-  maintenanceMode: string;
-  welcomeBonusDemo: string;
-  welcomeBonusReal: string;
+  globalDemoRate:       string;
+  globalRealRate:       string;
+  pixGateway:           string;
+  maintenanceMode:      string;
+  welcomeBonusDemo:     string;
+  welcomeBonusReal:     string;
+  firstDepositBonusPct: string;
+  cashbackPct:          string;
+  cashbackMinLossUsd:   string;
+  missionRewardUsd:     string;
 }
 
 export default function AdminSettings() {
   const [settings, setSettings] = useState<Settings>({
-    globalDemoRate:   "60",
-    globalRealRate:   "35",
-    pixGateway:       "abacatepay",
-    maintenanceMode:  "false",
-    welcomeBonusDemo: "0",
-    welcomeBonusReal: "0",
+    globalDemoRate:       "60",
+    globalRealRate:       "35",
+    pixGateway:           "abacatepay",
+    maintenanceMode:      "false",
+    welcomeBonusDemo:     "0",
+    welcomeBonusReal:     "0",
+    firstDepositBonusPct: "50",
+    cashbackPct:          "5",
+    cashbackMinLossUsd:   "40",
+    missionRewardUsd:     "10",
   });
   const [loading, setLoading] = useState(true);
   const [saving,  setSaving]  = useState(false);
@@ -39,12 +47,16 @@ export default function AdminSettings() {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        globalDemoRate:   Number(settings.globalDemoRate),
-        globalRealRate:   Number(settings.globalRealRate),
-        pixGateway:       settings.pixGateway,
-        maintenanceMode:  settings.maintenanceMode,
-        welcomeBonusDemo: Number(settings.welcomeBonusDemo),
-        welcomeBonusReal: Number(settings.welcomeBonusReal),
+        globalDemoRate:       Number(settings.globalDemoRate),
+        globalRealRate:       Number(settings.globalRealRate),
+        pixGateway:           settings.pixGateway,
+        maintenanceMode:      settings.maintenanceMode,
+        welcomeBonusDemo:     Number(settings.welcomeBonusDemo),
+        welcomeBonusReal:     Number(settings.welcomeBonusReal),
+        firstDepositBonusPct: Number(settings.firstDepositBonusPct),
+        cashbackPct:          Number(settings.cashbackPct),
+        cashbackMinLossUsd:   Number(settings.cashbackMinLossUsd),
+        missionRewardUsd:     Number(settings.missionRewardUsd),
       }),
     });
 
@@ -207,6 +219,66 @@ export default function AdminSettings() {
                   ? `Usuário inicia com $${Number(settings.welcomeBonusReal)} reais`
                   : "Sem bônus real"}
               </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Monetization settings */}
+        <div className="bg-[#0d0a1a] border border-[#1e1532] rounded-2xl p-6">
+          <h2 className="text-white font-bold mb-1">Monetização</h2>
+          <p className="text-slate-500 text-xs mb-5">Bônus de primeiro depósito, cashback e recompensas de missão.</p>
+          <div className="grid grid-cols-2 gap-6">
+            <div>
+              <label className="text-xs text-slate-400 uppercase font-semibold tracking-wide">Bônus 1º Depósito (%)</label>
+              <div className="relative mt-2">
+                <input
+                  type="number" min="0" max="200" step="1"
+                  value={settings.firstDepositBonusPct}
+                  onChange={(e) => setSettings((s) => ({ ...s, firstDepositBonusPct: e.target.value }))}
+                  className="w-full bg-[#080c14] border border-[#1e1532] rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-violet-500/40"
+                />
+              </div>
+              <p className="text-slate-600 text-xs mt-1">
+                {Number(settings.firstDepositBonusPct) > 0 ? `+${settings.firstDepositBonusPct}% sobre o primeiro depósito` : "Sem bônus"}
+              </p>
+            </div>
+            <div>
+              <label className="text-xs text-slate-400 uppercase font-semibold tracking-wide">Cashback (%)</label>
+              <div className="relative mt-2">
+                <input
+                  type="number" min="0" max="100" step="1"
+                  value={settings.cashbackPct}
+                  onChange={(e) => setSettings((s) => ({ ...s, cashbackPct: e.target.value }))}
+                  className="w-full bg-[#080c14] border border-[#1e1532] rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-violet-500/40"
+                />
+              </div>
+              <p className="text-slate-600 text-xs mt-1">% de cashback sobre perdas diárias reais</p>
+            </div>
+            <div>
+              <label className="text-xs text-slate-400 uppercase font-semibold tracking-wide">Perda Mínima Cashback (USD)</label>
+              <div className="relative mt-2">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 font-bold">$</span>
+                <input
+                  type="number" min="0" step="1"
+                  value={settings.cashbackMinLossUsd}
+                  onChange={(e) => setSettings((s) => ({ ...s, cashbackMinLossUsd: e.target.value }))}
+                  className="w-full bg-[#080c14] border border-[#1e1532] rounded-xl pl-7 pr-4 py-2.5 text-white text-sm focus:outline-none focus:border-violet-500/40"
+                />
+              </div>
+              <p className="text-slate-600 text-xs mt-1">Perda mínima para ativar cashback</p>
+            </div>
+            <div>
+              <label className="text-xs text-slate-400 uppercase font-semibold tracking-wide">Recompensa de Missão (USD)</label>
+              <div className="relative mt-2">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 font-bold">$</span>
+                <input
+                  type="number" min="0" step="1"
+                  value={settings.missionRewardUsd}
+                  onChange={(e) => setSettings((s) => ({ ...s, missionRewardUsd: e.target.value }))}
+                  className="w-full bg-[#080c14] border border-[#1e1532] rounded-xl pl-7 pr-4 py-2.5 text-white text-sm focus:outline-none focus:border-violet-500/40"
+                />
+              </div>
+              <p className="text-slate-600 text-xs mt-1">Recompensa por missão diária completa</p>
             </div>
           </div>
         </div>

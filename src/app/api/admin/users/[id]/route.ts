@@ -27,8 +27,10 @@ export async function PATCH(
   if (typeof body.isBlocked === "boolean") data.isBlocked = body.isBlocked;
   if (typeof body.adminNote === "string")  data.adminNote = body.adminNote.slice(0, 500);
 
-  if (typeof body.balance === "number" && body.balance >= 0)      data.balance      = body.balance;
-  if (typeof body.realBalance === "number" && body.realBalance >= 0) data.realBalance = body.realBalance;
+  if (typeof body.balance === "number" && Number.isFinite(body.balance) && body.balance >= 0)
+    data.balance = body.balance;
+  if (typeof body.realBalance === "number" && Number.isFinite(body.realBalance) && body.realBalance >= 0)
+    data.realBalance = body.realBalance;
 
   if (Object.keys(data).length === 0)
     return NextResponse.json({ error: "Nenhum campo válido" }, { status: 400 });

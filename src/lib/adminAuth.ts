@@ -8,8 +8,14 @@ function b64url(buf: Buffer): string {
   return buf.toString("base64").replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_");
 }
 
+function requireSecret(name: string): string {
+  const val = process.env[name];
+  if (!val) throw new Error(`[Security] ${name} env var must be set`);
+  return val;
+}
+
 export function createAdminToken(): string {
-  const secret = process.env.ADMIN_JWT_SECRET ?? "changeme-set-in-env";
+  const secret = requireSecret("ADMIN_JWT_SECRET");
   const payload = JSON.stringify({ iat: Date.now(), exp: Date.now() + TOKEN_TTL });
   const payloadB64 = b64url(Buffer.from(payload));
   const sig = crypto.createHmac("sha256", secret).update(payloadB64).digest();
@@ -18,7 +24,8 @@ export function createAdminToken(): string {
 
 export function verifyAdminTokenSync(token: string): boolean {
   try {
-    const secret = process.env.ADMIN_JWT_SECRET ?? "changeme-set-in-env";
+    const secret = process.env.ADMIN_JWT_SECRET;
+    if (!secret) return false;
     const [payloadB64, sigB64] = token.split(".");
     if (!payloadB64 || !sigB64) return false;
 

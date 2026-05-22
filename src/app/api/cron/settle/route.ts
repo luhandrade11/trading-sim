@@ -7,8 +7,10 @@ const BATCH_SIZE = 200;
 
 // Called by Vercel Cron every minute — settles ALL expired trades
 export async function GET(req: NextRequest) {
+  const cronSecret = process.env.CRON_SECRET;
+  if (!cronSecret) return NextResponse.json({ error: "CRON_SECRET não configurado" }, { status: 503 });
   const authHeader = req.headers.get("authorization");
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+  if (authHeader !== `Bearer ${cronSecret}`) {
     return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
   }
 
@@ -33,8 +35,8 @@ export async function GET(req: NextRequest) {
       if (!exitPrice || exitPrice <= 0) continue;
 
       const won =
-        (trade.direction === "UP"   && exitPrice > trade.entryPrice) ||
-        (trade.direction === "DOWN" && exitPrice < trade.entryPrice);
+        (trade.direction === "UP"   && exitPrice >= trade.entryPrice) ||
+        (trade.direction === "DOWN" && exitPrice <= trade.entryPrice);
 
       const profit = won ? trade.amount * PAYOUT_RATE : 0;
       const result = won ? "WIN" : "LOSS";

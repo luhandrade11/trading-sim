@@ -12,7 +12,7 @@ model User {
   email             String             @unique
   name              String
   password          String
-  balance           Float              @default(5000)
+  balance           Float              @default(990)
   realBalance       Float              @default(0)
   lastDemoReset     DateTime?
   image             String?
@@ -25,14 +25,47 @@ model User {
   adminNote         String?
   affiliateId       String?
   affiliateLinkSlug String?
+  onboardingDone    Boolean            @default(false)
+  firstDepositDone  Boolean            @default(false)
+  totalDeposited    Float              @default(0)
   affiliate         Affiliate?         @relation(fields: [affiliateId], references: [id])
   trades            Trade[]
   withdrawals       Withdrawal[]
   affiliateEarnings AffiliateEarning[]
+  dailyMissions     DailyMission[]
+  pushSubscriptions PushSubscription[]
   createdAt         DateTime           @default(now())
   updatedAt         DateTime           @updatedAt
 
   @@index([affiliateId])
+}
+
+model DailyMission {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  date      String
+  type      String
+  progress  Int      @default(0)
+  target    Int      @default(1)
+  claimed   Boolean  @default(false)
+  rewardUsd Float    @default(0)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, date, type])
+  @@index([userId])
+}
+
+model PushSubscription {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  createdAt DateTime @default(now())
+
+  @@index([userId])
 }
 
 model AdminSettings {

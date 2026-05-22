@@ -57,14 +57,28 @@ export async function POST(req: NextRequest) {
   const existing  = await prisma.depositLog.findUnique({ where: { externalId: paymentId } }).catch(() => null);
   if (existing) return NextResponse.json({ ok: true });
 
+  // Fetch settings for first deposit bonus
+  const settingRow = await prisma.adminSettings.findUnique({ where: { key: "firstDepositBonusPct" } }).catch(() => null);
+  const firstDepositBonusPct = settingRow ? Number(settingRow.value) : 50;
+
   // Credit user's real balance + record deposit
   try {
-    await prisma.$transaction([
-      prisma.user.update({
+    await prisma.$transaction(async (tx) => {
+      const user = await tx.user.findUnique({
+        where:  { id: userId },
+        select: { firstDepositDone: true },
+      });
+      const isFirst = user && !user.firstDepositDone;
+      const bonus   = isFirst && firstDepositBonusPct > 0 ? Math.round(priceUsd * (firstDepositBonusPct / 100) * 100) / 100 : 0;
+      const totalCredit = priceUsd + bonus;
+
+      await tx.user.update({
         where: { id: userId },
-        data:  { realBalance: { increment: priceUsd } },
-      }),
-      prisma.depositLog.create({
+        data: isFirst
+          ? { realBalance: { increment: totalCredit }, firstDepositDone: true, totalDeposited: { increment: priceUsd } }
+          : { realBalance: { increment: priceUsd }, totalDeposited: { increment: priceUsd } },
+      });
+      await tx.depositLog.create({
         data: {
           userId,
           externalId: paymentId,
@@ -73,8 +87,9 @@ export async function POST(req: NextRequest) {
           provider:   "nowpayments",
           status:     status,
         },
-      }),
-    ]);
+      });
+      if (bonus > 0) console.log(`[NOWPayments] First deposit bonus: $${bonus} for user ${userId}`);
+    });
     console.log(`[NOWPayments] Credited $${priceUsd} to user ${userId}`);
   } catch (err) {
     console.error("[NOWPayments] DB error:", err);

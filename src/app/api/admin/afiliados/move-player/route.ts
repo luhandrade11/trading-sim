@@ -23,7 +23,7 @@ export async function POST(req: NextRequest) {
     where: { id: userId },
     data: {
       affiliateId: newAffiliateId ?? null,
-      affiliateLinkSlug: newAffiliateId ? undefined : null,
+      affiliateLinkSlug: null,
     },
   });
 

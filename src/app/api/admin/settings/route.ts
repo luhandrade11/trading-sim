@@ -6,9 +6,13 @@ import { writeAuditLog } from "@/lib/auditLog";
 const VALID_KEYS = [
   "globalDemoRate", "globalRealRate", "pixGateway", "maintenanceMode",
   "welcomeBonusDemo", "welcomeBonusReal",
+  "firstDepositBonusPct", "cashbackPct", "cashbackMinLossUsd", "missionRewardUsd",
 ];
 
-const NUMERIC_KEYS = ["globalDemoRate", "globalRealRate", "welcomeBonusDemo", "welcomeBonusReal"];
+const NUMERIC_KEYS = [
+  "globalDemoRate", "globalRealRate", "welcomeBonusDemo", "welcomeBonusReal",
+  "firstDepositBonusPct", "cashbackPct", "cashbackMinLossUsd", "missionRewardUsd",
+];
 
 export async function GET() {
   if (!(await getAdminSession())) {
@@ -24,8 +28,12 @@ export async function GET() {
   if (!settings.globalRealRate)    settings.globalRealRate    = "35";
   if (!settings.pixGateway)        settings.pixGateway        = "abacatepay";
   if (!settings.maintenanceMode)   settings.maintenanceMode   = "false";
-  if (!settings.welcomeBonusDemo)  settings.welcomeBonusDemo  = "0";
-  if (!settings.welcomeBonusReal)  settings.welcomeBonusReal  = "0";
+  if (!settings.welcomeBonusDemo)       settings.welcomeBonusDemo       = "0";
+  if (!settings.welcomeBonusReal)       settings.welcomeBonusReal       = "0";
+  if (!settings.firstDepositBonusPct)   settings.firstDepositBonusPct   = "50";
+  if (!settings.cashbackPct)            settings.cashbackPct            = "5";
+  if (!settings.cashbackMinLossUsd)     settings.cashbackMinLossUsd     = "40";
+  if (!settings.missionRewardUsd)       settings.missionRewardUsd       = "10";
 
   return NextResponse.json(settings);
 }

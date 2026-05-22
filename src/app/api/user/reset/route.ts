@@ -2,8 +2,8 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { STARTING_BALANCE } from "@/lib/constants";
 
-const DEMO_BALANCE    = 5000;
 const COOLDOWN_HOURS  = 24;
 
 export async function POST() {
@@ -32,9 +32,9 @@ export async function POST() {
     prisma.trade.deleteMany({ where: { userId: session.user.id, mode: "demo" } }),
     prisma.user.update({
       where: { id: session.user.id },
-      data:  { balance: DEMO_BALANCE, lastDemoReset: new Date() },
+      data:  { balance: STARTING_BALANCE, lastDemoReset: new Date() },
     }),
   ]);
 
-  return NextResponse.json({ balance: DEMO_BALANCE });
+  return NextResponse.json({ balance: STARTING_BALANCE });
 }

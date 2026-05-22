@@ -2,13 +2,14 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { rateLimit } from "@/lib/rateLimit";
 
 export async function GET() {
   const session = await getServerSession(authOptions);
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
-  }
+  if (!session?.user?.id) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
 
+  if (!rateLimit(`user-get:${session.user.id}`, 30, 60_000))
+    return NextResponse.json({ error: "Muitas requisições" }, { status: 429 });
   const [user, settings] = await Promise.all([
     prisma.user.findUnique({
       where: { id: session.user.id },
@@ -16,6 +17,7 @@ export async function GET() {
         id: true, name: true, email: true, balance: true, realBalance: true,
         image: true, emailVerified: true, lastDemoReset: true,
         winRateOverride: true, isBlocked: true,
+        onboardingDone: true, totalDeposited: true,
       },
     }),
     prisma.adminSettings.findMany({
@@ -33,5 +35,7 @@ export async function GET() {
     ...user,
     globalDemoRate: settingsMap.globalDemoRate ? Number(settingsMap.globalDemoRate) : null,
     globalRealRate: settingsMap.globalRealRate ? Number(settingsMap.globalRealRate) : null,
+    onboardingDone:  user.onboardingDone,
+    totalDeposited:  user.totalDeposited,
   });
 }

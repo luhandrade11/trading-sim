@@ -5,8 +5,8 @@
       "name": "trading-sim",
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "dev"],
-      "cwd": ".",
-      "port": 3000
+      "port": 3000,
+      "cwd": "."
     }
   ]
 }

@@ -44,9 +44,10 @@ export async function PATCH(req: NextRequest) {
   const subFull = await prisma.affiliate.findUnique({ where: { id: subId }, select: { name: true, email: true } });
 
   if (action === "approve") {
-    const rate = commissionRate !== undefined ? Number(commissionRate) / 100 : 0.90;
-    if (isNaN(rate) || rate < 0 || rate > me.commissionRate)
-      return NextResponse.json({ error: `Taxa inválida (máx: ${Math.round(me.commissionRate * 100)}%)` }, { status: 400 });
+    const rate = commissionRate !== undefined ? Number(commissionRate) / 100 : me.commissionRate * 0.9;
+    // Sub-affiliate must have strictly LESS than parent's rate — equality allows bypassing hierarchy
+    if (!Number.isFinite(rate) || rate < 0 || rate >= me.commissionRate)
+      return NextResponse.json({ error: `Taxa inválida (máx: ${Math.round((me.commissionRate * 100) - 1)}%)` }, { status: 400 });
 
     await prisma.affiliate.update({ where: { id: subId }, data: { status: "ACTIVE", commissionRate: rate } });
     if (subFull) {

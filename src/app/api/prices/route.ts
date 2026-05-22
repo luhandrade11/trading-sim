@@ -1,5 +1,6 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { getCachedPrices, setCachedPrices, type PriceMap } from "@/lib/priceCache";
+import { rateLimit } from "@/lib/rateLimit";
 
 const COINGECKO_ASSETS = [
   { id: "bitcoin",       symbol: "BTC/USD"   },
@@ -41,7 +42,11 @@ const FALLBACKS: PriceMap = {
   "GBP/JPY":   { price: 189.80, change24h: 0 },
 };
 
-export async function GET() {
+export async function GET(req: NextRequest) {
+  const ip = req.headers.get("x-forwarded-for")?.split(",")[0].trim() ?? "unknown";
+  if (!rateLimit(`prices:${ip}`, 60, 60_000))
+    return NextResponse.json({ error: "Muitas requisições" }, { status: 429 });
+
   // Serve cache if still fresh
   const cached = getCachedPrices();
   if (cached) return NextResponse.json(cached);

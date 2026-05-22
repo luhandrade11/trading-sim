@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { rateLimit } from "@/lib/rateLimit";
 import { sendVerificationEmail } from "@/lib/email";
 import { randomBytes } from "crypto";
+import { STARTING_BALANCE } from "@/lib/constants";
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -24,13 +25,13 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Nome deve ter pelo menos 2 caracteres" }, { status: 400 });
   if (!email || !EMAIL_REGEX.test(email))
     return NextResponse.json({ error: "Email inválido" }, { status: 400 });
-  if (!password || typeof password !== "string" || password.length < 6)
-    return NextResponse.json({ error: "Senha deve ter pelo menos 6 caracteres" }, { status: 400 });
+  if (!password || typeof password !== "string" || password.length < 8)
+    return NextResponse.json({ error: "Senha deve ter pelo menos 8 caracteres" }, { status: 400 });
 
   const existing = await prisma.user.findUnique({ where: { email: email.toLowerCase() } });
   if (existing) return NextResponse.json({ error: "Email já cadastrado" }, { status: 400 });
 
-  const hashed      = await bcrypt.hash(password, 10);
+  const hashed      = await bcrypt.hash(password, 12);
   const verifyToken = randomBytes(32).toString("hex");
 
   // Resolve referrer from incoming referral code
@@ -73,7 +74,7 @@ export async function POST(req: NextRequest) {
       verifyToken,
       emailVerified: false,
       referralCode,
-      ...(welcomeDemo > 0 ? { balance: 5000 + welcomeDemo } : {}),
+      ...(welcomeDemo > 0 ? { balance: STARTING_BALANCE + welcomeDemo } : {}),
       ...(welcomeReal > 0 ? { realBalance: welcomeReal } : {}),
       ...(referredBy ? { referredBy } : {}),
       ...(affiliateId ? { affiliateId, affiliateLinkSlug } : {}),

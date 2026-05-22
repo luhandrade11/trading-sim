@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
+import { getUserLevel } from "@/lib/utils";
 
 export default function ProfilePage() {
   const { data: session } = useSession();
@@ -15,16 +16,22 @@ export default function ProfilePage() {
   const [passMsg, setPassMsg]           = useState<{ text: string; ok: boolean } | null>(null);
   const [savingName, setSavingName]     = useState(false);
   const [savingPass, setSavingPass]     = useState(false);
-  const [balance, setBalance]           = useState<number | null>(null);
-  const [stats, setStats]               = useState<{ settled: number; wins: number; pnl: number } | null>(null);
+  const [balance,        setBalance]        = useState<number | null>(null);
+  const [stats,          setStats]          = useState<{ settled: number; wins: number; pnl: number } | null>(null);
+  const [totalDeposited, setTotalDeposited] = useState<number>(0);
+  const [allTrades,      setAllTrades]      = useState<Array<{ result: string; profit: number; amount: number; createdAt: string }>>([]);
 
   useEffect(() => {
     if (session?.user?.name) setName(session.user.name);
   }, [session]);
 
   useEffect(() => {
-    fetch("/api/user").then((r) => r.json()).then((d) => setBalance(d.balance)).catch(() => {});
-    fetch("/api/trades").then((r) => r.json()).then((trades: Array<{ result: string; profit: number; amount: number }>) => {
+    fetch("/api/user").then((r) => r.json()).then((d) => {
+      setBalance(d.balance);
+      setTotalDeposited(d.totalDeposited ?? 0);
+    }).catch(() => {});
+    fetch("/api/trades").then((r) => r.json()).then((trades: Array<{ result: string; profit: number; amount: number; createdAt: string }>) => {
+      setAllTrades(trades);
       const settled = trades.filter((t) => t.result !== "PENDING");
       const wins    = settled.filter((t) => t.result === "WIN");
       const pnl     = wins.reduce((s, t) => s + t.profit, 0) - settled.filter((t) => t.result === "LOSS").reduce((s, t) => s + t.amount, 0);
@@ -79,6 +86,20 @@ export default function ProfilePage() {
   const inputCls = "w-full bg-[#080c14] border border-[#1e2a42] rounded-xl px-4 py-3 text-white placeholder-slate-700 text-sm focus:outline-none focus:border-amber-500/50 focus:ring-1 focus:ring-amber-500/20 transition-all";
   const labelCls = "block text-xs font-medium text-slate-400 mb-2 uppercase tracking-wide";
 
+  const userLevel = getUserLevel(totalDeposited);
+
+  // Cumulative P&L chart data
+  const pnlPoints = useMemo(() => {
+    const settled = allTrades
+      .filter(t => t.result === "WIN" || t.result === "LOSS")
+      .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+    let cum = 0;
+    return settled.map(t => {
+      cum += t.result === "WIN" ? t.profit : -t.amount;
+      return cum;
+    });
+  }, [allTrades]);
+
   return (
     <div className="min-h-screen bg-[#080c14] p-6">
       <div className="max-w-xl mx-auto">
@@ -118,6 +139,95 @@ export default function ProfilePage() {
             </div>
           </div>
         </div>
+
+        {/* Level badge */}
+        <div className="bg-[#0c1018] border border-[#1e2a42] rounded-2xl p-5 mb-6 card-shadow">
+          <div className="text-[9px] font-semibold text-slate-600 uppercase tracking-widest mb-4">Nível da conta</div>
+          <div className="flex items-center gap-4">
+            <div
+              className="w-14 h-14 rounded-2xl flex items-center justify-center text-2xl font-black border-2 shrink-0"
+              style={{ borderColor: userLevel.color, background: `${userLevel.color}18` }}
+            >
+              {userLevel.level === 4 ? "👑" : userLevel.level === 3 ? "🥇" : userLevel.level === 2 ? "🥈" : "🥉"}
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 mb-1">
+                <span className="font-black text-white text-lg">{userLevel.name}</span>
+                <span className="text-[9px] px-2 py-0.5 rounded-full font-bold border"
+                  style={{ color: userLevel.color, borderColor: `${userLevel.color}40`, background: `${userLevel.color}15` }}>
+                  Nível {userLevel.level}
+                </span>
+              </div>
+              <div className="text-[10px] text-slate-500 mb-2">
+                Payout: <span className="font-bold" style={{ color: userLevel.color }}>{(userLevel.payoutRate * 100).toFixed(0)}%</span>
+                {userLevel.nextAt !== null && (
+                  <> · Próximo nível em <span className="font-bold text-white">${userLevel.nextAt - totalDeposited > 0 ? (userLevel.nextAt - totalDeposited).toFixed(0) : "0"}</span> depositados</>
+                )}
+              </div>
+              {userLevel.nextAt !== null && (
+                <div className="h-1.5 bg-white/5 rounded-full overflow-hidden">
+                  <div
+                    className="h-full rounded-full transition-all duration-700"
+                    style={{
+                      width: `${Math.min(100, (totalDeposited / userLevel.nextAt) * 100)}%`,
+                      background: userLevel.color,
+                    }}
+                  />
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* P&L chart */}
+        {pnlPoints.length > 1 && (
+          <div className="bg-[#0c1018] border border-[#1e2a42] rounded-2xl p-5 mb-6 card-shadow">
+            <div className="text-[9px] font-semibold text-slate-600 uppercase tracking-widest mb-4">P&L Cumulativo</div>
+            {(() => {
+              const W = 400, H = 80, pad = 6;
+              const min = Math.min(0, ...pnlPoints);
+              const max = Math.max(0, ...pnlPoints);
+              const range = max - min || 1;
+              const pts = pnlPoints.map((v, i) => {
+                const x = pad + (i / Math.max(pnlPoints.length - 1, 1)) * (W - 2 * pad);
+                const y = H - pad - ((v - min) / range) * (H - 2 * pad);
+                return `${x},${y}`;
+              }).join(" ");
+              const lastPnl = pnlPoints[pnlPoints.length - 1];
+              const isPositive = lastPnl >= 0;
+              const zeroY = H - pad - ((0 - min) / range) * (H - 2 * pad);
+
+              return (
+                <div className="relative w-full" style={{ aspectRatio: `${W}/${H}` }}>
+                  <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-full" preserveAspectRatio="none">
+                    {/* Zero line */}
+                    <line x1={pad} y1={zeroY} x2={W - pad} y2={zeroY} stroke="rgba(255,255,255,0.06)" strokeWidth="1" />
+                    {/* Area fill */}
+                    <polygon
+                      points={`${pad},${zeroY} ${pts} ${W - pad},${zeroY}`}
+                      fill={isPositive ? "rgba(16,185,129,0.12)" : "rgba(239,68,68,0.12)"}
+                    />
+                    {/* Line */}
+                    <polyline
+                      points={pts}
+                      fill="none"
+                      stroke={isPositive ? "#10b981" : "#ef4444"}
+                      strokeWidth="1.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                </div>
+              );
+            })()}
+            <div className="flex justify-between items-center mt-2">
+              <span className="text-[9px] text-slate-600">{pnlPoints.length} operações</span>
+              <span className={`text-xs font-bold font-mono ${pnlPoints[pnlPoints.length - 1] >= 0 ? "text-emerald-400" : "text-rose-400"}`}>
+                {pnlPoints[pnlPoints.length - 1] >= 0 ? "+" : ""}${pnlPoints[pnlPoints.length - 1].toFixed(2)}
+              </span>
+            </div>
+          </div>
+        )}
 
         {/* Update name */}
         <div className="bg-[#0c1018] border border-[#1e2a42] rounded-2xl p-6 mb-4 card-shadow">

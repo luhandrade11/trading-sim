@@ -20,10 +20,14 @@ export async function PATCH(req: NextRequest) {
 
   if (image !== undefined) {
     if (typeof image !== "string") return NextResponse.json({ error: "Imagem inválida" }, { status: 400 });
-    if (image !== "" && !image.startsWith("data:image/"))
-      return NextResponse.json({ error: "Formato de imagem inválido" }, { status: 400 });
-    if (image.length > 300_000)
-      return NextResponse.json({ error: "Imagem muito grande (máx 200KB)" }, { status: 400 });
+    if (image !== "") {
+      // Allow only raster formats — SVG can embed scripts (stored XSS)
+      const ALLOWED_PREFIXES = ["data:image/jpeg;", "data:image/jpg;", "data:image/png;", "data:image/gif;", "data:image/webp;"];
+      if (!ALLOWED_PREFIXES.some((p) => image.startsWith(p)))
+        return NextResponse.json({ error: "Formato inválido. Use JPEG, PNG, GIF ou WebP." }, { status: 400 });
+      if (image.length > 300_000)
+        return NextResponse.json({ error: "Imagem muito grande (máx ~200KB)" }, { status: 400 });
+    }
     updates.image = image;
   }
 
@@ -43,7 +47,7 @@ export async function PATCH(req: NextRequest) {
     const valid = await bcrypt.compare(currentPassword ?? "", user.password);
     if (!valid) return NextResponse.json({ error: "Senha atual incorreta" }, { status: 400 });
 
-    updates.password = await bcrypt.hash(newPassword, 10);
+    updates.password = await bcrypt.hash(newPassword, 12);
   }
 
   if (Object.keys(updates).length === 0)

@@ -25,9 +25,9 @@ function isBrazilianUser(): boolean {
 
 // ─── Step 1: Amount ────────────────────────────────────────────────────────────
 function AmountStep({ onNext, isBR }: { onNext: (amount: number) => void; isBR: boolean }) {
-  const [amount, setAmount] = useState(isBR ? 100 : 100);
-  const presets = isBR ? [50, 100, 200, 500, 1000, 2500] : [20, 50, 100, 200, 500, 1000];
-  const minVal  = isBR ? 50 : 10;
+  const [amount, setAmount] = useState(isBR ? 20 : 5);
+  const presets = isBR ? [20, 50, 100, 200, 500, 1000] : [5, 20, 50, 100, 200, 500];
+  const minVal  = isBR ? 20 : 4;
 
   const bonus = amount >= 500 ? Math.round(amount * 0.5)
               : amount >= 200 ? Math.round(amount * 0.25)

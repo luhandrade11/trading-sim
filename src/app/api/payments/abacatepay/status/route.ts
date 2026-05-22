@@ -19,10 +19,20 @@ export async function GET(req: NextRequest) {
   const key = process.env.ABACATEPAY_API_KEY;
   if (!key) return NextResponse.json({ status: "UNKNOWN" });
 
-  const res  = await fetch(`${ABACATE_BASE}/transparents/check?id=${encodeURIComponent(id)}`, {
-    headers: { Authorization: `Bearer ${key}` },
-    cache: "no-store",
-  });
+  const ac   = new AbortController();
+  const tid  = setTimeout(() => ac.abort(), 8_000);
+  let res: Response;
+  try {
+    res = await fetch(`${ABACATE_BASE}/transparents/check?id=${encodeURIComponent(id)}`, {
+      headers: { Authorization: `Bearer ${key}` },
+      cache: "no-store",
+      signal: ac.signal,
+    });
+  } catch {
+    clearTimeout(tid);
+    return NextResponse.json({ status: "UNKNOWN" });
+  }
+  clearTimeout(tid);
 
   const data = await res.json();
   if (!res.ok || !data.success) return NextResponse.json({ status: "UNKNOWN" });

@@ -44,7 +44,8 @@ export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => null);
   if (!body) return NextResponse.json({ error: "Body inválido" }, { status: 400 });
 
-  const { asset, direction, amount, duration } = body;
+  const { asset, direction, amount, duration, mode: rawMode } = body;
+  const mode = rawMode === "real" ? "real" : "demo";
 
   if (!ASSETS.includes(asset))
     return NextResponse.json({ error: "Ativo inválido" }, { status: 400 });
@@ -62,7 +63,8 @@ export async function POST(req: NextRequest) {
 
   const user = await prisma.user.findUnique({ where: { id: session.user.id } });
   if (!user) return NextResponse.json({ error: "Usuário não encontrado" }, { status: 404 });
-  if (user.balance < amount)
+  const activeBalance = mode === "real" ? user.realBalance : user.balance;
+  if (activeBalance < amount)
     return NextResponse.json({ error: "Saldo insuficiente" }, { status: 400 });
 
   // Enforce max concurrent trades
@@ -76,11 +78,13 @@ export async function POST(req: NextRequest) {
 
   const [trade] = await prisma.$transaction([
     prisma.trade.create({
-      data: { userId: session.user.id, asset, direction, amount, entryPrice, duration, expiresAt },
+      data: { userId: session.user.id, asset, direction, amount, entryPrice, duration, expiresAt, mode },
     }),
     prisma.user.update({
       where: { id: session.user.id },
-      data: { balance: { decrement: amount } },
+      data: mode === "real"
+        ? { realBalance: { decrement: amount } }
+        : { balance:     { decrement: amount } },
     }),
   ]);
 

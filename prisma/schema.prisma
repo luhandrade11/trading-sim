@@ -13,6 +13,7 @@ model User {
   name           String
   password       String
   balance        Float        @default(10000)
+  realBalance    Float        @default(0)
   image          String?
   emailVerified  Boolean      @default(false)
   verifyToken    String?      @unique
@@ -34,6 +35,7 @@ model Trade {
   duration   Int
   result     String   @default("PENDING")
   profit     Float    @default(0)
+  mode       String   @default("demo")
   createdAt  DateTime @default(now())
   expiresAt  DateTime
 

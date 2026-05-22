@@ -8,6 +8,7 @@ export interface Trade {
   duration: number;
   result: string;
   profit: number;
+  mode: string;
   createdAt: string;
   expiresAt: string;
 }

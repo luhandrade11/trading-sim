@@ -46,11 +46,14 @@ export async function POST(
   const profit = won ? trade.amount * PAYOUT_RATE : 0;
   const result = won ? "WIN" : "LOSS";
 
+  const isReal = trade.mode === "real";
   const [updated] = await prisma.$transaction([
     prisma.trade.update({ where: { id }, data: { exitPrice, result, profit } }),
     prisma.user.update({
       where: { id: session.user.id },
-      data: { balance: { increment: won ? trade.amount + profit : 0 } },
+      data: isReal
+        ? { realBalance: { increment: won ? trade.amount + profit : 0 } }
+        : { balance:     { increment: won ? trade.amount + profit : 0 } },
     }),
   ]);
 

@@ -12,7 +12,7 @@ export async function POST() {
   }
 
   await prisma.$transaction([
-    prisma.trade.deleteMany({ where: { userId: session.user.id } }),
+    prisma.trade.deleteMany({ where: { userId: session.user.id, mode: "demo" } }),
     prisma.user.update({
       where: { id: session.user.id },
       data: { balance: DEMO_BALANCE },

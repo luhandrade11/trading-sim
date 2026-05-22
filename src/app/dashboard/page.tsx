@@ -255,9 +255,7 @@ function TradeResultOverlay({ result, onDone }: { result: TradeResult; onDone: (
 
   const isWin = result.isWin;
   return (
-    <div className={`absolute inset-0 z-40 flex items-center justify-center pointer-events-none ${
-      isWin ? "bg-emerald-950/30" : "bg-rose-950/30"
-    }`}>
+    <div className="absolute inset-0 z-40 flex items-center justify-center pointer-events-none">
       <div className="result-anim flex flex-col items-center gap-3 text-center">
         <div className="text-6xl">{isWin ? "🏆" : "💸"}</div>
         <div className={`text-4xl font-black ${isWin ? "text-emerald-400" : "text-rose-400"}`}>
@@ -868,6 +866,8 @@ export default function DashboardPage() {
   const [pricesStale,      setPricesStale]      = useState(false);
   const [balance,          setBalance]          = useState<number | null>(null);
   const [userImage,        setUserImage]        = useState<string | null>(null);
+  const [accountMode,      setAccountMode]      = useState<"demo" | "real">("demo");
+  const [realBalance,      setRealBalance]      = useState<number | null>(null);
   const [trades,           setTrades]           = useState<Trade[]>([]);
   const [tradesLoading,    setTradesLoading]    = useState(true);
   const [placing,          setPlacing]          = useState(false);
@@ -897,8 +897,10 @@ export default function DashboardPage() {
   const staleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const settlingRef   = useRef<Set<string>>(new Set());
 
-  const activeTrades  = trades.filter((t) => t.result === "PENDING");
-  const stats         = useMemo(() => computeStats(trades), [trades]);
+  // Trades filtered by current account mode
+  const modeTrades    = trades.filter((t) => (t.mode ?? "demo") === accountMode);
+  const activeTrades  = modeTrades.filter((t) => t.result === "PENDING");
+  const stats         = useMemo(() => computeStats(modeTrades), [modeTrades]);
   const currentPrice  = prices[selectedAsset]?.price ?? 0;
   const change24h     = prices[selectedAsset]?.change24h ?? 0;
   const buySentiment  = useMemo(() => calcBuySentiment(selectedAsset, change24h), [selectedAsset, change24h]);
@@ -907,7 +909,9 @@ export default function DashboardPage() {
   const bidPrice      = currentPrice > 0 ? currentPrice * (1 - spread) : 0;
   const assetInfo     = ALL_ASSETS.find((a) => a.symbol === selectedAsset);
   const potentialWin  = amount * PAYOUT_RATE;
-  const canTrade      = currentPrice > 0 && !placing && balance !== null && balance >= amount && amount >= 1;
+  // Active balance depends on mode
+  const activeBalance = accountMode === "real" ? realBalance : balance;
+  const canTrade      = currentPrice > 0 && !placing && activeBalance !== null && activeBalance >= amount && amount >= 1;
 
   const activeTradesForChart = useMemo(
     () => activeTrades
@@ -925,6 +929,13 @@ export default function DashboardPage() {
   );
 
   // Load tabs from localStorage
+  // Persist accountMode
+  useEffect(() => {
+    const saved = localStorage.getItem("pb-account-mode");
+    if (saved === "real") setAccountMode("real");
+  }, []);
+  useEffect(() => { localStorage.setItem("pb-account-mode", accountMode); }, [accountMode]);
+
   useEffect(() => {
     try {
       const saved = localStorage.getItem("pb-open-assets");
@@ -999,14 +1010,15 @@ export default function DashboardPage() {
       if (r.ok) {
         const u = await r.json();
         setBalance(u.balance);
+        setRealBalance(u.realBalance ?? 0);
         if (u.image) setUserImage(u.image);
         if (typeof u.emailVerified === "boolean") setEmailVerified(u.emailVerified);
-        // Show deposit CTA once if first time seeing demo balance
+        // Show deposit CTA once (demo mode only)
         if (u.balance !== null && u.balance >= 9900) {
           const ctaDismissed = localStorage.getItem("pb-deposit-cta-dismissed");
           if (!ctaDismissed) setShowDepositCta(true);
         }
-        // Auto-reset demo balance when depleted
+        // Auto-reset demo balance when depleted (demo mode only)
         if (u.balance !== null && u.balance <= 0) {
           const rr = await fetch("/api/user/reset", { method: "POST" });
           if (rr.ok) {
@@ -1072,24 +1084,22 @@ export default function DashboardPage() {
 
   async function placeTrade(direction: "UP" | "DOWN") {
     if (!currentPrice || placing) return;
-    if (balance === null) { showNotif(t("loading"), "error"); return; }
-    if (amount > balance)  { showNotif(t("insufficient"), "error"); return; }
-    if (amount < 1)        { showNotif(t("min_amount"), "error"); return; }
-    // Captura o preço do sim AGORA — antes da latência da API (200-1500ms)
-    // Esse é o ponto exato que está desenhado na tela no momento do clique
+    if (activeBalance === null) { showNotif(t("loading"), "error"); return; }
+    if (amount > activeBalance)  { showNotif(t("insufficient"), "error"); return; }
+    if (amount < 1)              { showNotif(t("min_amount"), "error"); return; }
     const simPriceAtClick = latestSimPriceRef.current || currentPrice;
     setPlacing(true);
     try {
       const res = await fetch("/api/trades", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ asset: selectedAsset, direction, amount, duration: selectedDuration }),
+        body: JSON.stringify({ asset: selectedAsset, direction, amount, duration: selectedDuration, mode: accountMode }),
       });
       if (res.ok) {
         const trade = await res.json();
-        // Associa o preço do clique ao ID do trade — o gráfico vai usar esse valor
         simEntryOverrideRef.current.set(trade.id, simPriceAtClick);
         setTrades((prev) => [trade, ...prev]);
-        setBalance((b) => b !== null ? b - amount : null);
+        if (accountMode === "real") setRealBalance((b) => b !== null ? b - amount : null);
+        else setBalance((b) => b !== null ? b - amount : null);
         setPositionsOpen(true);
       } else {
         const d = await res.json();
@@ -1132,7 +1142,10 @@ export default function DashboardPage() {
     );
   }
 
-  const balanceFmt = balance === null ? "…" : formatCurrency(balance);
+  const activeBalanceFmt = activeBalance === null ? "…" : formatCurrency(activeBalance);
+  const balanceFmt = activeBalanceFmt; // kept for any legacy reference
+  const isReal = accountMode === "real";
+  const realNeedsDeposit = isReal && (realBalance ?? 0) <= 0;
 
   // ── Right panel (trade controls) ─────────────────────────────────────────
   const RightPanelContent = (
@@ -1185,17 +1198,17 @@ export default function DashboardPage() {
           </div>
           <div className="grid grid-cols-4 gap-1 mt-1.5">
             {[25, 50, 75].map((p) => (
-              <button key={p} onClick={() => setAmount(Math.max(1, Math.floor((balance ?? 0) * (p / 100))))}
-                disabled={balance === null || balance < 1}
+              <button key={p} onClick={() => setAmount(Math.max(1, Math.floor((activeBalance ?? 0) * (p / 100))))}
+                disabled={activeBalance === null || activeBalance < 1}
                 className="py-1.5 bg-white/3 border border-white/5 rounded-lg text-[9px] text-white/30 hover:text-white hover:border-white/10 transition-all disabled:opacity-20 font-semibold">{p}%
               </button>
             ))}
-            <button onClick={() => setAmount(Math.max(1, Math.floor(balance ?? 0)))} disabled={balance === null || balance < 1}
+            <button onClick={() => setAmount(Math.max(1, Math.floor(activeBalance ?? 0)))} disabled={activeBalance === null || activeBalance < 1}
               className="py-1.5 bg-amber-400/5 border border-amber-400/20 rounded-lg text-[9px] text-amber-500 hover:text-amber-400 hover:border-amber-400/40 transition-all disabled:opacity-20 font-bold">
               {t("max")}
             </button>
           </div>
-          {amount > (balance ?? 0) && balance !== null && <p className="text-rose-400 text-[9px] mt-1">{t("insufficient")}</p>}
+          {amount > (activeBalance ?? 0) && activeBalance !== null && <p className="text-rose-400 text-[9px] mt-1">{t("insufficient")}</p>}
         </div>
 
         {/* Expiration */}
@@ -1234,21 +1247,39 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* BUY / SELL */}
-        <div className="grid grid-cols-2 gap-2">
-          <button onClick={() => placeTrade("UP")} disabled={!canTrade}
-            className="btn-up py-4 rounded-xl bg-gradient-to-b from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 disabled:opacity-25 disabled:cursor-not-allowed text-white font-black flex flex-col items-center gap-0.5">
-            <span className="text-xl leading-none">▲</span>
-            <span className="text-sm tracking-wide">{t("buy")}</span>
-            {currentPrice > 0 && <span className="text-[8px] opacity-60 font-normal font-mono">{formatPrice(askPrice, selectedAsset)}</span>}
-          </button>
-          <button onClick={() => placeTrade("DOWN")} disabled={!canTrade}
-            className="btn-down py-4 rounded-xl bg-gradient-to-b from-rose-500 to-rose-600 hover:from-rose-400 hover:to-rose-500 disabled:opacity-25 disabled:cursor-not-allowed text-white font-black flex flex-col items-center gap-0.5">
-            <span className="text-xl leading-none">▼</span>
-            <span className="text-sm tracking-wide">{t("sell")}</span>
-            {currentPrice > 0 && <span className="text-[8px] opacity-60 font-normal font-mono">{formatPrice(bidPrice, selectedAsset)}</span>}
-          </button>
-        </div>
+        {/* BUY / SELL — or deposit CTA in real mode with no balance */}
+        {realNeedsDeposit ? (
+          <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-4 text-center space-y-3">
+            <div className="text-2xl">💎</div>
+            <div>
+              <div className="text-sm font-bold text-white">Conta Real</div>
+              <div className="text-[10px] text-white/30 mt-0.5">Deposite para começar a operar</div>
+            </div>
+            <button onClick={() => setDepositModalOpen(true)}
+              className="w-full py-2.5 bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-white font-bold rounded-xl text-sm transition-all">
+              💰 Depositar Agora
+            </button>
+            <button onClick={() => setAccountMode("demo")}
+              className="w-full text-[9px] text-white/20 hover:text-white/50 transition-colors">
+              Voltar ao Demo
+            </button>
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 gap-2">
+            <button onClick={() => placeTrade("UP")} disabled={!canTrade}
+              className="btn-up py-4 rounded-xl bg-gradient-to-b from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 disabled:opacity-25 disabled:cursor-not-allowed text-white font-black flex flex-col items-center gap-0.5">
+              <span className="text-xl leading-none">▲</span>
+              <span className="text-sm tracking-wide">{t("buy")}</span>
+              {currentPrice > 0 && <span className="text-[8px] opacity-60 font-normal font-mono">{formatPrice(askPrice, selectedAsset)}</span>}
+            </button>
+            <button onClick={() => placeTrade("DOWN")} disabled={!canTrade}
+              className="btn-down py-4 rounded-xl bg-gradient-to-b from-rose-500 to-rose-600 hover:from-rose-400 hover:to-rose-500 disabled:opacity-25 disabled:cursor-not-allowed text-white font-black flex flex-col items-center gap-0.5">
+              <span className="text-xl leading-none">▼</span>
+              <span className="text-sm tracking-wide">{t("sell")}</span>
+              {currentPrice > 0 && <span className="text-[8px] opacity-60 font-normal font-mono">{formatPrice(bidPrice, selectedAsset)}</span>}
+            </button>
+          </div>
+        )}
 
         {placing && (
           <div className="flex items-center justify-center gap-2 text-[10px] text-amber-400/70">
@@ -1282,7 +1313,9 @@ export default function DashboardPage() {
           <Avatar name={session?.user?.name ?? "?"} image={userImage} size="sm" />
           <div className="min-w-0">
             <div className="text-[9px] text-white/50 truncate">{session?.user?.name}</div>
-            <div className="text-[7px] text-emerald-500">● {t("demo")} ativo</div>
+            <div className={`text-[7px] ${isReal ? "text-emerald-400" : "text-amber-500"}`}>
+              ● {isReal ? "Real" : "Demo"} · {activeBalanceFmt}
+            </div>
           </div>
         </button>
         <button onClick={() => signOut({ callbackUrl: "/login" })} className="text-[8px] text-white/20 hover:text-white/50 transition-colors">{t("logout")}</button>
@@ -1369,15 +1402,38 @@ export default function DashboardPage() {
 
         {/* Balance + Deposit */}
         <div className="flex items-center gap-2 shrink-0 pl-3 border-l border-white/5">
-          <div className="hidden sm:flex items-center gap-2 bg-[#111827] border border-white/5 rounded-xl px-3 py-2 cursor-pointer hover:border-white/10 transition-all" onClick={() => setDepositModalOpen(true)}>
+          {/* Demo / Real toggle */}
+          <div className="hidden sm:flex items-center bg-[#0d1117] border border-white/8 rounded-xl p-0.5 gap-0.5">
+            {(["demo", "real"] as const).map((m) => (
+              <button key={m} onClick={() => setAccountMode(m)}
+                className={`px-3 py-1.5 rounded-[10px] text-[10px] font-black uppercase tracking-widest transition-all ${
+                  accountMode === m
+                    ? m === "demo"
+                      ? "bg-amber-400/15 text-amber-400"
+                      : "bg-emerald-500/15 text-emerald-400"
+                    : "text-white/20 hover:text-white/50"
+                }`}>
+                {m === "demo" ? "Demo" : "Real"}
+              </button>
+            ))}
+          </div>
+
+          {/* Balance */}
+          <div className="hidden sm:flex items-center gap-2 bg-[#111827] border border-white/5 rounded-xl px-3 py-2">
             <div className="flex flex-col items-end">
               <div className="flex items-center gap-1.5">
-                <span className="text-[9px] font-bold text-amber-400 uppercase tracking-wider">{t("demo")}</span>
-                <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                <span className={`text-[9px] font-bold uppercase tracking-wider ${isReal ? "text-emerald-400" : "text-amber-400"}`}>
+                  {isReal ? "Real" : "Demo"}
+                </span>
+                <div className={`w-1.5 h-1.5 rounded-full animate-pulse ${isReal ? "bg-emerald-400" : "bg-amber-400"}`} />
               </div>
-              <span className={`text-sm font-black font-mono ${balance === null ? "text-slate-700 animate-pulse" : "text-white"}`}>{balanceFmt}</span>
+              <span className={`text-sm font-black font-mono ${activeBalance === null ? "text-slate-700 animate-pulse" : "text-white"}`}>
+                {activeBalanceFmt}
+              </span>
             </div>
           </div>
+
+          {/* Deposit button — always visible */}
           <button onClick={() => setDepositModalOpen(true)}
             className="hidden sm:flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-white text-sm font-bold rounded-xl transition-all shadow-lg shadow-emerald-500/25">
             <span>💰</span> {t("deposit")}
@@ -1435,9 +1491,9 @@ export default function DashboardPage() {
           <NavItem icon={<IcoStats />}    label={t("analysis")}  active={activePanel === "analysis"}   onClick={() => togglePanel("analysis")} />
           <NavItem icon={<IcoPromo />}    label={t("promo")}     active={activePanel === "promo"}      onClick={() => togglePanel("promo")} badge="1" />
           <NavItem icon={<IcoSupport />}  label={t("support")}   active={activePanel === "support"}    onClick={() => togglePanel("support")} />
-          <NavItem icon={<IcoDeposit />}  label={t("deposit")}   onClick={() => setDepositModalOpen(true)} />
+          {isReal && <NavItem icon={<IcoDeposit />} label={t("deposit")} onClick={() => setDepositModalOpen(true)} />}
           <div className="mt-auto flex flex-col gap-0 w-full">
-            <NavItem icon={<IcoCash />}   label={t("withdrawal")} active={activePanel === "withdrawal"} onClick={() => togglePanel("withdrawal")} />
+            {isReal && <NavItem icon={<IcoCash />} label={t("withdrawal")} active={activePanel === "withdrawal"} onClick={() => togglePanel("withdrawal")} />}
             <NavItem icon={<IcoUser />}   label={t("profile")}    active={activePanel === "profile"}    onClick={() => togglePanel("profile")} />
             <NavItem icon={<IcoReset />}  label={t("reset")}      onClick={() => setResetModalOpen(true)} />
           </div>

@@ -43,6 +43,9 @@ type Str = {
   loading: string; conn_error: string;
   open_pos: string; hide: string; expand: string;
   level: string; trades_count: string; win_rate: string;
+  affiliate: string; aff_link: string; aff_copy: string; aff_copied: string;
+  aff_referred: string; aff_earned: string; aff_how: string; aff_share: string;
+  aff_empty: string; aff_commission: string;
 };
 
 const T: Record<Locale, Str> = {
@@ -77,6 +80,11 @@ const T: Record<Locale, Str> = {
     loading: "Carregando…", conn_error: "Erro de conexão",
     open_pos: "Operações Abertas", hide: "Ocultar ▲", expand: "Expandir ▼",
     level: "Nível", trades_count: "operações", win_rate: "taxa de acerto",
+    affiliate: "Afiliado", aff_link: "Seu link de afiliado", aff_copy: "Copiar link",
+    aff_copied: "Copiado!", aff_referred: "Indicados", aff_earned: "Total ganho",
+    aff_how: "Compartilhe seu link. Quando alguém se cadastrar e depositar, você ganha 10% do depósito direto na sua conta real.",
+    aff_share: "Compartilhar no WhatsApp", aff_empty: "Nenhum ganho ainda",
+    aff_commission: "10% de comissão em cada depósito",
   },
   "en-US": {
     history: "History", ranking: "Ranking", analysis: "Analysis", promo: "Promotions",
@@ -109,6 +117,11 @@ const T: Record<Locale, Str> = {
     loading: "Loading…", conn_error: "Connection error",
     open_pos: "Open Positions", hide: "Hide ▲", expand: "Expand ▼",
     level: "Level", trades_count: "trades", win_rate: "win rate",
+    affiliate: "Affiliate", aff_link: "Your affiliate link", aff_copy: "Copy link",
+    aff_copied: "Copied!", aff_referred: "Referred users", aff_earned: "Total earned",
+    aff_how: "Share your link. When someone signs up and deposits, you earn 10% of their deposit straight to your real account.",
+    aff_share: "Share on WhatsApp", aff_empty: "No earnings yet",
+    aff_commission: "10% commission on every deposit",
   },
   "es-ES": {
     history: "Historial", ranking: "Ranking", analysis: "Análisis", promo: "Promociones",
@@ -141,6 +154,11 @@ const T: Record<Locale, Str> = {
     loading: "Cargando…", conn_error: "Error de conexión",
     open_pos: "Posiciones Abiertas", hide: "Ocultar ▲", expand: "Expandir ▼",
     level: "Nivel", trades_count: "operaciones", win_rate: "tasa de acierto",
+    affiliate: "Afiliado", aff_link: "Tu enlace de afiliado", aff_copy: "Copiar enlace",
+    aff_copied: "¡Copiado!", aff_referred: "Referidos", aff_earned: "Total ganado",
+    aff_how: "Comparte tu enlace. Cuando alguien se registre y deposite, ganas el 10% del depósito en tu cuenta real.",
+    aff_share: "Compartir en WhatsApp", aff_empty: "Sin ganancias aún",
+    aff_commission: "10% de comisión en cada depósito",
   },
   "fr-FR": {
     history: "Historique", ranking: "Classement", analysis: "Analyse", promo: "Promotions",
@@ -173,6 +191,11 @@ const T: Record<Locale, Str> = {
     loading: "Chargement…", conn_error: "Erreur de connexion",
     open_pos: "Positions Ouvertes", hide: "Masquer ▲", expand: "Développer ▼",
     level: "Niveau", trades_count: "trades", win_rate: "taux de réussite",
+    affiliate: "Affilié", aff_link: "Votre lien d'affiliation", aff_copy: "Copier",
+    aff_copied: "Copié!", aff_referred: "Filleuls", aff_earned: "Total gagné",
+    aff_how: "Partagez votre lien. Quand quelqu'un s'inscrit et dépose, vous gagnez 10% du dépôt sur votre compte réel.",
+    aff_share: "Partager sur WhatsApp", aff_empty: "Pas encore de gains",
+    aff_commission: "10% de commission sur chaque dépôt",
   },
   "de-DE": {
     history: "Verlauf", ranking: "Rangliste", analysis: "Analyse", promo: "Aktionen",
@@ -205,6 +228,11 @@ const T: Record<Locale, Str> = {
     loading: "Laden…", conn_error: "Verbindungsfehler",
     open_pos: "Offene Positionen", hide: "Ausblenden ▲", expand: "Erweitern ▼",
     level: "Level", trades_count: "Trades", win_rate: "Gewinnrate",
+    affiliate: "Affiliate", aff_link: "Ihr Affiliate-Link", aff_copy: "Link kopieren",
+    aff_copied: "Kopiert!", aff_referred: "Geworbene", aff_earned: "Gesamt verdient",
+    aff_how: "Teilen Sie Ihren Link. Wenn jemand sich anmeldet und einzahlt, erhalten Sie 10% auf Ihr echtes Konto.",
+    aff_share: "Per WhatsApp teilen", aff_empty: "Noch keine Einnahmen",
+    aff_commission: "10% Provision auf jede Einzahlung",
   },
   "ja-JP": {
     history: "履歴", ranking: "ランキング", analysis: "分析", promo: "プロモ",
@@ -237,6 +265,11 @@ const T: Record<Locale, Str> = {
     loading: "読み込み中…", conn_error: "接続エラー",
     open_pos: "オープンポジション", hide: "非表示 ▲", expand: "展開 ▼",
     level: "レベル", trades_count: "取引", win_rate: "勝率",
+    affiliate: "アフィリエイト", aff_link: "アフィリエイトリンク", aff_copy: "リンクをコピー",
+    aff_copied: "コピー済み!", aff_referred: "紹介ユーザー", aff_earned: "合計獲得",
+    aff_how: "リンクをシェアして、登録・入金があると入金額の10%が実口座に入ります。",
+    aff_share: "WhatsAppでシェア", aff_empty: "まだ収益なし",
+    aff_commission: "入金ごとに10%のコミッション",
   },
 };
 

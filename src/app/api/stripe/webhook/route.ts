@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
+const AFFILIATE_RATE = 0.10;
+
 export async function POST(req: NextRequest) {
   if (!process.env.STRIPE_SECRET_KEY || !process.env.STRIPE_WEBHOOK_SECRET) {
     return NextResponse.json({ error: "Stripe não configurado" }, { status: 503 });
@@ -23,13 +25,31 @@ export async function POST(req: NextRequest) {
     const session = event.data.object as import("stripe").Stripe.Checkout.Session;
     const userId  = session.metadata?.userId;
     const amount  = Number(session.metadata?.amount);
+    if (!userId || !amount || amount <= 0) return NextResponse.json({ received: true });
 
-    if (userId && amount > 0) {
-      await prisma.user.update({
-        where: { id: userId },
-        data:  { balance: { increment: amount } },
+    // Idempotency: skip if already processed
+    const already = await prisma.depositLog.findUnique({ where: { externalId: event.id } }).catch(() => null);
+    if (already) return NextResponse.json({ received: true });
+
+    await prisma.$transaction(async (tx) => {
+      // Credit real balance (not demo balance)
+      await tx.user.update({ where: { id: userId }, data: { realBalance: { increment: amount } } });
+
+      // Log for idempotency
+      await tx.depositLog.create({
+        data: { userId, externalId: event.id, amount, currency: "usd", provider: "stripe", status: "completed" },
       });
-    }
+
+      // Affiliate commission: 10% to referrer
+      const user = await tx.user.findUnique({ where: { id: userId }, select: { referredBy: true } });
+      if (user?.referredBy) {
+        const commission = Math.round(amount * AFFILIATE_RATE * 100) / 100;
+        await tx.user.update({ where: { id: user.referredBy }, data: { realBalance: { increment: commission } } });
+        await tx.affiliateEarning.create({
+          data: { userId: user.referredBy, referredId: userId, depositAmount: amount, commission },
+        });
+      }
+    });
   }
 
   return NextResponse.json({ received: true });

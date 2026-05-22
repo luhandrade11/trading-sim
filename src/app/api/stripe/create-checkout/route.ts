@@ -18,7 +18,7 @@ export async function POST(req: NextRequest) {
   if (!amount || amount < 10 || amount > 50000)
     return NextResponse.json({ error: "Valor inválido (min $10, max $50.000)" }, { status: 400 });
 
-  const baseUrl = process.env.NEXTAUTH_URL ?? req.headers.get("origin") ?? "http://localhost:3000";
+  const baseUrl = process.env.NEXTAUTH_URL ?? "http://localhost:3000";
 
   const checkoutSession = await stripe.checkout.sessions.create({
     payment_method_types: ["card"],

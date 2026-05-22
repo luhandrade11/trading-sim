@@ -1,0 +1,197 @@
+"use client";
+
+import { useEffect, useState } from "react";
+
+interface Settings {
+  globalDemoRate: string;
+  globalRealRate: string;
+  pixGateway: string;
+  maintenanceMode: string;
+}
+
+export default function AdminSettings() {
+  const [settings, setSettings] = useState<Settings>({
+    globalDemoRate:  "60",
+    globalRealRate:  "35",
+    pixGateway:      "abacatepay",
+    maintenanceMode: "false",
+  });
+  const [loading, setLoading] = useState(true);
+  const [saving,  setSaving]  = useState(false);
+  const [saved,   setSaved]   = useState(false);
+  const [error,   setError]   = useState("");
+
+  useEffect(() => {
+    fetch("/api/admin/settings")
+      .then((r) => r.json())
+      .then((d) => setSettings(d))
+      .finally(() => setLoading(false));
+  }, []);
+
+  async function save() {
+    setSaving(true); setError(""); setSaved(false);
+
+    const res = await fetch("/api/admin/settings", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        globalDemoRate:  Number(settings.globalDemoRate),
+        globalRealRate:  Number(settings.globalRealRate),
+        pixGateway:      settings.pixGateway,
+        maintenanceMode: settings.maintenanceMode,
+      }),
+    });
+
+    if (res.ok) {
+      setSaved(true);
+      setTimeout(() => setSaved(false), 3000);
+    } else {
+      const d = await res.json();
+      setError(d.error ?? "Erro ao salvar");
+    }
+    setSaving(false);
+  }
+
+  if (loading) return (
+    <div className="flex items-center justify-center h-64">
+      <div className="w-6 h-6 border-2 border-white/20 border-t-amber-400/60 rounded-full animate-spin" />
+    </div>
+  );
+
+  const demoRate = Number(settings.globalDemoRate);
+  const realRate = Number(settings.globalRealRate);
+
+  return (
+    <div className="p-8 max-w-2xl">
+      <div className="mb-8">
+        <h1 className="text-2xl font-bold text-white">Configurações</h1>
+        <p className="text-slate-500 text-sm mt-1">Controles globais da plataforma</p>
+      </div>
+
+      {error && (
+        <div className="bg-rose-500/10 border border-rose-500/20 rounded-xl px-4 py-3 text-rose-400 text-sm mb-6">{error}</div>
+      )}
+
+      <div className="space-y-6">
+        {/* Win rates */}
+        <div className="bg-[#0d1117] border border-[#1e2a42] rounded-2xl p-6">
+          <h2 className="text-white font-bold mb-1">Controle de Win Rate Global</h2>
+          <p className="text-slate-500 text-xs mb-5">
+            Altera a taxa de vitória para todos os usuários (sem override individual).
+            Afeta novos trades após a próxima atualização do usuário.
+          </p>
+
+          <div className="grid grid-cols-2 gap-6">
+            <div>
+              <label className="text-xs text-slate-400 uppercase font-semibold tracking-wide">
+                Win Rate Demo (%)
+              </label>
+              <input
+                type="range" min="0" max="100" step="1"
+                value={settings.globalDemoRate}
+                onChange={(e) => setSettings((s) => ({ ...s, globalDemoRate: e.target.value }))}
+                className="w-full mt-3 accent-amber-400"
+              />
+              <div className="flex justify-between items-center mt-2">
+                <span className="text-slate-600 text-xs">0% (sempre perde)</span>
+                <span className={`text-2xl font-black font-mono ${
+                  demoRate >= 55 ? "text-emerald-400" : demoRate >= 40 ? "text-amber-400" : "text-rose-400"
+                }`}>{settings.globalDemoRate}%</span>
+                <span className="text-slate-600 text-xs">100% (sempre ganha)</span>
+              </div>
+              <p className="text-center text-slate-500 text-xs mt-1">
+                {demoRate >= 60 ? "Modo captação — usuário sente que é bom" :
+                 demoRate >= 45 ? "Equilibrado" : "Modo lucro — usuário perde mais"}
+              </p>
+            </div>
+
+            <div>
+              <label className="text-xs text-slate-400 uppercase font-semibold tracking-wide">
+                Win Rate Real (%)
+              </label>
+              <input
+                type="range" min="0" max="100" step="1"
+                value={settings.globalRealRate}
+                onChange={(e) => setSettings((s) => ({ ...s, globalRealRate: e.target.value }))}
+                className="w-full mt-3 accent-amber-400"
+              />
+              <div className="flex justify-between items-center mt-2">
+                <span className="text-slate-600 text-xs">0%</span>
+                <span className={`text-2xl font-black font-mono ${
+                  realRate >= 50 ? "text-rose-400" : realRate >= 35 ? "text-amber-400" : "text-emerald-400"
+                }`}>{settings.globalRealRate}%</span>
+                <span className="text-slate-600 text-xs">100%</span>
+              </div>
+              <p className="text-center text-slate-500 text-xs mt-1">
+                {realRate <= 30 ? "Alta margem — casa lucra muito" :
+                 realRate <= 45 ? "Margem saudável" : "Usuários ganham demais"}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Payment gateway */}
+        <div className="bg-[#0d1117] border border-[#1e2a42] rounded-2xl p-6">
+          <h2 className="text-white font-bold mb-1">Gateway de Pagamento PIX</h2>
+          <p className="text-slate-500 text-xs mb-4">Qual provedor processar os depósitos PIX</p>
+
+          <div className="flex gap-3">
+            {[
+              { value: "abacatepay", label: "AbacatePay",   desc: "PIX transparente · QR code inline" },
+              { value: "manual",     label: "Manual",        desc: "Admin processa manualmente" },
+            ].map((opt) => (
+              <label key={opt.value}
+                className={`flex-1 border rounded-xl p-4 cursor-pointer transition-all ${
+                  settings.pixGateway === opt.value
+                    ? "border-amber-500/50 bg-amber-500/5"
+                    : "border-[#1e2a42] hover:border-[#2e3a52]"
+                }`}
+              >
+                <input type="radio" name="pixGateway" value={opt.value}
+                  checked={settings.pixGateway === opt.value}
+                  onChange={(e) => setSettings((s) => ({ ...s, pixGateway: e.target.value }))}
+                  className="hidden" />
+                <p className={`font-semibold text-sm ${settings.pixGateway === opt.value ? "text-amber-400" : "text-white"}`}>
+                  {opt.label}
+                </p>
+                <p className="text-slate-500 text-xs mt-1">{opt.desc}</p>
+              </label>
+            ))}
+          </div>
+        </div>
+
+        {/* Maintenance mode */}
+        <div className="bg-[#0d1117] border border-[#1e2a42] rounded-2xl p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-white font-bold">Modo Manutenção</h2>
+              <p className="text-slate-500 text-xs mt-1">Bloqueia novos trades de todos os usuários</p>
+            </div>
+            <button
+              onClick={() => setSettings((s) => ({ ...s, maintenanceMode: s.maintenanceMode === "true" ? "false" : "true" }))}
+              className={`w-14 h-7 rounded-full transition-colors relative ${
+                settings.maintenanceMode === "true" ? "bg-rose-500" : "bg-slate-700"
+              }`}
+            >
+              <span className={`absolute top-1 w-5 h-5 bg-white rounded-full shadow transition-all ${
+                settings.maintenanceMode === "true" ? "left-8" : "left-1"
+              }`} />
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <button
+        onClick={save}
+        disabled={saving}
+        className={`mt-6 w-full font-bold rounded-xl py-3 text-sm transition-all ${
+          saved
+            ? "bg-emerald-500/20 border border-emerald-500/30 text-emerald-400"
+            : "bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 text-[#080c14]"
+        } disabled:opacity-50`}
+      >
+        {saving ? "Salvando…" : saved ? "✓ Salvo!" : "Salvar Configurações"}
+      </button>
+    </div>
+  );
+}

@@ -8,19 +8,44 @@ datasource db {
 }
 
 model User {
-  id             String       @id @default(cuid())
-  email          String       @unique
-  name           String
-  password       String
-  balance        Float        @default(10000)
-  realBalance    Float        @default(0)
-  image          String?
-  emailVerified  Boolean      @default(false)
-  verifyToken    String?      @unique
-  trades         Trade[]
-  withdrawals    Withdrawal[]
-  createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
+  id                String             @id @default(cuid())
+  email             String             @unique
+  name              String
+  password          String
+  balance           Float              @default(5000)
+  realBalance       Float              @default(0)
+  lastDemoReset     DateTime?
+  image             String?
+  emailVerified     Boolean            @default(false)
+  verifyToken       String?            @unique
+  referralCode      String?            @unique
+  referredBy        String?
+  winRateOverride   Float?
+  isBlocked         Boolean            @default(false)
+  adminNote         String?
+  trades            Trade[]
+  withdrawals       Withdrawal[]
+  affiliateEarnings AffiliateEarning[]
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+}
+
+model AdminSettings {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
+}
+
+model AffiliateEarning {
+  id            String   @id @default(cuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id])
+  referredId    String
+  depositAmount Float
+  commission    Float
+  createdAt     DateTime @default(now())
+
+  @@index([userId])
 }
 
 model Trade {
@@ -57,4 +82,17 @@ model Withdrawal {
 
   @@index([userId])
   @@index([status])
+}
+
+model DepositLog {
+  id         String   @id @default(cuid())
+  userId     String
+  externalId String   @unique
+  amount     Float
+  currency   String
+  provider   String
+  status     String
+  createdAt  DateTime @default(now())
+
+  @@index([userId])
 }

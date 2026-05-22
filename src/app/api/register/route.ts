@@ -18,7 +18,7 @@ export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => null);
   if (!body) return NextResponse.json({ error: "Body inválido" }, { status: 400 });
 
-  const { name, email, password } = body;
+  const { name, email, password, referralCode: incomingRef } = body;
 
   if (!name || typeof name !== "string" || name.trim().length < 2)
     return NextResponse.json({ error: "Nome deve ter pelo menos 2 caracteres" }, { status: 400 });
@@ -33,6 +33,19 @@ export async function POST(req: NextRequest) {
   const hashed      = await bcrypt.hash(password, 10);
   const verifyToken = randomBytes(32).toString("hex");
 
+  // Resolve referrer from incoming referral code
+  let referredBy: string | undefined;
+  if (incomingRef && typeof incomingRef === "string" && /^[A-Za-z0-9_-]{4,40}$/.test(incomingRef)) {
+    const referrer = await prisma.user.findFirst({
+      where: { referralCode: incomingRef.trim().toUpperCase() },
+      select: { id: true },
+    }).catch(() => null);
+    if (referrer) referredBy = referrer.id;
+  }
+
+  // Generate a short, unique referral code (8 uppercase hex chars) for this new user
+  const referralCode = randomBytes(4).toString("hex").toUpperCase();
+
   const user = await prisma.user.create({
     data: {
       name:         name.trim(),
@@ -40,6 +53,8 @@ export async function POST(req: NextRequest) {
       password:     hashed,
       verifyToken,
       emailVerified: false,
+      referralCode,
+      ...(referredBy ? { referredBy } : {}),
     },
   });
 

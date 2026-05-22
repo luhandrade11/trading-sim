@@ -15,7 +15,7 @@ function buildHtml(name: string, verifyUrl: string): string {
       </div>
       <p style="color:#d1d5db;font-size:15px;margin-bottom:8px;">Olá, <strong>${name}</strong>!</p>
       <p style="color:#9ca3af;font-size:14px;line-height:1.6;margin-bottom:28px;">
-        Você se cadastrou na Prime Broker. Clique no botão abaixo para confirmar seu email e ativar sua conta demo de <strong style="color:#f59e0b;">$10.000</strong>.
+        Você se cadastrou na Prime Broker. Clique no botão abaixo para confirmar seu email e ativar sua conta demo de <strong style="color:#f59e0b;">$5.000</strong>.
       </p>
       <div style="text-align:center;margin-bottom:28px;">
         <a href="${verifyUrl}"

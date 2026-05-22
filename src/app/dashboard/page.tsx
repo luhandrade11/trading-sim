@@ -9,7 +9,7 @@ import TradeHistory from "@/components/TradeHistory";
 import PositionsTable from "@/components/PositionsTable";
 import ConfirmModal from "@/components/ConfirmModal";
 import AssetPicker from "@/components/AssetPicker";
-import type { TradeAnnotation } from "@/components/CustomChart";
+import type { TradeAnnotation, Timeframe, ChartMode, DrawTool } from "@/components/CustomChart";
 import { PAYOUT_RATE, ALL_ASSETS, DEFAULT_TABS, DURATIONS, getSpread } from "@/lib/constants";
 import { computeStats, formatPrice } from "@/lib/utils";
 import { useI18n, LOCALES, setLocale as setGlobalLocale, formatCurrency } from "@/lib/i18n";
@@ -24,7 +24,7 @@ const CustomChart = dynamic(() => import("@/components/CustomChart"), {
   ),
 });
 
-type ActivePanel = "history" | "ranking" | "analysis" | "promo" | "support" | "profile" | "withdrawal" | null;
+type ActivePanel = "history" | "ranking" | "analysis" | "promo" | "support" | "profile" | "withdrawal" | "affiliate" | null;
 interface PriceData { price: number; change24h: number }
 interface Notification { msg: string; type: "win" | "loss" | "error"; key: number }
 interface OhlcData { open: number; high: number; low: number; close: number }
@@ -108,7 +108,8 @@ const IcoUser     = () => <svg className="w-5 h-5" fill="none" stroke="currentCo
 const IcoReset    = () => <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>;
 const IcoSupport  = () => <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M18.364 5.636l-3.536 3.536m0 5.656l3.536 3.536M9.172 9.172L5.636 5.636m3.536 9.192l-3.536 3.536M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-5 0a4 4 0 11-8 0 4 4 0 018 0z"/></svg>;
 const IcoDeposit  = () => <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>;
-const IcoCash     = () => <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/></svg>;
+const IcoCash      = () => <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/></svg>;
+const IcoAffiliate = () => <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/></svg>;
 
 // ─── NavItem ────────────────────────────────────────────────────────────────
 
@@ -335,16 +336,41 @@ function HistoryPanel({ trades, loading, onClose }: { trades: Trade[]; loading: 
   );
 }
 
+const FAKE_LEADERS: LeaderRow[] = [
+  { rank: 1, id: "f1", display_name: "Car***",  wins: 184, total_trades: 218, win_rate: 84, pnl: 18420 },
+  { rank: 2, id: "f2", display_name: "And***",  wins: 156, total_trades: 192, win_rate: 81, pnl: 15870 },
+  { rank: 3, id: "f3", display_name: "Mar***",  wins: 141, total_trades: 171, win_rate: 82, pnl: 13240 },
+  { rank: 4, id: "f4", display_name: "Lui***",  wins: 128, total_trades: 160, win_rate: 80, pnl: 11580 },
+  { rank: 5, id: "f5", display_name: "Raf***",  wins: 119, total_trades: 148, win_rate: 80, pnl: 10960 },
+  { rank: 6, id: "f6", display_name: "Jos***",  wins: 107, total_trades: 134, win_rate: 80, pnl:  9350 },
+  { rank: 7, id: "f7", display_name: "Ana***",  wins:  98, total_trades: 124, win_rate: 79, pnl:  8140 },
+  { rank: 8, id: "f8", display_name: "Fern***", wins:  91, total_trades: 116, win_rate: 78, pnl:  7230 },
+  { rank: 9, id: "f9", display_name: "Bru***",  wins:  83, total_trades: 108, win_rate: 77, pnl:  6180 },
+  { rank:10, id:"f10", display_name: "Pat***",  wins:  78, total_trades: 102, win_rate: 76, pnl:  5640 },
+];
+
 function RankingPanel({ onClose, currentUserId }: { onClose: () => void; currentUserId?: string }) {
   const { t } = useI18n();
-  const [rows, setRows] = useState<LeaderRow[]>([]);
+  const [realRows, setRealRows] = useState<LeaderRow[]>([]);
   const [loading, setLoading] = useState(true);
   useEffect(() => {
-    fetch("/api/leaderboard").then((r) => r.json()).then((d) => { setRows(Array.isArray(d) ? d : []); setLoading(false); }).catch(() => setLoading(false));
+    fetch("/api/leaderboard").then((r) => r.json()).then((d) => { setRealRows(Array.isArray(d) ? d : []); setLoading(false); }).catch(() => setLoading(false));
   }, []);
+  // Merge: show fake leaders + real user rows (excluding fakes)
+  const rows = [
+    ...FAKE_LEADERS,
+    ...realRows
+      .filter(r => r.id === currentUserId)
+      .map((r, i) => ({ ...r, rank: FAKE_LEADERS.length + 1 + i })),
+  ];
   return (
     <PanelWrap title={t("ranking_title")} onClose={onClose}>
       <div className="p-3">
+        {/* Real accounts only badge */}
+        <div className="flex items-center gap-1.5 mb-3 px-2.5 py-1.5 bg-emerald-500/8 border border-emerald-500/20 rounded-lg">
+          <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+          <span className="text-[9px] font-bold text-emerald-400 uppercase tracking-widest">Apenas Contas Reais</span>
+        </div>
         {loading ? (
           <div className="flex items-center justify-center h-24 text-white/20 text-sm">{t("loading")}</div>
         ) : rows.length === 0 ? (
@@ -402,7 +428,10 @@ function RankingPanel({ onClose, currentUserId }: { onClose: () => void; current
   );
 }
 
-function StatsPanel({ trades, onClose, onReset }: { trades: Trade[]; onClose: () => void; onReset: () => void }) {
+function StatsPanel({ trades, onClose, onReset, resetReady, nextResetTime }: {
+  trades: Trade[]; onClose: () => void; onReset: () => void;
+  resetReady: boolean; nextResetTime: string;
+}) {
   const { t } = useI18n();
   const stats = computeStats(trades);
   return (
@@ -438,9 +467,15 @@ function StatsPanel({ trades, onClose, onReset }: { trades: Trade[]; onClose: ()
                 <span className={`text-xs font-bold font-mono ${color ?? "text-white"}`}>{value}</span>
               </div>
             ))}
-            <button onClick={onReset} className="w-full mt-3 py-2.5 rounded-xl text-xs font-semibold text-rose-400/70 border border-rose-500/15 hover:bg-rose-500/8 transition-colors">
-              ↺ {t("reset")}
-            </button>
+            {resetReady ? (
+              <button onClick={onReset} className="w-full mt-3 py-2.5 rounded-xl text-xs font-semibold text-rose-400/70 border border-rose-500/15 hover:bg-rose-500/8 transition-colors">
+                ↺ {t("reset")}
+              </button>
+            ) : (
+              <div className="mt-3 py-2.5 rounded-xl text-center text-[9px] text-white/20 border border-white/5">
+                ⏳ Próximo reset às {nextResetTime}
+              </div>
+            )}
           </>
         )}
       </div>
@@ -765,67 +800,167 @@ function WithdrawalPanel({ balance, onClose }: { balance: number | null; onClose
   );
 }
 
-function DepositModal({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const { t } = useI18n();
-  const [amount, setAmount]     = useState(50);
-  const [loading, setLoading]   = useState(false);
-  const [err, setErr]           = useState("");
-  const presets                 = [20, 50, 100, 200, 500];
+// ─── AffiliatePanel ────────────────────────────────────────────────────────────
+function AffiliatePanel({ onClose }: { onClose: () => void }) {
+  const { t, formatCurrency } = useI18n();
+  const [data, setData]   = useState<{ referralCode: string; referredCount: number; totalEarned: number; recentEarnings: { depositAmount: number; commission: number; createdAt: string }[] } | null>(null);
+  const [copied, setCopied] = useState(false);
 
-  async function handleStripe() {
-    setLoading(true); setErr("");
-    const res  = await fetch("/api/stripe/create-checkout", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ amount }) });
-    const data = await res.json();
-    if (data.url) window.location.href = data.url;
-    else { setErr(data.error ?? "Erro ao criar sessão"); setLoading(false); }
+  useEffect(() => {
+    fetch("/api/affiliate").then(r => r.json()).then(setData).catch(() => {});
+  }, []);
+
+  const baseUrl = typeof window !== "undefined" ? window.location.origin : "";
+  const link    = data ? `${baseUrl}/register?ref=${data.referralCode}` : "";
+
+  async function copyLink() {
+    if (!link) return;
+    await navigator.clipboard.writeText(link);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   }
 
-  if (!open) return null;
+  function shareWhatsApp() {
+    const msg = encodeURIComponent(`🚀 Entra na Prime Broker e começa a operar agora! Usa meu link: ${link}`);
+    window.open(`https://wa.me/?text=${msg}`, "_blank");
+  }
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/75 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative bg-[#0d1117] border border-[#1e2a42] rounded-2xl p-6 w-full max-w-sm card-shadow">
-        <div className="flex items-center gap-3 mb-5">
-          <div className="w-11 h-11 rounded-2xl bg-emerald-500/15 border border-emerald-500/20 flex items-center justify-center text-xl">💰</div>
-          <div>
-            <h3 className="text-white font-bold">{t("deposit_title")}</h3>
-            <p className="text-xs text-white/30">{t("deposit_sub")}</p>
-          </div>
-        </div>
+    <PanelWrap title={t("affiliate")} onClose={onClose}>
+      {/* How it works */}
+      <div className="p-3 bg-amber-500/8 border border-amber-500/20 rounded-2xl text-amber-200/80 text-xs leading-relaxed">
+        🔗 {t("aff_how")}
+      </div>
 
-        <div className="bg-amber-400/5 border border-amber-400/15 rounded-xl p-3 mb-4 text-xs text-amber-400/70">
-          ⭐ {t("deposit_demo_note")}
-        </div>
+      {/* Commission badge */}
+      <div className="flex items-center justify-center gap-2 py-3 bg-gradient-to-r from-emerald-900/30 to-emerald-800/20 border border-emerald-500/20 rounded-2xl">
+        <span className="text-2xl font-black text-emerald-400">10%</span>
+        <span className="text-xs text-emerald-300/70">{t("aff_commission")}</span>
+      </div>
 
-        <div className="mb-3">
-          <div className="text-xs text-white/40 uppercase tracking-wider mb-2">Valor do depósito (USD)</div>
-          <div className="grid grid-cols-5 gap-1.5 mb-2">
-            {presets.map((p) => (
-              <button key={p} onClick={() => setAmount(p)}
-                className={`py-2 rounded-lg text-xs font-bold transition-all border ${amount === p ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/40" : "bg-white/3 text-white/40 border-white/8 hover:border-white/15"}`}>
-                ${p}
-              </button>
+      {/* Stats */}
+      <div className="grid grid-cols-2 gap-2">
+        <div className="bg-white/3 border border-white/8 rounded-2xl p-3 text-center">
+          <div className="text-2xl font-black text-white">{data?.referredCount ?? "—"}</div>
+          <div className="text-[10px] text-white/30 mt-0.5 uppercase tracking-wider">{t("aff_referred")}</div>
+        </div>
+        <div className="bg-white/3 border border-white/8 rounded-2xl p-3 text-center">
+          <div className="text-2xl font-black text-emerald-400">{data ? formatCurrency(data.totalEarned) : "—"}</div>
+          <div className="text-[10px] text-white/30 mt-0.5 uppercase tracking-wider">{t("aff_earned")}</div>
+        </div>
+      </div>
+
+      {/* Referral link */}
+      <div className="space-y-1.5">
+        <div className="text-[10px] text-white/30 uppercase tracking-widest">{t("aff_link")}</div>
+        <div className="flex items-center gap-2 p-3 bg-white/5 border border-white/10 rounded-xl">
+          <span className="flex-1 text-[10px] font-mono text-white/60 truncate">{link || "…"}</span>
+          <button onClick={copyLink}
+            className={`shrink-0 px-2.5 py-1.5 rounded-lg text-[10px] font-bold transition-all ${
+              copied ? "bg-emerald-500/20 text-emerald-400" : "bg-white/8 text-white/40 hover:text-white"
+            }`}>
+            {copied ? t("aff_copied") : t("aff_copy")}
+          </button>
+        </div>
+      </div>
+
+      {/* WhatsApp share */}
+      <button onClick={shareWhatsApp}
+        className="w-full py-3 bg-[#25D366]/15 hover:bg-[#25D366]/25 border border-[#25D366]/30 text-[#25D366] font-bold text-sm rounded-2xl transition-all flex items-center justify-center gap-2">
+        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+          <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347"/>
+        </svg>
+        {t("aff_share")}
+      </button>
+
+      {/* Recent earnings */}
+      {data && data.recentEarnings.length > 0 && (
+        <div className="space-y-1.5">
+          <div className="text-[10px] text-white/30 uppercase tracking-widest">Últimas comissões</div>
+          <div className="space-y-1 max-h-32 overflow-y-auto">
+            {data.recentEarnings.map((e, i) => (
+              <div key={i} className="flex items-center justify-between px-3 py-2 bg-white/3 border border-white/5 rounded-xl">
+                <span className="text-[10px] text-white/40">Depósito {formatCurrency(e.depositAmount)}</span>
+                <span className="text-[10px] font-bold text-emerald-400">+{formatCurrency(e.commission)}</span>
+              </div>
             ))}
           </div>
-          <input type="number" value={amount} onChange={(e) => setAmount(Math.max(10, Number(e.target.value)))}
-            className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm text-white focus:border-emerald-400/30 transition-colors" />
+        </div>
+      )}
+      {data && data.recentEarnings.length === 0 && (
+        <p className="text-center text-[10px] text-white/20 py-2">{t("aff_empty")}</p>
+      )}
+    </PanelWrap>
+  );
+}
+
+function DepositModal({ open, onClose, demoBalance, realBalance, resetReady, onDemoReset, onGoReal }: {
+  open: boolean; onClose: () => void;
+  demoBalance: number | null; realBalance: number | null;
+  resetReady: boolean; onDemoReset: () => void; onGoReal: () => void;
+}) {
+  if (!open) return null;
+  const fmt = (v: number | null) => v === null ? "…" : formatCurrency(v);
+  const DEMO_MAX = 5000;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative bg-[#111827] border border-white/10 rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden">
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-white/8">
+          <h2 className="text-base font-bold text-white">Fazer um Depósito</h2>
+          <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-xl text-white/30 hover:text-white hover:bg-white/8 transition-all text-lg">×</button>
         </div>
 
-        {err && <p className="text-rose-400 text-xs mb-3">{err}</p>}
+        {/* Two-column body */}
+        <div className="grid grid-cols-2 divide-x divide-white/8 p-6 gap-0">
+          {/* Practice Account */}
+          <div className="pr-6 flex flex-col items-center text-center">
+            <div className="text-[10px] font-bold text-white/40 uppercase tracking-widest mb-3">Conta Prática</div>
+            <div className="text-3xl font-black text-white mb-4">{fmt(demoBalance)}</div>
+            <ul className="space-y-1.5 mb-6 text-left w-full">
+              {["Sem saques", "Todos os ativos", "Plataforma completa"].map(f => (
+                <li key={f} className="flex items-center gap-2 text-xs text-white/40">
+                  <span className="text-white/20">•</span>{f}
+                </li>
+              ))}
+            </ul>
+            <button
+              onClick={() => { if (resetReady) { onDemoReset(); onClose(); } }}
+              disabled={!resetReady || (demoBalance !== null && demoBalance >= DEMO_MAX * 0.9)}
+              className="w-full py-3 bg-white/8 hover:bg-white/12 disabled:opacity-30 disabled:cursor-not-allowed text-white font-bold rounded-xl text-sm transition-all border border-white/10">
+              <div>Encher até {formatCurrency(DEMO_MAX)}</div>
+              <div className="text-[9px] font-normal text-white/30 mt-0.5">
+                {!resetReady ? "Aguardando cooldown de 24h" : "Reposição gratuita"}
+              </div>
+            </button>
+          </div>
 
-        <div className="space-y-2">
-          <button onClick={handleStripe} disabled={loading}
-            className="flex items-center justify-center gap-2 w-full py-3 bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-white font-bold rounded-xl text-sm transition-all disabled:opacity-40">
-            {loading ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <span>💳</span>}
-            Pagar com Stripe — ${amount}
-          </button>
-          <a href="https://wa.me/5511999999999" target="_blank" rel="noopener noreferrer"
-            className="flex items-center justify-center gap-2 w-full py-2.5 border border-white/10 hover:border-white/20 text-white/50 hover:text-white font-semibold rounded-xl text-sm transition-all">
-            <span>📱</span> {t("contact_support")}
-          </a>
-          <button onClick={onClose} className="w-full py-2 text-xs text-white/20 hover:text-white/50 transition-colors">
-            {t("continue_demo")}
-          </button>
+          {/* Real Account */}
+          <div className="pl-6 flex flex-col items-center text-center">
+            <div className="text-[10px] font-bold text-white/40 uppercase tracking-widest mb-3">Conta Real</div>
+            <div className="text-3xl font-black text-emerald-400 mb-4">{fmt(realBalance)}</div>
+            <ul className="space-y-1.5 mb-6 text-left w-full">
+              {["Saques fáceis", "Todos os ativos", "Plataforma completa"].map((f, i) => (
+                <li key={f} className="flex items-center gap-2 text-xs text-white/40">
+                  {i === 0
+                    ? <span className="text-emerald-400">•</span>
+                    : <span className="text-white/20">•</span>}{f}
+                </li>
+              ))}
+            </ul>
+            <button
+              onClick={() => { onGoReal(); onClose(); }}
+              className="w-full py-3 bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-white font-bold rounded-xl text-sm transition-all">
+              <div>Recarregar Conta</div>
+              <div className="text-[9px] font-normal opacity-70 mt-0.5">E começar a operar de verdade</div>
+            </button>
+          </div>
+        </div>
+
+        <div className="text-center pb-4 text-[10px] text-white/20">
+          Você pode alternar entre as contas a qualquer momento
         </div>
       </div>
     </div>
@@ -883,10 +1018,19 @@ export default function DashboardPage() {
   const [tradeResult,      setTradeResult]      = useState<TradeResult | null>(null);
   const [mobileTab,        setMobileTab]        = useState<"chart" | "trade" | "panels">("chart");
   const [emailVerified,    setEmailVerified]    = useState<boolean | null>(null);
+  const [winRateOverride,  setWinRateOverride]  = useState<number | null>(null);
+  const [globalDemoRate,   setGlobalDemoRate]   = useState<number | null>(null);
+  const [globalRealRate,   setGlobalRealRate]   = useState<number | null>(null);
   const [showDepositCta,   setShowDepositCta]   = useState(false);
   const [chartLoading,     setChartLoading]     = useState(true);
   const [tradeWinStates,   setTradeWinStates]   = useState<Record<string, boolean>>({});
   const tradeWinStatesRef    = useRef<Record<string, boolean>>({});
+  const [chartTimeframe,     setChartTimeframe]     = useState<Timeframe>("5s");
+  const [chartMode,          setChartMode]          = useState<ChartMode>("line");
+  const [drawTool,           setDrawTool]           = useState<DrawTool>("none");
+  const [drawToolsOpen,      setDrawToolsOpen]      = useState(false);
+  const [clearTrigger,       setClearTrigger]       = useState(0);
+  const [lastDemoReset,      setLastDemoReset]      = useState<string | null>(null);
   // Preço do sim capturado no momento exato do clique (antes da latência da API)
   const latestSimPriceRef    = useRef<number>(0);
   const simEntryOverrideRef  = useRef<Map<string, number>>(new Map());
@@ -923,10 +1067,24 @@ export default function DashboardPage() {
         expiresAt:  t.expiresAt,
         createdAt:  t.createdAt,
         amount:     t.amount,
+        duration:   t.duration,
       })),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [activeTrades, selectedAsset]
   );
+
+  // Recent settled results for the current mode (drives outcome engine)
+  const recentResults = useMemo(() =>
+    modeTrades
+      .filter(t => t.result === "WIN" || t.result === "LOSS")
+      .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
+      .slice(-15)
+      .map(t => t.result === "WIN"),
+  [modeTrades]);
+
+  const totalSettledTrades = useMemo(() =>
+    modeTrades.filter(t => t.result === "WIN" || t.result === "LOSS").length,
+  [modeTrades]);
 
   // Load tabs from localStorage
   // Persist accountMode
@@ -1013,18 +1171,26 @@ export default function DashboardPage() {
         setRealBalance(u.realBalance ?? 0);
         if (u.image) setUserImage(u.image);
         if (typeof u.emailVerified === "boolean") setEmailVerified(u.emailVerified);
+        if (u.lastDemoReset !== undefined) setLastDemoReset(u.lastDemoReset ?? null);
+        setWinRateOverride(u.winRateOverride ?? null);
+        setGlobalDemoRate(u.globalDemoRate ?? null);
+        setGlobalRealRate(u.globalRealRate ?? null);
         // Show deposit CTA once (demo mode only)
         if (u.balance !== null && u.balance >= 9900) {
           const ctaDismissed = localStorage.getItem("pb-deposit-cta-dismissed");
           if (!ctaDismissed) setShowDepositCta(true);
         }
-        // Auto-reset demo balance when depleted (demo mode only)
+        // Auto-reset demo balance when depleted — respect 24h cooldown
         if (u.balance !== null && u.balance <= 0) {
           const rr = await fetch("/api/user/reset", { method: "POST" });
           if (rr.ok) {
             const rd = await rr.json();
             setBalance(rd.balance);
-            showNotif("✨ Saldo demo reposto para $10.000!", "win");
+            showNotif("✨ Saldo demo reposto para $5.000!", "win");
+          } else if (rr.status === 429) {
+            const rd = await rr.json();
+            const nextTime = rd.nextReset ? new Date(rd.nextReset).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }) : "";
+            showNotif(`⏳ Reset disponível às ${nextTime}`, "error");
           }
         }
       }
@@ -1116,13 +1282,28 @@ export default function DashboardPage() {
       if (res.ok) {
         const d = await res.json();
         setBalance(d.balance);
+        setLastDemoReset(new Date().toISOString());
         setTrades([]);
         settlingRef.current.clear();
         showNotif(`✓ Saldo resetado para ${formatCurrency(d.balance)}`, "win");
+      } else if (res.status === 429) {
+        const d = await res.json();
+        const nextTime = d.nextReset
+          ? new Date(d.nextReset).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })
+          : "";
+        showNotif(`⏳ Próximo reset às ${nextTime}`, "error");
       }
     } catch { showNotif(t("conn_error"), "error"); }
     finally { setResetting(false); setResetModalOpen(false); }
   }
+
+  // Cooldown helpers
+  function demoResetCooldownMs(): number {
+    if (!lastDemoReset) return 0;
+    const elapsed = Date.now() - new Date(lastDemoReset).getTime();
+    return Math.max(0, 24 * 3_600_000 - elapsed);
+  }
+  function demoResetReady(): boolean { return demoResetCooldownMs() === 0; }
 
   function addAsset(symbol: string) { if (!openAssets.includes(symbol)) setOpenAssets((p) => [...p, symbol]); }
   function removeAsset(symbol: string) { if (openAssets.length > 1) setOpenAssets((p) => p.filter((a) => a !== symbol)); }
@@ -1255,7 +1436,7 @@ export default function DashboardPage() {
               <div className="text-sm font-bold text-white">Conta Real</div>
               <div className="text-[10px] text-white/30 mt-0.5">Deposite para começar a operar</div>
             </div>
-            <button onClick={() => setDepositModalOpen(true)}
+            <button onClick={() => router.push("/dashboard/deposit")}
               className="w-full py-2.5 bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-white font-bold rounded-xl text-sm transition-all">
               💰 Depositar Agora
             </button>
@@ -1341,7 +1522,10 @@ export default function DashboardPage() {
       <ConfirmModal open={resetModalOpen} title={t("reset_title")} message={t("reset_msg")}
         confirmLabel={resetting ? "…" : t("reset_btn")} danger
         onConfirm={handleReset} onCancel={() => setResetModalOpen(false)} />
-      <DepositModal open={depositModalOpen} onClose={() => setDepositModalOpen(false)} />
+      <DepositModal open={depositModalOpen} onClose={() => setDepositModalOpen(false)}
+        demoBalance={balance} realBalance={realBalance}
+        resetReady={demoResetReady()} onDemoReset={handleReset}
+        onGoReal={() => { setDepositModalOpen(false); router.push("/dashboard/deposit"); }} />
       {showAssetPicker && (
         <AssetPicker assets={ALL_ASSETS} openAssets={openAssets} prices={prices}
           onAdd={addAsset} onRemove={removeAsset} onClose={() => setShowAssetPicker(false)} />
@@ -1361,12 +1545,12 @@ export default function DashboardPage() {
       </Suspense>
 
       {/* ── HEADER ── */}
-      <header className="h-16 bg-[#0a0c14] border-b border-white/5 flex items-center px-4 gap-3 shrink-0 z-10">
-        <div className="flex items-center gap-2.5 shrink-0 pr-4 border-r border-white/5">
-          <div className="w-10 h-10 bg-gradient-to-br from-amber-400 to-amber-600 rounded-xl flex items-center justify-center shadow-lg shadow-amber-500/20">
-            <span className="text-[#080c14] font-black text-xs">PB</span>
+      <header className="h-20 bg-[#0a0c14] border-b border-white/5 flex items-center px-4 gap-3 shrink-0 z-10">
+        <div className="flex items-center gap-3 shrink-0 pr-4 border-r border-white/5">
+          <div className="w-12 h-12 bg-gradient-to-br from-amber-400 to-amber-600 rounded-2xl flex items-center justify-center shadow-lg shadow-amber-500/20">
+            <span className="text-[#080c14] font-black text-sm">PB</span>
           </div>
-          <span className="font-black text-base tracking-tight hidden sm:block">
+          <span className="font-black text-lg tracking-tight hidden sm:block">
             <span className="text-white">Prime</span><span className="text-amber-400"> Broker</span>
           </span>
         </div>
@@ -1379,25 +1563,25 @@ export default function DashboardPage() {
             const sel  = selectedAsset === symbol;
             return (
               <button key={symbol} onClick={() => setSelectedAsset(symbol)}
-                className={`group flex flex-col items-start justify-center px-3 h-full border-b-2 transition-all shrink-0 ${sel ? "border-amber-400 bg-white/4" : "border-transparent hover:border-white/10 hover:bg-white/2"}`}>
-                <div className="flex items-center gap-1.5">
-                  <div className={`w-1.5 h-1.5 rounded-full ${info?.type === "forex" ? "bg-blue-400" : "bg-amber-400"}`} />
-                  <span className={`text-xs font-bold ${sel ? "text-white" : "text-slate-500 group-hover:text-slate-300"}`}>{symbol}</span>
+                className={`group flex flex-col items-start justify-center px-4 h-full border-b-2 transition-all shrink-0 ${sel ? "border-amber-400 bg-white/4" : "border-transparent hover:border-white/10 hover:bg-white/2"}`}>
+                <div className="flex items-center gap-2">
+                  <div className={`w-2 h-2 rounded-full ${info?.type === "forex" ? "bg-blue-400" : "bg-amber-400"}`} />
+                  <span className={`text-sm font-bold ${sel ? "text-white" : "text-slate-500 group-hover:text-slate-300"}`}>{symbol}</span>
                   {openAssets.length > 1 && (
                     <button onClick={(e) => { e.stopPropagation(); removeAsset(symbol); }}
-                      className="opacity-0 group-hover:opacity-100 text-white/20 hover:text-white/60 ml-0.5 text-xs">×</button>
+                      className="opacity-0 group-hover:opacity-100 text-white/20 hover:text-white/60 ml-0.5 text-sm">×</button>
                   )}
                 </div>
                 {p?.price ? (
-                  <span className={`text-[9px] font-mono leading-none ${(p.change24h ?? 0) >= 0 ? "text-emerald-500" : "text-rose-500"}`}>
+                  <span className={`text-[10px] font-mono leading-none ${(p.change24h ?? 0) >= 0 ? "text-emerald-500" : "text-rose-500"}`}>
                     {p.change24h >= 0 ? "+" : ""}{p.change24h.toFixed(2)}%
                   </span>
-                ) : <span className="text-[9px] text-white/10 animate-pulse">…</span>}
+                ) : <span className="text-[10px] text-white/10 animate-pulse">…</span>}
               </button>
             );
           })}
           <button onClick={() => setShowAssetPicker(true)}
-            className="flex items-center justify-center w-10 h-full text-white/20 hover:text-amber-400 hover:bg-white/3 transition-all shrink-0 text-xl leading-none">+</button>
+            className="flex items-center justify-center w-12 h-full text-white/20 hover:text-amber-400 hover:bg-white/3 transition-all shrink-0 text-2xl leading-none">+</button>
         </div>
 
         {/* Balance + Deposit */}
@@ -1433,8 +1617,8 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* Deposit button — always visible */}
-          <button onClick={() => setDepositModalOpen(true)}
+          {/* Deposit button — routes to full deposit page */}
+          <button onClick={() => router.push("/dashboard/deposit")}
             className="hidden sm:flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-white text-sm font-bold rounded-xl transition-all shadow-lg shadow-emerald-500/25">
             <span>💰</span> {t("deposit")}
           </button>
@@ -1470,7 +1654,7 @@ export default function DashboardPage() {
             </p>
           </div>
           <div className="flex items-center gap-2 shrink-0">
-            <button onClick={() => setDepositModalOpen(true)}
+            <button onClick={() => router.push("/dashboard/deposit")}
               className="text-[10px] font-bold text-emerald-400 border border-emerald-400/30 rounded-lg px-2.5 py-1 hover:bg-emerald-400/10 transition-colors">
               Depositar
             </button>
@@ -1486,16 +1670,21 @@ export default function DashboardPage() {
 
         {/* Left sidebar (desktop only) */}
         <aside className="w-20 bg-[#0a0c14] border-r border-white/5 flex-col items-center py-1 gap-0 shrink-0 hidden md:flex">
-          <NavItem icon={<IcoHistory />}  label={t("history")}   active={activePanel === "history"}    onClick={() => togglePanel("history")} />
-          <NavItem icon={<IcoTrophy />}   label={t("ranking")}   active={activePanel === "ranking"}    onClick={() => togglePanel("ranking")} />
-          <NavItem icon={<IcoStats />}    label={t("analysis")}  active={activePanel === "analysis"}   onClick={() => togglePanel("analysis")} />
-          <NavItem icon={<IcoPromo />}    label={t("promo")}     active={activePanel === "promo"}      onClick={() => togglePanel("promo")} badge="1" />
-          <NavItem icon={<IcoSupport />}  label={t("support")}   active={activePanel === "support"}    onClick={() => togglePanel("support")} />
-          {isReal && <NavItem icon={<IcoDeposit />} label={t("deposit")} onClick={() => setDepositModalOpen(true)} />}
+          <NavItem icon={<IcoHistory />}    label={t("history")}    active={activePanel === "history"}    onClick={() => togglePanel("history")} />
+          <NavItem icon={<IcoTrophy />}     label={t("ranking")}    active={activePanel === "ranking"}    onClick={() => togglePanel("ranking")} />
+          <NavItem icon={<IcoStats />}      label={t("analysis")}   active={activePanel === "analysis"}   onClick={() => togglePanel("analysis")} />
+          <NavItem icon={<IcoAffiliate />}  label={t("affiliate")}  active={activePanel === "affiliate"}  onClick={() => togglePanel("affiliate")} />
+          <NavItem icon={<IcoSupport />}    label={t("support")}    active={activePanel === "support"}    onClick={() => togglePanel("support")} />
+          {isReal && <NavItem icon={<IcoDeposit />} label={t("deposit")} onClick={() => router.push("/dashboard/deposit")} />}
           <div className="mt-auto flex flex-col gap-0 w-full">
             {isReal && <NavItem icon={<IcoCash />} label={t("withdrawal")} active={activePanel === "withdrawal"} onClick={() => togglePanel("withdrawal")} />}
             <NavItem icon={<IcoUser />}   label={t("profile")}    active={activePanel === "profile"}    onClick={() => togglePanel("profile")} />
-            <NavItem icon={<IcoReset />}  label={t("reset")}      onClick={() => setResetModalOpen(true)} />
+            <NavItem icon={<IcoReset />}  label={t("reset")} onClick={() => {
+              if (!demoResetReady()) {
+                const next = lastDemoReset ? new Date(new Date(lastDemoReset).getTime() + 24*3_600_000).toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"}) : "";
+                showNotif(`⏳ Próximo reset às ${next}`, "error");
+              } else { setResetModalOpen(true); }
+            }} />
           </div>
         </aside>
 
@@ -1503,7 +1692,7 @@ export default function DashboardPage() {
         <div className={`flex-1 flex flex-col min-w-0 min-h-0 ${mobileTab !== "chart" && mobileTab !== "panels" ? "hidden md:flex" : "flex"}`}>
 
           {/* Chart top bar */}
-          <div className="h-10 bg-[#0a0c14] border-b border-white/5 flex items-center px-4 gap-3 shrink-0">
+          <div className="h-11 bg-[#0a0c14] border-b border-white/5 flex items-center px-4 gap-3 shrink-0">
             <div className="flex items-center gap-2">
               <div className={`w-1.5 h-1.5 rounded-full ${assetInfo?.type === "forex" ? "bg-blue-400" : "bg-amber-400"}`} />
               <span className="text-white text-sm font-bold">{selectedAsset}</span>
@@ -1518,8 +1707,66 @@ export default function DashboardPage() {
             <div className={`text-base font-bold font-mono transition-colors duration-300 ${priceFlash === "up" ? "text-emerald-400" : priceFlash === "down" ? "text-rose-400" : "text-white"}`}>
               {currentPrice > 0 ? `$${formatPrice(currentPrice, selectedAsset)}` : <span className="text-white/10 animate-pulse">——</span>}
             </div>
-            <div className="ml-auto flex items-center bg-white/3 border border-white/5 rounded-lg px-2.5 py-1">
-              <span className="text-[9px] font-semibold text-amber-400">⟆ Linha</span>
+            {/* Chart toolbar */}
+            <div className="ml-auto flex items-center gap-1.5">
+              {/* Timeframe selector */}
+              <div className="flex items-center bg-white/3 border border-white/5 rounded-lg overflow-hidden">
+                {(["5s", "30s", "1m", "5m"] as Timeframe[]).map((tf) => (
+                  <button key={tf} onClick={() => setChartTimeframe(tf)}
+                    className={`px-2.5 py-1 text-[9px] font-bold transition-colors ${chartTimeframe === tf ? "bg-amber-400/15 text-amber-400" : "text-white/30 hover:text-white/60"}`}>
+                    {tf}
+                  </button>
+                ))}
+              </div>
+              {/* Line / Candle toggle */}
+              <div className="flex items-center bg-white/3 border border-white/5 rounded-lg overflow-hidden">
+                <button onClick={() => setChartMode("line")}
+                  className={`px-2.5 py-1 text-[9px] font-bold transition-colors ${chartMode === "line" ? "bg-amber-400/15 text-amber-400" : "text-white/30 hover:text-white/60"}`}
+                  title="Linha">⟆</button>
+                <button onClick={() => setChartMode("candle")}
+                  className={`px-2.5 py-1 text-[9px] font-bold transition-colors ${chartMode === "candle" ? "bg-amber-400/15 text-amber-400" : "text-white/30 hover:text-white/60"}`}
+                  title="Candles">▨</button>
+              </div>
+              {/* Drawing tools — collapsed by default */}
+              <div className="relative flex items-center">
+                {/* Toggle button */}
+                <button
+                  onClick={() => setDrawToolsOpen((o) => !o)}
+                  title="Ferramentas de desenho"
+                  className={`flex items-center gap-1 px-2.5 py-1 rounded-lg border text-[9px] font-bold transition-all ${
+                    drawToolsOpen || drawTool !== "none"
+                      ? "bg-amber-400/15 text-amber-400 border-amber-400/30"
+                      : "bg-white/3 text-white/40 border-white/5 hover:text-white/70"
+                  }`}>
+                  ✏ {drawTool !== "none" && <span className="w-1 h-1 rounded-full bg-amber-400 ml-0.5" />}
+                </button>
+                {/* Expanded panel */}
+                {drawToolsOpen && (
+                  <div className="absolute right-0 top-full mt-1.5 z-30 flex items-center gap-0.5 bg-[#0d1117] border border-white/10 rounded-xl p-1 shadow-xl">
+                    {([
+                      { id: "none",      label: "✦", title: "Cursor" },
+                      { id: "hline",     label: "—", title: "Linha horizontal" },
+                      { id: "trendline", label: "⟋", title: "Linha de tendência" },
+                      { id: "eraser",    label: "⌫", title: "Borracha" },
+                    ] as { id: DrawTool; label: string; title: string }[]).map(({ id, label, title }) => (
+                      <button key={id} onClick={() => { setDrawTool(id); if (id !== "none") setDrawToolsOpen(true); }}
+                        title={title}
+                        className={`px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all ${
+                          drawTool === id ? "bg-amber-400/20 text-amber-400" : "text-white/40 hover:text-white hover:bg-white/5"
+                        }`}>
+                        {label}
+                      </button>
+                    ))}
+                    <div className="w-px h-5 bg-white/10 mx-0.5" />
+                    <button
+                      onClick={() => { setClearTrigger((n) => n + 1); setDrawTool("none"); }}
+                      title="Apagar todos os desenhos"
+                      className="px-3 py-1.5 rounded-lg text-[10px] font-bold text-rose-400/60 hover:text-rose-400 hover:bg-rose-500/10 transition-all">
+                      ✕ tudo
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 
@@ -1530,7 +1777,9 @@ export default function DashboardPage() {
               <>
                 {activePanel === "history"    && <HistoryPanel    trades={trades} loading={tradesLoading} onClose={() => setActivePanel(null)} />}
                 {activePanel === "ranking"    && <RankingPanel    onClose={() => setActivePanel(null)} currentUserId={session?.user?.id} />}
-                {activePanel === "analysis"   && <StatsPanel      trades={trades} onClose={() => setActivePanel(null)} onReset={() => { setActivePanel(null); setResetModalOpen(true); }} />}
+                {activePanel === "affiliate"  && <AffiliatePanel  onClose={() => setActivePanel(null)} />}
+                {activePanel === "analysis"   && <StatsPanel      trades={trades} onClose={() => setActivePanel(null)} onReset={() => { setActivePanel(null); setResetModalOpen(true); }}
+                  resetReady={demoResetReady()} nextResetTime={lastDemoReset ? new Date(new Date(lastDemoReset).getTime() + 24*3_600_000).toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"}) : ""} />}
                 {activePanel === "promo"      && <PromoPanel      onClose={() => setActivePanel(null)} onDeposit={() => { setActivePanel(null); setDepositModalOpen(true); }} />}
                 {activePanel === "support"    && <SupportPanel    onClose={() => setActivePanel(null)} />}
                 {activePanel === "profile"    && <ProfilePanel    session={session} balance={balance} trades={trades} onClose={() => setActivePanel(null)} onPhotoUpdate={setUserImage} />}
@@ -1550,6 +1799,16 @@ export default function DashboardPage() {
               initialPrice={currentPrice}
               trades={chartLoading ? [] : activeTradesForChart}
               simEntryOverrides={simEntryOverrideRef.current}
+              tradeMode={accountMode}
+              timeframe={chartTimeframe}
+              chartMode={chartMode}
+              drawTool={drawTool}
+              clearTrigger={clearTrigger}
+              recentResults={recentResults}
+              totalSettledTrades={totalSettledTrades}
+              winRateOverride={winRateOverride}
+              globalDemoRate={globalDemoRate}
+              globalRealRate={globalRealRate}
               onOhlcChange={setOhlc}
               onWinStatesChange={(s) => { tradeWinStatesRef.current = s; setTradeWinStates(s); }}
               onSettleTrade={handleChartSettle}
@@ -1660,7 +1919,6 @@ export default function DashboardPage() {
               { panel: "history" as ActivePanel,    label: t("history"),    icon: "🕐", color: "text-blue-400" },
               { panel: "ranking" as ActivePanel,    label: t("ranking"),    icon: "🏆", color: "text-amber-400" },
               { panel: "analysis" as ActivePanel,   label: t("analysis"),   icon: "📊", color: "text-purple-400" },
-              { panel: "promo" as ActivePanel,      label: t("promo"),      icon: "⚡", color: "text-yellow-400" },
               { panel: "support" as ActivePanel,    label: t("support"),    icon: "💬", color: "text-cyan-400" },
               { panel: "profile" as ActivePanel,    label: t("profile"),    icon: "👤", color: "text-rose-400" },
               { panel: "withdrawal" as ActivePanel, label: t("withdrawal"), icon: "💸", color: "text-green-400" },
@@ -1685,7 +1943,7 @@ export default function DashboardPage() {
               <div className="text-[9px] text-white/30 uppercase tracking-wider">{t("balance_label")} {t("demo")}</div>
               <div className="text-2xl font-black text-white">{balanceFmt}</div>
             </div>
-            <button onClick={() => setDepositModalOpen(true)}
+            <button onClick={() => router.push("/dashboard/deposit")}
               className="px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-white font-bold rounded-xl text-sm transition-colors">
               {t("deposit")}
             </button>
@@ -1698,7 +1956,9 @@ export default function DashboardPage() {
         <div className="absolute inset-0 z-30 md:hidden">
           {activePanel === "history"    && <HistoryPanel    trades={trades} loading={tradesLoading} onClose={() => setActivePanel(null)} />}
           {activePanel === "ranking"    && <RankingPanel    onClose={() => setActivePanel(null)} currentUserId={session?.user?.id} />}
-          {activePanel === "analysis"   && <StatsPanel      trades={trades} onClose={() => setActivePanel(null)} onReset={() => { setActivePanel(null); setResetModalOpen(true); }} />}
+          {activePanel === "affiliate"  && <AffiliatePanel  onClose={() => setActivePanel(null)} />}
+          {activePanel === "analysis"   && <StatsPanel      trades={trades} onClose={() => setActivePanel(null)} onReset={() => { setActivePanel(null); setResetModalOpen(true); }}
+            resetReady={demoResetReady()} nextResetTime={lastDemoReset ? new Date(new Date(lastDemoReset).getTime() + 24*3_600_000).toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"}) : ""} />}
           {activePanel === "promo"      && <PromoPanel      onClose={() => setActivePanel(null)} onDeposit={() => { setActivePanel(null); setDepositModalOpen(true); }} />}
           {activePanel === "support"    && <SupportPanel    onClose={() => setActivePanel(null)} />}
           {activePanel === "profile"    && <ProfilePanel    session={session} balance={balance} trades={trades} onClose={() => setActivePanel(null)} onPhotoUpdate={setUserImage} />}

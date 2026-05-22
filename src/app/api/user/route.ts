@@ -9,10 +9,29 @@ export async function GET() {
     return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
   }
 
-  const user = await prisma.user.findUnique({
-    where: { id: session.user.id },
-    select: { id: true, name: true, email: true, balance: true, realBalance: true, image: true, emailVerified: true },
-  });
+  const [user, settings] = await Promise.all([
+    prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: {
+        id: true, name: true, email: true, balance: true, realBalance: true,
+        image: true, emailVerified: true, lastDemoReset: true,
+        winRateOverride: true, isBlocked: true,
+      },
+    }),
+    prisma.adminSettings.findMany({
+      where: { key: { in: ["globalDemoRate", "globalRealRate"] } },
+    }),
+  ]);
 
-  return NextResponse.json(user);
+  if (!user) return NextResponse.json({ error: "Não encontrado" }, { status: 404 });
+  if (user.isBlocked) return NextResponse.json({ error: "Conta bloqueada" }, { status: 403 });
+
+  const settingsMap: Record<string, string> = {};
+  for (const s of settings) settingsMap[s.key] = s.value;
+
+  return NextResponse.json({
+    ...user,
+    globalDemoRate: settingsMap.globalDemoRate ? Number(settingsMap.globalDemoRate) : null,
+    globalRealRate: settingsMap.globalRealRate ? Number(settingsMap.globalRealRate) : null,
+  });
 }

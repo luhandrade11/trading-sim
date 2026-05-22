@@ -1,17 +1,25 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { signIn } from "next-auth/react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 
-export default function RegisterPage() {
-  const router = useRouter();
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
+function RegisterForm() {
+  const router        = useRouter();
+  const searchParams  = useSearchParams();
+  const [name, setName]         = useState("");
+  const [email, setEmail]       = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [error, setError]       = useState("");
+  const [loading, setLoading]   = useState(false);
+  const [refCode, setRefCode]   = useState("");
+
+  useEffect(() => {
+    const ref = searchParams.get("ref") ?? "";
+    // Sanitize: only alphanumeric and basic cuid chars
+    if (/^[a-zA-Z0-9_-]{4,40}$/.test(ref)) setRefCode(ref);
+  }, [searchParams]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -21,7 +29,7 @@ export default function RegisterPage() {
     const res = await fetch("/api/register", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, email, password }),
+      body: JSON.stringify({ name, email, password, ...(refCode ? { referralCode: refCode } : {}) }),
     });
 
     if (!res.ok) {
@@ -168,5 +176,13 @@ export default function RegisterPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function RegisterPage() {
+  return (
+    <Suspense>
+      <RegisterForm />
+    </Suspense>
   );
 }

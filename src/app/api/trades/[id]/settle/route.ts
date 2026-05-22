@@ -32,6 +32,10 @@ export async function POST(
   // Idempotent — already settled
   if (trade.result !== "PENDING") return NextResponse.json(trade);
 
+  // Reject settlement if trade hasn't expired yet (10s grace window)
+  if (new Date(trade.expiresAt).getTime() > Date.now() + 10_000)
+    return NextResponse.json({ error: "Operação ainda não expirou" }, { status: 400 });
+
   // Sanity cap
   if (exitPrice > trade.entryPrice * MAX_EXIT_PRICE_MULTIPLIER)
     return NextResponse.json({ error: "Preço de saída suspeito" }, { status: 400 });

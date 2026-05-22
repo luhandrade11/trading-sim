@@ -3,7 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { rateLimit } from "@/lib/rateLimit";
-import { getCachedPrice } from "@/lib/priceCache";
+import { getPrice } from "@/lib/priceCache";
 import { ASSETS, VALID_DURATIONS, MIN_TRADE_AMOUNT, MAX_TRADE_AMOUNT } from "@/lib/constants";
 
 const VALID_DIRECTIONS = ["UP", "DOWN"];
@@ -56,37 +56,41 @@ export async function POST(req: NextRequest) {
   if (typeof amount !== "number" || amount < MIN_TRADE_AMOUNT || amount > MAX_TRADE_AMOUNT)
     return NextResponse.json({ error: `Valor deve ser entre $${MIN_TRADE_AMOUNT} e $${MAX_TRADE_AMOUNT}` }, { status: 400 });
 
-  // Use server-side cached price — never trust client entryPrice
-  const entryPrice = getCachedPrice(asset);
+  // Use server-side price: live cache → hardcoded fallback. Never trust client.
+  const entryPrice = getPrice(asset);
   if (!entryPrice || entryPrice <= 0)
-    return NextResponse.json({ error: "Preço indisponível, tente novamente" }, { status: 503 });
+    return NextResponse.json({ error: "Ativo não suportado" }, { status: 400 });
 
-  const user = await prisma.user.findUnique({ where: { id: session.user.id } });
-  if (!user) return NextResponse.json({ error: "Usuário não encontrado" }, { status: 404 });
-  const activeBalance = mode === "real" ? user.realBalance : user.balance;
-  if (activeBalance < amount)
-    return NextResponse.json({ error: "Saldo insuficiente" }, { status: 400 });
+  // Atomic balance check + deduct — prevents race condition with concurrent requests
+  let trade;
+  try {
+    trade = await prisma.$transaction(async (tx) => {
+      const user = await tx.user.findUnique({ where: { id: session.user.id } });
+      if (!user) throw Object.assign(new Error("not_found"), { status: 404 });
+      const activeBalance = mode === "real" ? user.realBalance : user.balance;
+      if (activeBalance < amount) throw Object.assign(new Error("insufficient"), { status: 400 });
 
-  // Enforce max concurrent trades
-  const openCount = await prisma.trade.count({
-    where: { userId: session.user.id, result: "PENDING" },
-  });
-  if (openCount >= MAX_CONCURRENT_TRADES)
-    return NextResponse.json({ error: `Máximo de ${MAX_CONCURRENT_TRADES} operações simultâneas` }, { status: 400 });
+      const openCount = await tx.trade.count({ where: { userId: session.user.id, result: "PENDING" } });
+      if (openCount >= MAX_CONCURRENT_TRADES)
+        throw Object.assign(new Error("max_trades"), { status: 400 });
 
-  const expiresAt = new Date(Date.now() + duration * 1000);
-
-  const [trade] = await prisma.$transaction([
-    prisma.trade.create({
-      data: { userId: session.user.id, asset, direction, amount, entryPrice, duration, expiresAt, mode },
-    }),
-    prisma.user.update({
-      where: { id: session.user.id },
-      data: mode === "real"
-        ? { realBalance: { decrement: amount } }
-        : { balance:     { decrement: amount } },
-    }),
-  ]);
+      const expiresAt = new Date(Date.now() + duration * 1000);
+      const created   = await tx.trade.create({
+        data: { userId: session.user.id, asset, direction, amount, entryPrice, duration, expiresAt, mode },
+      });
+      await tx.user.update({
+        where: { id: session.user.id },
+        data: mode === "real" ? { realBalance: { decrement: amount } } : { balance: { decrement: amount } },
+      });
+      return created;
+    });
+  } catch (err: unknown) {
+    const e = err as Error & { status?: number };
+    if (e.message === "not_found")     return NextResponse.json({ error: "Usuário não encontrado" }, { status: 404 });
+    if (e.message === "insufficient")  return NextResponse.json({ error: "Saldo insuficiente" }, { status: 400 });
+    if (e.message === "max_trades")    return NextResponse.json({ error: `Máximo de ${MAX_CONCURRENT_TRADES} operações simultâneas` }, { status: 400 });
+    throw err;
+  }
 
   return NextResponse.json(trade);
 }

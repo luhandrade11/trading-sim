@@ -14,11 +14,13 @@ function RegisterForm() {
   const [error, setError]       = useState("");
   const [loading, setLoading]   = useState(false);
   const [refCode, setRefCode]   = useState("");
+  const [affRef, setAffRef]     = useState("");
 
   useEffect(() => {
     const ref = searchParams.get("ref") ?? "";
-    // Sanitize: only alphanumeric and basic cuid chars
     if (/^[a-zA-Z0-9_-]{4,40}$/.test(ref)) setRefCode(ref);
+    const aff = searchParams.get("aff") ?? "";
+    if (/^[a-zA-Z0-9_-]{4,20}$/.test(aff)) setAffRef(aff);
   }, [searchParams]);
 
   async function handleSubmit(e: React.FormEvent) {
@@ -29,7 +31,7 @@ function RegisterForm() {
     const res = await fetch("/api/register", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, email, password, ...(refCode ? { referralCode: refCode } : {}) }),
+      body: JSON.stringify({ name, email, password, ...(refCode ? { referralCode: refCode } : {}), ...(affRef ? { affRef } : {}) }),
     });
 
     if (!res.ok) {

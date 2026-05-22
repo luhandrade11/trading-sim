@@ -17,6 +17,7 @@
     "bcryptjs": "^3.0.3",
     "better-sqlite3": "^12.10.0",
     "lightweight-charts": "^5.2.0",
+    "nanoid": "^5.1.11",
     "next": "16.2.6",
     "next-auth": "^4.24.14",
     "nodemailer": "^7.0.13",

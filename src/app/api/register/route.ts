@@ -18,7 +18,7 @@ export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => null);
   if (!body) return NextResponse.json({ error: "Body inválido" }, { status: 400 });
 
-  const { name, email, password, referralCode: incomingRef } = body;
+  const { name, email, password, referralCode: incomingRef, affRef } = body;
 
   if (!name || typeof name !== "string" || name.trim().length < 2)
     return NextResponse.json({ error: "Nome deve ter pelo menos 2 caracteres" }, { status: 400 });
@@ -46,6 +46,17 @@ export async function POST(req: NextRequest) {
   // Generate a short, unique referral code (8 uppercase hex chars) for this new user
   const referralCode = randomBytes(4).toString("hex").toUpperCase();
 
+  // Resolve affiliate link slug
+  let affiliateId: string | undefined;
+  let affiliateLinkSlug: string | undefined;
+  if (affRef && typeof affRef === "string" && /^[A-Za-z0-9_-]{4,20}$/.test(affRef)) {
+    const link = await prisma.affiliateLink.findUnique({ where: { slug: affRef } }).catch(() => null);
+    if (link) {
+      affiliateId = link.affiliateId;
+      affiliateLinkSlug = link.slug;
+    }
+  }
+
   const user = await prisma.user.create({
     data: {
       name:         name.trim(),
@@ -55,8 +66,17 @@ export async function POST(req: NextRequest) {
       emailVerified: false,
       referralCode,
       ...(referredBy ? { referredBy } : {}),
+      ...(affiliateId ? { affiliateId, affiliateLinkSlug } : {}),
     },
   });
+
+  // Async: increment conversions on the affiliate link
+  if (affiliateLinkSlug) {
+    prisma.affiliateLink.update({
+      where: { slug: affiliateLinkSlug },
+      data: { conversions: { increment: 1 } },
+    }).catch(() => {});
+  }
 
   // Send verification email (non-blocking — failure doesn't prevent registration)
   sendVerificationEmail(user.email, user.name, verifyToken).catch((err) =>

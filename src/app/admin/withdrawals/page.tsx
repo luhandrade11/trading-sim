@@ -70,8 +70,8 @@ export default function AdminWithdrawals() {
             <button key={f} onClick={() => changeFilter(f)}
               className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
                 filter === f
-                  ? "bg-amber-500/20 text-amber-400 border border-amber-500/30"
-                  : "bg-[#0d1117] border border-[#1e2a42] text-slate-500 hover:text-slate-300"
+                  ? "bg-violet-500/20 text-violet-400 border border-violet-500/30"
+                  : "bg-[#0d0a1a] border border-[#1e1532] text-slate-500 hover:text-slate-300"
               }`}>
               {f === "PENDING" ? "Pendentes" : f === "APPROVED" ? "Aprovados" : f === "REJECTED" ? "Rejeitados" : "Todos"}
             </button>
@@ -79,10 +79,10 @@ export default function AdminWithdrawals() {
         </div>
       </div>
 
-      <div className="bg-[#0d1117] border border-[#1e2a42] rounded-2xl overflow-hidden">
+      <div className="bg-[#0d0a1a] border border-[#1e1532] rounded-2xl overflow-hidden">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-[#1e2a42]">
+            <tr className="border-b border-[#1e1532]">
               {["Usuário", "Valor", "Método", "Chave/Destino", "Status", "Data", "Ações"].map((h) => (
                 <th key={h} className="text-left px-4 py-3 text-slate-500 text-xs uppercase font-semibold tracking-wide">{h}</th>
               ))}
@@ -94,13 +94,13 @@ export default function AdminWithdrawals() {
             ) : withdrawals.length === 0 ? (
               <tr><td colSpan={7} className="text-center py-10 text-slate-500">Nenhum saque encontrado</td></tr>
             ) : withdrawals.map((w) => (
-              <tr key={w.id} className="border-b border-[#1e2a42]/50 hover:bg-white/2 transition-colors">
+              <tr key={w.id} className="border-b border-[#1e1532]/50 hover:bg-white/2 transition-colors">
                 <td className="px-4 py-3">
                   <p className="text-white font-semibold">{w.user.name}</p>
                   <p className="text-slate-500 text-xs">{w.user.email}</p>
                   <p className="text-slate-600 text-xs">Saldo: {fmt(w.user.realBalance)}</p>
                 </td>
-                <td className="px-4 py-3 font-mono font-bold text-amber-400">{fmt(w.amount)}</td>
+                <td className="px-4 py-3 font-mono font-bold text-violet-400">{fmt(w.amount)}</td>
                 <td className="px-4 py-3 text-slate-300 capitalize">{w.method.toLowerCase()}</td>
                 <td className="px-4 py-3">
                   <p className="text-slate-300 text-xs max-w-[180px] break-all">{w.details}</p>
@@ -145,10 +145,10 @@ export default function AdminWithdrawals() {
       {pages > 1 && (
         <div className="flex items-center justify-center gap-2 mt-4">
           <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1}
-            className="px-3 py-1.5 bg-[#0d1117] border border-[#1e2a42] text-slate-400 rounded-lg text-sm disabled:opacity-40">←</button>
+            className="px-3 py-1.5 bg-[#0d0a1a] border border-[#1e1532] text-slate-400 rounded-lg text-sm disabled:opacity-40">←</button>
           <span className="text-slate-400 text-sm">{page} / {pages}</span>
           <button onClick={() => setPage((p) => Math.min(pages, p + 1))} disabled={page === pages}
-            className="px-3 py-1.5 bg-[#0d1117] border border-[#1e2a42] text-slate-400 rounded-lg text-sm disabled:opacity-40">→</button>
+            className="px-3 py-1.5 bg-[#0d0a1a] border border-[#1e1532] text-slate-400 rounded-lg text-sm disabled:opacity-40">→</button>
         </div>
       )}
     </div>

@@ -1017,6 +1017,8 @@ export default function DashboardPage() {
   const [ohlc,             setOhlc]             = useState<OhlcData | null>(null);
   const [tradeResult,      setTradeResult]      = useState<TradeResult | null>(null);
   const [mobileTab,        setMobileTab]        = useState<"chart" | "trade" | "panels">("chart");
+  const [mobileMenuOpen,   setMobileMenuOpen]   = useState(false);
+  const [isDark,           setIsDark]           = useState(true);
   const [emailVerified,    setEmailVerified]    = useState<boolean | null>(null);
   const [winRateOverride,  setWinRateOverride]  = useState<number | null>(null);
   const [globalDemoRate,   setGlobalDemoRate]   = useState<number | null>(null);
@@ -1087,6 +1089,26 @@ export default function DashboardPage() {
   [modeTrades]);
 
   // Load tabs from localStorage
+  // Theme init
+  useEffect(() => {
+    const saved = localStorage.getItem("pb-theme");
+    if (saved === "light") setIsDark(false);
+  }, []);
+
+  function toggleTheme() {
+    setIsDark((d) => {
+      const next = !d;
+      if (next) {
+        delete document.documentElement.dataset.theme;
+        localStorage.setItem("pb-theme", "dark");
+      } else {
+        document.documentElement.dataset.theme = "light";
+        localStorage.setItem("pb-theme", "light");
+      }
+      return next;
+    });
+  }
+
   // Persist accountMode
   useEffect(() => {
     const saved = localStorage.getItem("pb-account-mode");
@@ -1544,13 +1566,13 @@ export default function DashboardPage() {
         />
       </Suspense>
 
-      {/* ── HEADER ── */}
-      <header className="h-20 bg-[#0a0c14] border-b border-white/5 flex items-center px-4 gap-3 shrink-0 z-10">
+      {/* ── HEADER (desktop) ── */}
+      <header className="hidden md:flex h-20 bg-[#0a0c14] border-b border-white/5 items-center px-4 gap-3 shrink-0 z-10">
         <div className="flex items-center gap-3 shrink-0 pr-4 border-r border-white/5">
           <div className="w-12 h-12 bg-gradient-to-br from-amber-400 to-amber-600 rounded-2xl flex items-center justify-center shadow-lg shadow-amber-500/20">
             <span className="text-[#080c14] font-black text-sm">PB</span>
           </div>
-          <span className="font-black text-lg tracking-tight hidden sm:block">
+          <span className="font-black text-lg tracking-tight">
             <span className="text-white">Prime</span><span className="text-amber-400"> Broker</span>
           </span>
         </div>
@@ -1584,45 +1606,66 @@ export default function DashboardPage() {
             className="flex items-center justify-center w-12 h-full text-white/20 hover:text-amber-400 hover:bg-white/3 transition-all shrink-0 text-2xl leading-none">+</button>
         </div>
 
-        {/* Balance + Deposit */}
+        {/* Balance + Deposit + Theme */}
         <div className="flex items-center gap-2 shrink-0 pl-3 border-l border-white/5">
-          {/* Demo / Real toggle */}
-          <div className="hidden sm:flex items-center bg-[#0d1117] border border-white/8 rounded-xl p-0.5 gap-0.5">
+          <div className="flex items-center bg-[#0d1117] border border-white/8 rounded-xl p-0.5 gap-0.5">
             {(["demo", "real"] as const).map((m) => (
               <button key={m} onClick={() => setAccountMode(m)}
                 className={`px-3 py-1.5 rounded-[10px] text-[10px] font-black uppercase tracking-widest transition-all ${
                   accountMode === m
-                    ? m === "demo"
-                      ? "bg-amber-400/15 text-amber-400"
-                      : "bg-emerald-500/15 text-emerald-400"
+                    ? m === "demo" ? "bg-amber-400/15 text-amber-400" : "bg-emerald-500/15 text-emerald-400"
                     : "text-white/20 hover:text-white/50"
                 }`}>
                 {m === "demo" ? "Demo" : "Real"}
               </button>
             ))}
           </div>
-
-          {/* Balance */}
-          <div className="hidden sm:flex items-center gap-2 bg-[#111827] border border-white/5 rounded-xl px-3 py-2">
+          <div className="flex items-center gap-2 bg-[#111827] border border-white/5 rounded-xl px-3 py-2">
             <div className="flex flex-col items-end">
               <div className="flex items-center gap-1.5">
-                <span className={`text-[9px] font-bold uppercase tracking-wider ${isReal ? "text-emerald-400" : "text-amber-400"}`}>
-                  {isReal ? "Real" : "Demo"}
-                </span>
+                <span className={`text-[9px] font-bold uppercase tracking-wider ${isReal ? "text-emerald-400" : "text-amber-400"}`}>{isReal ? "Real" : "Demo"}</span>
                 <div className={`w-1.5 h-1.5 rounded-full animate-pulse ${isReal ? "bg-emerald-400" : "bg-amber-400"}`} />
               </div>
-              <span className={`text-sm font-black font-mono ${activeBalance === null ? "text-slate-700 animate-pulse" : "text-white"}`}>
-                {activeBalanceFmt}
-              </span>
+              <span className={`text-sm font-black font-mono ${activeBalance === null ? "text-slate-700 animate-pulse" : "text-white"}`}>{activeBalanceFmt}</span>
             </div>
           </div>
-
-          {/* Deposit button — routes to full deposit page */}
           <button onClick={() => router.push("/dashboard/deposit")}
-            className="hidden sm:flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-white text-sm font-bold rounded-xl transition-all shadow-lg shadow-emerald-500/25">
+            className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-white text-sm font-bold rounded-xl transition-all shadow-lg shadow-emerald-500/25">
             <span>💰</span> {t("deposit")}
           </button>
+          {/* Theme toggle */}
+          <button onClick={toggleTheme} title={isDark ? "Modo claro" : "Modo escuro"}
+            className="w-9 h-9 flex items-center justify-center rounded-xl bg-white/5 hover:bg-white/10 text-white/50 hover:text-white transition-all text-base">
+            {isDark ? "☀" : "🌙"}
+          </button>
         </div>
+      </header>
+
+      {/* ── HEADER (mobile) ── */}
+      <header className="md:hidden h-12 bg-[#0a0c14] border-b border-white/5 flex items-center px-3 gap-2 shrink-0 z-10">
+        {/* Logo */}
+        <div className="w-8 h-8 bg-gradient-to-br from-amber-400 to-amber-600 rounded-xl flex items-center justify-center shrink-0">
+          <span className="text-[#080c14] font-black text-[10px]">PB</span>
+        </div>
+        {/* Asset selector */}
+        <button onClick={() => setShowAssetPicker(true)} className="flex items-center gap-1.5 flex-1 min-w-0">
+          <div className={`w-2 h-2 rounded-full shrink-0 ${assetInfo?.type === "forex" ? "bg-blue-400" : "bg-amber-400"}`} />
+          <span className="text-white text-sm font-bold">{selectedAsset}</span>
+          <span className="text-white/30 text-[10px]">▾</span>
+          <span className={`text-sm font-bold font-mono ml-1 ${priceFlash === "up" ? "text-emerald-400" : priceFlash === "down" ? "text-rose-400" : "text-white/70"}`}>
+            {currentPrice > 0 ? `$${formatPrice(currentPrice, selectedAsset)}` : <span className="text-white/20">—</span>}
+          </span>
+        </button>
+        {/* Theme toggle */}
+        <button onClick={toggleTheme}
+          className="w-8 h-8 flex items-center justify-center rounded-lg bg-white/5 text-white/50 hover:text-white transition-colors shrink-0 text-sm">
+          {isDark ? "☀" : "🌙"}
+        </button>
+        {/* Dots menu */}
+        <button onClick={() => setMobileMenuOpen(true)}
+          className="w-8 h-8 flex items-center justify-center rounded-lg bg-white/5 text-white/60 hover:text-white transition-colors shrink-0 text-lg leading-none">
+          ⋯
+        </button>
       </header>
 
       {/* ── BANNERS ── */}
@@ -1689,7 +1732,7 @@ export default function DashboardPage() {
         </aside>
 
         {/* Chart area + overlay panels */}
-        <div className={`flex-1 flex flex-col min-w-0 min-h-0 ${mobileTab !== "chart" && mobileTab !== "panels" ? "hidden md:flex" : "flex"}`}>
+        <div className="flex-1 flex flex-col min-w-0 min-h-0">
 
           {/* Chart top bar */}
           <div className="h-11 bg-[#0a0c14] border-b border-white/5 flex items-center px-4 gap-3 shrink-0">
@@ -1707,8 +1750,8 @@ export default function DashboardPage() {
             <div className={`text-base font-bold font-mono transition-colors duration-300 ${priceFlash === "up" ? "text-emerald-400" : priceFlash === "down" ? "text-rose-400" : "text-white"}`}>
               {currentPrice > 0 ? `$${formatPrice(currentPrice, selectedAsset)}` : <span className="text-white/10 animate-pulse">——</span>}
             </div>
-            {/* Chart toolbar */}
-            <div className="ml-auto flex items-center gap-1.5">
+            {/* Chart toolbar (hidden on mobile to save space) */}
+            <div className="ml-auto hidden md:flex items-center gap-1.5">
               {/* Timeframe selector */}
               <div className="flex items-center bg-white/3 border border-white/5 rounded-lg overflow-hidden">
                 {(["5s", "30s", "1m", "5m"] as Timeframe[]).map((tf) => (
@@ -1771,7 +1814,7 @@ export default function DashboardPage() {
           </div>
 
           {/* Chart + overlays */}
-          <div className="flex-1 min-h-0 relative">
+          <div className="flex-1 min-h-0 relative pb-[110px] md:pb-0">
             {/* Left overlay panel */}
             {activePanel && (
               <>
@@ -1840,8 +1883,8 @@ export default function DashboardPage() {
             )}
           </div>
 
-          {/* OHLC bar */}
-          <div className="h-7 bg-[#050509] border-t border-white/3 flex items-center px-4 gap-3 shrink-0 overflow-x-auto scrollbar-hide">
+          {/* OHLC bar (desktop only) */}
+          <div className="hidden md:flex h-7 bg-[#050509] border-t border-white/3 items-center px-4 gap-3 shrink-0 overflow-x-auto scrollbar-hide">
             {ohlc ? (
               <>
                 {[{ label: "O", value: ohlc.open }, { label: "H", value: ohlc.high }, { label: "L", value: ohlc.low }, { label: "C", value: ohlc.close }].map(({ label, value }) => (
@@ -1867,20 +1910,13 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Right panel (desktop) */}
-        <div className={`bg-[#0a0c14] border-l border-white/5 shrink-0 w-[220px] hidden md:flex flex-col`}>
+        {/* Right panel (desktop only) */}
+        <div className="bg-[#0a0c14] border-l border-white/5 shrink-0 w-[220px] hidden md:flex flex-col">
           {RightPanelContent}
         </div>
-
-        {/* Right panel (mobile trade tab) */}
-        {mobileTab === "trade" && (
-          <div className="flex-1 bg-[#0a0c14] flex flex-col md:hidden overflow-y-auto">
-            {RightPanelContent}
-          </div>
-        )}
       </div>
 
-      {/* Positions bar (desktop) */}
+      {/* Positions bar (desktop only) */}
       <div className={`shrink-0 border-t border-white/5 transition-all duration-300 ${positionsOpen ? "h-[140px]" : "h-9"} hidden md:block bg-[#0a0c14]`}>
         <div className="h-9 flex items-center justify-between px-4 shrink-0">
           <div className="flex items-center gap-2">
@@ -1896,63 +1932,110 @@ export default function DashboardPage() {
         {positionsOpen && <div className="h-[101px]"><PositionsTable trades={activeTrades} currentPrices={prices} /></div>}
       </div>
 
-      {/* Mobile bottom nav */}
-      <nav className="mobile-nav h-14 bg-[#0a0c14] border-t border-white/8 flex items-stretch md:hidden shrink-0">
-        {[
-          { id: "chart",  label: "Chart",   icon: "📈" },
-          { id: "trade",  label: t("buy"),  icon: "🎯" },
-          { id: "panels", label: "Menu",    icon: "☰"  },
-        ].map(({ id, label, icon }) => (
-          <button key={id} onClick={() => setMobileTab(id as "chart" | "trade" | "panels")}
-            className={`flex-1 flex flex-col items-center justify-center gap-1 text-[9px] font-bold uppercase transition-colors ${mobileTab === id ? "text-amber-400 bg-amber-400/5" : "text-slate-600 hover:text-white"}`}>
-            <span className="text-base leading-none">{icon}</span>
-            {label}
-          </button>
-        ))}
-      </nav>
-
-      {/* Mobile panels drawer */}
-      {mobileTab === "panels" && (
-        <div className="absolute inset-0 z-30 bg-[#050509] flex flex-col md:hidden overflow-y-auto pb-14">
-          <div className="p-4 grid grid-cols-2 gap-2">
-            {[
-              { panel: "history" as ActivePanel,    label: t("history"),    icon: "🕐", color: "text-blue-400" },
-              { panel: "ranking" as ActivePanel,    label: t("ranking"),    icon: "🏆", color: "text-amber-400" },
-              { panel: "analysis" as ActivePanel,   label: t("analysis"),   icon: "📊", color: "text-purple-400" },
-              { panel: "support" as ActivePanel,    label: t("support"),    icon: "💬", color: "text-cyan-400" },
-              { panel: "profile" as ActivePanel,    label: t("profile"),    icon: "👤", color: "text-rose-400" },
-              { panel: "withdrawal" as ActivePanel, label: t("withdrawal"), icon: "💸", color: "text-green-400" },
-            ].map(({ panel, label, icon, color }) => (
-              <button key={panel}
-                onClick={() => { setActivePanel(panel); setMobileTab("chart"); }}
-                className="flex flex-col items-center justify-center gap-2 py-5 bg-white/3 border border-white/8 rounded-2xl hover:border-white/15 transition-colors">
-                <span className="text-3xl">{icon}</span>
-                <span className={`text-xs font-bold ${color}`}>{label}</span>
-              </button>
-            ))}
-            <button onClick={() => { setDepositModalOpen(true); setMobileTab("chart"); }}
-              className="flex flex-col items-center justify-center gap-2 py-5 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl">
-              <span className="text-3xl">💰</span>
-              <span className="text-xs font-bold text-emerald-400">{t("deposit")}</span>
+      {/* ── MOBILE FIXED TRADE BAR ── */}
+      <div className="mobile-trade-bar md:hidden fixed bottom-0 left-0 right-0 z-20 bg-[#0a0c14]/98 backdrop-blur-md border-t border-white/8">
+        <div className="px-3 pt-2 pb-2">
+          {/* Account + Balance row */}
+          <div className="flex items-center gap-2 mb-2">
+            {/* Demo/Real toggle */}
+            <div className="flex items-center bg-[#0d1117] border border-white/10 rounded-lg p-0.5 gap-0.5 shrink-0">
+              {(["demo", "real"] as const).map((m) => (
+                <button key={m} onClick={() => setAccountMode(m)}
+                  className={`px-2.5 py-1 rounded-md text-[9px] font-black uppercase tracking-widest transition-all ${
+                    accountMode === m
+                      ? m === "demo" ? "bg-amber-400/15 text-amber-400" : "bg-emerald-500/15 text-emerald-400"
+                      : "text-white/30"
+                  }`}>{m}</button>
+              ))}
+            </div>
+            {/* Balance */}
+            <div className="flex items-center gap-1.5 flex-1 min-w-0">
+              <div className={`w-1.5 h-1.5 rounded-full shrink-0 animate-pulse ${isReal ? "bg-emerald-400" : "bg-amber-400"}`} />
+              <span className={`text-sm font-black font-mono ${activeBalance === null ? "text-slate-600 animate-pulse" : "text-white"}`}>{activeBalanceFmt}</span>
+            </div>
+            {/* Payout */}
+            <span className="text-[10px] text-emerald-400 font-bold shrink-0">+{(PAYOUT_RATE * 100).toFixed(0)}%</span>
+            {/* Duration quick select */}
+            <div className="flex items-center gap-0.5 shrink-0">
+              {DURATIONS.slice(0, 3).map((d) => (
+                <button key={d.value} onClick={() => setSelectedDuration(d.value)}
+                  className={`px-1.5 py-0.5 rounded text-[8px] font-bold transition-all ${selectedDuration === d.value ? "bg-amber-400/15 text-amber-400" : "text-white/25 hover:text-white/60"}`}>
+                  {d.label}
+                </button>
+              ))}
+            </div>
+          </div>
+          {/* Amount + Buy/Sell row */}
+          <div className="flex items-center gap-2">
+            {/* Amount control */}
+            <div className="flex items-center bg-white/5 border border-white/10 rounded-xl overflow-hidden shrink-0">
+              <button onClick={() => setAmount((a) => Math.max(1, a - 5))} className="w-8 h-10 text-white/40 hover:text-white text-lg font-bold transition-colors">−</button>
+              <input type="number" value={amount} onChange={(e) => setAmount(Math.max(1, Number(e.target.value)))} min={1}
+                className="w-14 bg-transparent text-center text-white text-sm font-mono focus:outline-none py-2" />
+              <button onClick={() => setAmount((a) => a + 5)} className="w-8 h-10 text-white/40 hover:text-white text-lg font-bold transition-colors">+</button>
+            </div>
+            {/* BUY */}
+            <button onClick={() => placeTrade("UP")} disabled={!canTrade}
+              className="btn-up flex-1 h-10 rounded-xl bg-gradient-to-b from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 disabled:opacity-25 disabled:cursor-not-allowed text-white font-black text-sm flex items-center justify-center gap-1.5 active:scale-95 transition-transform">
+              <span className="text-base leading-none">▲</span> {t("buy")}
+            </button>
+            {/* SELL */}
+            <button onClick={() => placeTrade("DOWN")} disabled={!canTrade}
+              className="btn-down flex-1 h-10 rounded-xl bg-gradient-to-b from-rose-500 to-rose-600 hover:from-rose-400 hover:to-rose-500 disabled:opacity-25 disabled:cursor-not-allowed text-white font-black text-sm flex items-center justify-center gap-1.5 active:scale-95 transition-transform">
+              <span className="text-base leading-none">▼</span> {t("sell")}
             </button>
           </div>
+        </div>
+      </div>
 
-          {/* Balance on mobile */}
-          <div className="mx-4 p-4 bg-white/3 border border-white/8 rounded-2xl flex items-center justify-between">
-            <div>
-              <div className="text-[9px] text-white/30 uppercase tracking-wider">{t("balance_label")} {t("demo")}</div>
-              <div className="text-2xl font-black text-white">{balanceFmt}</div>
+      {/* ── MOBILE MENU OVERLAY ── */}
+      {mobileMenuOpen && (
+        <div className="fixed inset-0 z-40 md:hidden flex flex-col">
+          <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setMobileMenuOpen(false)} />
+          <div className="relative mt-auto bg-[#0a0c14] border-t border-white/10 rounded-t-3xl p-5 pb-8 max-h-[80vh] overflow-y-auto">
+            {/* Handle */}
+            <div className="w-10 h-1 bg-white/15 rounded-full mx-auto mb-5" />
+            {/* Balance card */}
+            <div className="bg-white/4 border border-white/8 rounded-2xl p-4 flex items-center justify-between mb-4">
+              <div>
+                <div className={`text-[9px] font-bold uppercase tracking-widest mb-0.5 ${isReal ? "text-emerald-400" : "text-amber-400"}`}>{isReal ? "Conta Real" : "Conta Demo"}</div>
+                <div className="text-2xl font-black text-white font-mono">{activeBalanceFmt}</div>
+              </div>
+              <button onClick={() => { router.push("/dashboard/deposit"); setMobileMenuOpen(false); }}
+                className="px-4 py-2.5 bg-gradient-to-r from-emerald-600 to-emerald-500 text-white font-bold rounded-xl text-sm">
+                💰 Depositar
+              </button>
             </div>
-            <button onClick={() => router.push("/dashboard/deposit")}
-              className="px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-white font-bold rounded-xl text-sm transition-colors">
-              {t("deposit")}
-            </button>
+            {/* Menu grid */}
+            <div className="grid grid-cols-3 gap-2.5">
+              {[
+                { panel: "history" as ActivePanel,    label: t("history"),    icon: "🕐", color: "text-blue-400",   bg: "bg-blue-500/8   border-blue-500/15" },
+                { panel: "ranking" as ActivePanel,    label: t("ranking"),    icon: "🏆", color: "text-amber-400",  bg: "bg-amber-500/8  border-amber-500/15" },
+                { panel: "analysis" as ActivePanel,   label: t("analysis"),   icon: "📊", color: "text-violet-400", bg: "bg-violet-500/8 border-violet-500/15" },
+                { panel: "affiliate" as ActivePanel,  label: t("affiliate"),  icon: "🔗", color: "text-cyan-400",   bg: "bg-cyan-500/8   border-cyan-500/15" },
+                { panel: "support" as ActivePanel,    label: t("support"),    icon: "💬", color: "text-sky-400",    bg: "bg-sky-500/8    border-sky-500/15" },
+                { panel: "profile" as ActivePanel,    label: t("profile"),    icon: "👤", color: "text-rose-400",   bg: "bg-rose-500/8   border-rose-500/15" },
+                { panel: "withdrawal" as ActivePanel, label: t("withdrawal"), icon: "💸", color: "text-green-400",  bg: "bg-green-500/8  border-green-500/15" },
+              ].map(({ panel, label, icon, color, bg }) => (
+                <button key={panel}
+                  onClick={() => { setActivePanel(panel); setMobileMenuOpen(false); }}
+                  className={`flex flex-col items-center justify-center gap-2 py-4 border rounded-2xl hover:opacity-80 transition-opacity ${bg}`}>
+                  <span className="text-2xl">{icon}</span>
+                  <span className={`text-[10px] font-bold ${color}`}>{label}</span>
+                </button>
+              ))}
+              <button onClick={toggleTheme}
+                className="flex flex-col items-center justify-center gap-2 py-4 bg-white/4 border border-white/8 rounded-2xl">
+                <span className="text-2xl">{isDark ? "☀" : "🌙"}</span>
+                <span className="text-[10px] font-bold text-white/40">{isDark ? "Modo claro" : "Modo escuro"}</span>
+              </button>
+            </div>
           </div>
         </div>
       )}
 
-      {/* Mobile overlay panel (open from panels menu) */}
-      {mobileTab === "chart" && activePanel && (
+      {/* Mobile overlay panel (open from menu) */}
+      {activePanel && (
         <div className="absolute inset-0 z-30 md:hidden">
           {activePanel === "history"    && <HistoryPanel    trades={trades} loading={tradesLoading} onClose={() => setActivePanel(null)} />}
           {activePanel === "ranking"    && <RankingPanel    onClose={() => setActivePanel(null)} currentUserId={session?.user?.id} />}

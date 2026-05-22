@@ -7,6 +7,7 @@ const navItems = [
   { href: "/admin",             label: "Dashboard",  icon: "📊" },
   { href: "/admin/users",       label: "Usuários",   icon: "👥" },
   { href: "/admin/withdrawals", label: "Saques",     icon: "💸" },
+  { href: "/admin/afiliados",   label: "Afiliados",  icon: "🤝" },
   { href: "/admin/settings",    label: "Config",     icon: "⚙️"  },
 ];
 
@@ -22,18 +23,18 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   if (pathname === "/admin/login") return <>{children}</>;
 
   return (
-    <div className="min-h-screen bg-[#060c18] flex">
+    <div className="min-h-screen bg-[#0a0612] flex">
       {/* Sidebar */}
-      <aside className="w-56 shrink-0 bg-[#0a0f1a] border-r border-[#1e2a42] flex flex-col">
+      <aside className="w-56 shrink-0 bg-[#0d0a1a] border-r border-[#1e1532] flex flex-col">
         {/* Logo */}
-        <div className="px-5 py-5 border-b border-[#1e2a42]">
+        <div className="px-5 py-5 border-b border-[#1e1532]">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-gradient-to-br from-amber-400 to-amber-600 rounded-lg flex items-center justify-center">
+            <div className="w-8 h-8 bg-gradient-to-br from-violet-400 to-violet-600 rounded-lg flex items-center justify-center">
               <span className="text-[#080c14] font-black text-[10px]">ADM</span>
             </div>
             <div>
               <p className="text-white font-bold text-sm leading-none">Prime Broker</p>
-              <p className="text-amber-400 text-[10px]">Admin Panel</p>
+              <p className="text-violet-400 text-[10px]">Admin Panel</p>
             </div>
           </div>
         </div>
@@ -50,7 +51,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 href={item.href}
                 className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
                   active
-                    ? "bg-amber-500/10 text-amber-400 border border-amber-500/20"
+                    ? "bg-violet-500/10 text-violet-400 border border-violet-500/20"
                     : "text-slate-400 hover:text-slate-100 hover:bg-white/4"
                 }`}
               >
@@ -62,7 +63,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         </nav>
 
         {/* Logout */}
-        <div className="px-3 py-4 border-t border-[#1e2a42]">
+        <div className="px-3 py-4 border-t border-[#1e1532]">
           <button
             onClick={handleLogout}
             className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-slate-500 hover:text-rose-400 hover:bg-rose-500/5 transition-all w-full"

@@ -28,16 +28,16 @@ function fmt(n: number) {
 }
 
 function StatCard({ label, value, sub, color = "white" }: {
-  label: string; value: string; sub?: string; color?: "white" | "green" | "red" | "amber";
+  label: string; value: string; sub?: string; color?: "white" | "green" | "red" | "violet";
 }) {
   const colors = {
-    white: "text-white",
-    green: "text-emerald-400",
-    red:   "text-rose-400",
-    amber: "text-amber-400",
+    white:  "text-white",
+    green:  "text-emerald-400",
+    red:    "text-rose-400",
+    violet: "text-violet-400",
   };
   return (
-    <div className="bg-[#0d1117] border border-[#1e2a42] rounded-2xl p-5">
+    <div className="bg-[#0d0a1a] border border-[#1e1532] rounded-2xl p-5">
       <p className="text-slate-500 text-xs font-semibold uppercase tracking-wide mb-2">{label}</p>
       <p className={`text-2xl font-black font-mono ${colors[color]}`}>{value}</p>
       {sub && <p className="text-slate-600 text-xs mt-1">{sub}</p>}
@@ -63,7 +63,7 @@ export default function AdminDashboard() {
 
   if (loading) return (
     <div className="flex items-center justify-center h-64">
-      <div className="w-6 h-6 border-2 border-white/20 border-t-amber-400/60 rounded-full animate-spin" />
+      <div className="w-6 h-6 border-2 border-white/20 border-t-violet-400/60 rounded-full animate-spin" />
     </div>
   );
 
@@ -88,8 +88,8 @@ export default function AdminDashboard() {
       {/* Stats grid */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         <StatCard label="Usuários Total"   value={stats.totalUsers.toLocaleString()}    sub={`+${stats.newUsersToday} hoje · +${stats.newUsersWeek} esta semana`} />
-        <StatCard label="Faturamento Total" value={fmt(stats.totalRevenue)}             sub={`Hoje: ${fmt(stats.revenueToday)}`} color="amber" />
-        <StatCard label="Faturamento Semana" value={fmt(stats.revenueWeek)}             sub="Últimos 7 dias" color="amber" />
+        <StatCard label="Faturamento Total" value={fmt(stats.totalRevenue)}             sub={`Hoje: ${fmt(stats.revenueToday)}`} color="violet" />
+        <StatCard label="Faturamento Semana" value={fmt(stats.revenueWeek)}             sub="Últimos 7 dias" color="violet" />
         <StatCard label="Lucro da Casa (Trades)" value={fmt(stats.platformPnl)}        color={stats.platformPnl >= 0 ? "green" : "red"}
           sub={`${stats.realTradesCount} trades reais`} />
       </div>
@@ -99,7 +99,7 @@ export default function AdminDashboard() {
           color={stats.realWinRate < 45 ? "green" : "red"}
           sub={stats.realWinRate < 45 ? "Casa ganhando" : "Jogadores ganhando"} />
         <StatCard label="Saques Pendentes"    value={stats.pendingWithdrawalsCount.toString()}
-          color={stats.pendingWithdrawalsCount > 0 ? "amber" : "white"}
+          color={stats.pendingWithdrawalsCount > 0 ? "violet" : "white"}
           sub={fmt(stats.pendingWithdrawalsAmount)} />
         <StatCard label="Comissões Afiliados" value={fmt(stats.affiliateCommissions)} />
         <StatCard label="Usuários Ativos"     value={stats.activeUsers.toString()} sub="Trades nos últimos 15min" color="green" />
@@ -107,22 +107,22 @@ export default function AdminDashboard() {
 
       {/* Pending withdrawals preview */}
       {stats.recentPendingWithdrawals.length > 0 && (
-        <div className="bg-[#0d1117] border border-amber-500/20 rounded-2xl p-6 mb-6">
+        <div className="bg-[#0d0a1a] border border-violet-500/20 rounded-2xl p-6 mb-6">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-white font-bold">Saques Pendentes</h2>
-            <Link href="/admin/withdrawals" className="text-amber-400 text-sm hover:underline">
+            <Link href="/admin/withdrawals" className="text-violet-400 text-sm hover:underline">
               Ver todos →
             </Link>
           </div>
           <div className="space-y-3">
             {stats.recentPendingWithdrawals.map((w) => (
-              <div key={w.id} className="flex items-center justify-between py-2 border-b border-[#1e2a42] last:border-0">
+              <div key={w.id} className="flex items-center justify-between py-2 border-b border-[#1e1532] last:border-0">
                 <div>
                   <p className="text-white text-sm font-semibold">{w.user.name}</p>
                   <p className="text-slate-500 text-xs">{w.user.email} · {w.method}</p>
                 </div>
                 <div className="text-right">
-                  <p className="text-amber-400 font-bold">{fmt(w.amount)}</p>
+                  <p className="text-violet-400 font-bold">{fmt(w.amount)}</p>
                   <p className="text-slate-600 text-xs">{new Date(w.createdAt).toLocaleDateString("pt-BR")}</p>
                 </div>
               </div>
@@ -139,9 +139,9 @@ export default function AdminDashboard() {
           { href: "/admin/settings",    label: "Configurações",       desc: "Win rate global, gateway PIX",  icon: "⚙️"  },
         ].map((c) => (
           <Link key={c.href} href={c.href}
-            className="bg-[#0d1117] border border-[#1e2a42] hover:border-amber-500/30 rounded-2xl p-5 transition-all group">
+            className="bg-[#0d0a1a] border border-[#1e1532] hover:border-violet-500/30 rounded-2xl p-5 transition-all group">
             <p className="text-2xl mb-3">{c.icon}</p>
-            <p className="text-white font-semibold text-sm group-hover:text-amber-400 transition-colors">{c.label}</p>
+            <p className="text-white font-semibold text-sm group-hover:text-violet-400 transition-colors">{c.label}</p>
             <p className="text-slate-500 text-xs mt-1">{c.desc}</p>
           </Link>
         ))}

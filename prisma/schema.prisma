@@ -23,11 +23,16 @@ model User {
   winRateOverride   Float?
   isBlocked         Boolean            @default(false)
   adminNote         String?
+  affiliateId       String?
+  affiliateLinkSlug String?
+  affiliate         Affiliate?         @relation(fields: [affiliateId], references: [id])
   trades            Trade[]
   withdrawals       Withdrawal[]
   affiliateEarnings AffiliateEarning[]
   createdAt         DateTime           @default(now())
   updatedAt         DateTime           @updatedAt
+
+  @@index([affiliateId])
 }
 
 model AdminSettings {
@@ -81,6 +86,78 @@ model Withdrawal {
   createdAt DateTime @default(now())
 
   @@index([userId])
+  @@index([status])
+}
+
+model Affiliate {
+  id                String                @id @default(cuid())
+  name              String
+  email             String                @unique
+  password          String
+  balance           Float                 @default(0)
+  totalEarned       Float                 @default(0)
+  pixKey            String?
+  commissionRate    Float                 @default(0.90)
+  level             Int                   @default(1)
+  parentAffiliateId String?
+  photo             String?
+  phone             String?
+  cpf               String?
+  docType           String?
+  docNumber         String?
+  lastWithdrawalAt  DateTime?
+  status            String                @default("ACTIVE")
+  parentAffiliate   Affiliate?            @relation("AffiliateHierarchy", fields: [parentAffiliateId], references: [id])
+  subAffiliates     Affiliate[]           @relation("AffiliateHierarchy")
+  links             AffiliateLink[]
+  revenues          AffiliateRevenue[]
+  withdrawals       AffiliateWithdrawal[]
+  referredUsers     User[]
+  createdAt         DateTime              @default(now())
+  updatedAt         DateTime              @updatedAt
+
+  @@index([parentAffiliateId])
+  @@index([status])
+  @@index([parentAffiliateId, status])
+}
+
+model AffiliateLink {
+  id          String    @id @default(cuid())
+  affiliateId String
+  affiliate   Affiliate @relation(fields: [affiliateId], references: [id])
+  slug        String    @unique
+  title       String
+  clicks      Int       @default(0)
+  conversions Int       @default(0)
+  createdAt   DateTime  @default(now())
+
+  @@index([affiliateId])
+}
+
+model AffiliateRevenue {
+  id          String    @id @default(cuid())
+  affiliateId String
+  affiliate   Affiliate @relation(fields: [affiliateId], references: [id])
+  userId      String
+  tradeId     String
+  amount      Float
+  createdAt   DateTime  @default(now())
+
+  @@index([affiliateId])
+  @@index([userId])
+  @@index([tradeId])
+}
+
+model AffiliateWithdrawal {
+  id          String    @id @default(cuid())
+  affiliateId String
+  affiliate   Affiliate @relation(fields: [affiliateId], references: [id])
+  amount      Float
+  pixKey      String
+  status      String    @default("PENDING")
+  createdAt   DateTime  @default(now())
+
+  @@index([affiliateId])
   @@index([status])
 }
 

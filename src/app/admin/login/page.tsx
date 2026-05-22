@@ -31,19 +31,19 @@ export default function AdminLogin() {
   }
 
   return (
-    <div className="min-h-screen bg-[#060c18] flex items-center justify-center p-6">
+    <div className="min-h-screen bg-[#0a0612] flex items-center justify-center p-6">
       <div className="w-full max-w-sm">
         <div className="flex items-center gap-3 justify-center mb-10">
-          <div className="w-10 h-10 bg-gradient-to-br from-amber-400 to-amber-600 rounded-xl flex items-center justify-center shadow-lg">
+          <div className="w-10 h-10 bg-gradient-to-br from-violet-400 to-violet-600 rounded-xl flex items-center justify-center shadow-lg">
             <span className="text-[#080c14] font-black text-sm">ADM</span>
           </div>
           <div>
             <p className="text-white font-bold text-lg leading-none">Prime Broker</p>
-            <p className="text-amber-400 text-xs font-semibold">Painel Administrativo</p>
+            <p className="text-violet-400 text-xs font-semibold">Painel Administrativo</p>
           </div>
         </div>
 
-        <div className="bg-[#0d1117] border border-[#1e2a42] rounded-2xl p-7 shadow-2xl">
+        <div className="bg-[#0d1117] border border-[#1e1532] rounded-2xl p-7 shadow-2xl">
           <h1 className="text-xl font-bold text-white mb-6">Entrar como Admin</h1>
 
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -60,7 +60,7 @@ export default function AdminLogin() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                className="w-full bg-[#080c14] border border-[#1e2a42] rounded-xl px-4 py-3 text-white text-sm placeholder-slate-700 focus:outline-none focus:border-amber-500/50 focus:ring-1 focus:ring-amber-500/20 transition-all"
+                className="w-full bg-[#080c14] border border-[#1e1532] rounded-xl px-4 py-3 text-white text-sm placeholder-slate-700 focus:outline-none focus:border-violet-500/50 focus:ring-1 focus:ring-violet-500/20 transition-all"
                 placeholder="admin@example.com"
               />
             </div>
@@ -72,7 +72,7 @@ export default function AdminLogin() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                className="w-full bg-[#080c14] border border-[#1e2a42] rounded-xl px-4 py-3 text-white text-sm placeholder-slate-700 focus:outline-none focus:border-amber-500/50 focus:ring-1 focus:ring-amber-500/20 transition-all"
+                className="w-full bg-[#080c14] border border-[#1e1532] rounded-xl px-4 py-3 text-white text-sm placeholder-slate-700 focus:outline-none focus:border-violet-500/50 focus:ring-1 focus:ring-violet-500/20 transition-all"
                 placeholder="••••••••"
               />
             </div>
@@ -80,7 +80,7 @@ export default function AdminLogin() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 disabled:opacity-50 text-[#080c14] font-bold rounded-xl py-3 text-sm transition-all mt-2"
+              className="w-full bg-gradient-to-r from-violet-500 to-violet-400 hover:from-violet-400 hover:to-violet-300 disabled:opacity-50 text-white font-bold rounded-xl py-3 text-sm transition-all mt-2"
             >
               {loading ? "Autenticando…" : "Entrar"}
             </button>

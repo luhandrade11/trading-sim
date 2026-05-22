@@ -38,7 +38,11 @@ export default function RootLayout({
       lang="pt-BR"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full bg-[#080c14] text-white flex flex-col">
+      <head>
+        {/* Prevents theme flash on load */}
+        <script dangerouslySetInnerHTML={{ __html: `(function(){var t=localStorage.getItem('pb-theme');if(t==='light')document.documentElement.dataset.theme='light';})();` }} />
+      </head>
+      <body className="min-h-full bg-[var(--bg-base)] text-[var(--fg-main)] flex flex-col">
         <SessionProvider>{children}</SessionProvider>
       </body>
     </html>

@@ -1,8 +1,34 @@
 @import "tailwindcss";
 
+/* ── Theme variables ────────────────────────────────────────────────────── */
+:root {
+  --bg-base:    #050509;
+  --bg-panel:   #0a0c14;
+  --bg-card:    #0d1117;
+  --bg-card2:   #111827;
+  --border-dim: rgba(255,255,255,0.05);
+  --border-med: rgba(255,255,255,0.08);
+  --fg-main:    #ffffff;
+  --fg-muted:   rgba(100,116,139,1);
+  --fg-dim:     rgba(148,163,184,0.3);
+}
+
+[data-theme="light"] {
+  --bg-base:    #eef2f7;
+  --bg-panel:   #ffffff;
+  --bg-card:    #f8fafc;
+  --bg-card2:   #f1f5f9;
+  --border-dim: rgba(0,0,0,0.06);
+  --border-med: rgba(0,0,0,0.09);
+  --fg-main:    #1e293b;
+  --fg-muted:   rgba(71,85,105,1);
+  --fg-dim:     rgba(100,116,139,0.6);
+}
+
 body {
-  background-color: #050509;
-  color: #e2e8f0;
+  background-color: var(--bg-base);
+  color: var(--fg-main);
+  transition: background-color 0.25s, color 0.2s;
 }
 
 .card-shadow {
@@ -108,7 +134,15 @@ body {
 
 input:focus, select:focus, button:focus-visible { outline: none; }
 
-/* Mobile bottom nav safe area */
+/* Mobile bottom nav / trade bar safe area */
 @supports (padding-bottom: env(safe-area-inset-bottom)) {
   .mobile-nav { padding-bottom: env(safe-area-inset-bottom); }
+  .mobile-trade-bar { padding-bottom: env(safe-area-inset-bottom); }
+}
+
+/* Theme transition */
+*, *::before, *::after {
+  transition-property: background-color, border-color, color;
+  transition-duration: 0.18s;
+  transition-timing-function: ease;
 }

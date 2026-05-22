@@ -54,7 +54,7 @@ export default function AdminSettings() {
 
   if (loading) return (
     <div className="flex items-center justify-center h-64">
-      <div className="w-6 h-6 border-2 border-white/20 border-t-amber-400/60 rounded-full animate-spin" />
+      <div className="w-6 h-6 border-2 border-white/20 border-t-violet-400/60 rounded-full animate-spin" />
     </div>
   );
 
@@ -74,7 +74,7 @@ export default function AdminSettings() {
 
       <div className="space-y-6">
         {/* Win rates */}
-        <div className="bg-[#0d1117] border border-[#1e2a42] rounded-2xl p-6">
+        <div className="bg-[#0d0a1a] border border-[#1e1532] rounded-2xl p-6">
           <h2 className="text-white font-bold mb-1">Controle de Win Rate Global</h2>
           <p className="text-slate-500 text-xs mb-5">
             Altera a taxa de vitória para todos os usuários (sem override individual).
@@ -90,12 +90,12 @@ export default function AdminSettings() {
                 type="range" min="0" max="100" step="1"
                 value={settings.globalDemoRate}
                 onChange={(e) => setSettings((s) => ({ ...s, globalDemoRate: e.target.value }))}
-                className="w-full mt-3 accent-amber-400"
+                className="w-full mt-3 accent-violet-400"
               />
               <div className="flex justify-between items-center mt-2">
                 <span className="text-slate-600 text-xs">0% (sempre perde)</span>
                 <span className={`text-2xl font-black font-mono ${
-                  demoRate >= 55 ? "text-emerald-400" : demoRate >= 40 ? "text-amber-400" : "text-rose-400"
+                  demoRate >= 55 ? "text-emerald-400" : demoRate >= 40 ? "text-violet-400" : "text-rose-400"
                 }`}>{settings.globalDemoRate}%</span>
                 <span className="text-slate-600 text-xs">100% (sempre ganha)</span>
               </div>
@@ -113,12 +113,12 @@ export default function AdminSettings() {
                 type="range" min="0" max="100" step="1"
                 value={settings.globalRealRate}
                 onChange={(e) => setSettings((s) => ({ ...s, globalRealRate: e.target.value }))}
-                className="w-full mt-3 accent-amber-400"
+                className="w-full mt-3 accent-violet-400"
               />
               <div className="flex justify-between items-center mt-2">
                 <span className="text-slate-600 text-xs">0%</span>
                 <span className={`text-2xl font-black font-mono ${
-                  realRate >= 50 ? "text-rose-400" : realRate >= 35 ? "text-amber-400" : "text-emerald-400"
+                  realRate >= 50 ? "text-rose-400" : realRate >= 35 ? "text-violet-400" : "text-emerald-400"
                 }`}>{settings.globalRealRate}%</span>
                 <span className="text-slate-600 text-xs">100%</span>
               </div>
@@ -131,7 +131,7 @@ export default function AdminSettings() {
         </div>
 
         {/* Payment gateway */}
-        <div className="bg-[#0d1117] border border-[#1e2a42] rounded-2xl p-6">
+        <div className="bg-[#0d0a1a] border border-[#1e1532] rounded-2xl p-6">
           <h2 className="text-white font-bold mb-1">Gateway de Pagamento PIX</h2>
           <p className="text-slate-500 text-xs mb-4">Qual provedor processar os depósitos PIX</p>
 
@@ -143,15 +143,15 @@ export default function AdminSettings() {
               <label key={opt.value}
                 className={`flex-1 border rounded-xl p-4 cursor-pointer transition-all ${
                   settings.pixGateway === opt.value
-                    ? "border-amber-500/50 bg-amber-500/5"
-                    : "border-[#1e2a42] hover:border-[#2e3a52]"
+                    ? "border-violet-500/50 bg-violet-500/5"
+                    : "border-[#1e1532] hover:border-[#2e1e52]"
                 }`}
               >
                 <input type="radio" name="pixGateway" value={opt.value}
                   checked={settings.pixGateway === opt.value}
                   onChange={(e) => setSettings((s) => ({ ...s, pixGateway: e.target.value }))}
                   className="hidden" />
-                <p className={`font-semibold text-sm ${settings.pixGateway === opt.value ? "text-amber-400" : "text-white"}`}>
+                <p className={`font-semibold text-sm ${settings.pixGateway === opt.value ? "text-violet-400" : "text-white"}`}>
                   {opt.label}
                 </p>
                 <p className="text-slate-500 text-xs mt-1">{opt.desc}</p>
@@ -161,7 +161,7 @@ export default function AdminSettings() {
         </div>
 
         {/* Maintenance mode */}
-        <div className="bg-[#0d1117] border border-[#1e2a42] rounded-2xl p-6">
+        <div className="bg-[#0d0a1a] border border-[#1e1532] rounded-2xl p-6">
           <div className="flex items-center justify-between">
             <div>
               <h2 className="text-white font-bold">Modo Manutenção</h2>
@@ -187,7 +187,7 @@ export default function AdminSettings() {
         className={`mt-6 w-full font-bold rounded-xl py-3 text-sm transition-all ${
           saved
             ? "bg-emerald-500/20 border border-emerald-500/30 text-emerald-400"
-            : "bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 text-[#080c14]"
+            : "bg-gradient-to-r from-violet-500 to-violet-400 hover:from-violet-400 hover:to-violet-300 text-white"
         } disabled:opacity-50`}
       >
         {saving ? "Salvando…" : saved ? "✓ Salvo!" : "Salvar Configurações"}

@@ -499,7 +499,7 @@ function PromoPanel({ onClose, onDeposit }: { onClose: () => void; onDeposit: ()
             <span className="text-2xl">⚡</span>
             <div>
               <div className="text-sm font-bold text-amber-400">100% de Bônus</div>
-              <div className="text-[10px] text-white/40">Em depósitos acima de $20</div>
+              <div className="text-[10px] text-white/40">{t("promo_bonus")}</div>
             </div>
           </div>
           <div className="text-[10px] text-white/30 mb-3">Válido até 8 Jun 2026 · Código: <span className="text-amber-400 font-mono">COPA100K</span></div>
@@ -996,7 +996,7 @@ function DepositSuccessHandler({ onSuccess, onVerified }: { onSuccess: () => voi
 export default function DashboardPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
-  const { t }        = useI18n();
+  const { t, getLocaleConfig } = useI18n();
 
   const [openAssets,       setOpenAssets]       = useState<string[]>(DEFAULT_TABS);
   const [selectedAsset,    setSelectedAsset]    = useState<string>(DEFAULT_TABS[0]);
@@ -1021,6 +1021,7 @@ export default function DashboardPage() {
   const [resetting,        setResetting]        = useState(false);
   const [ohlc,             setOhlc]             = useState<OhlcData | null>(null);
   const [tradeResult,      setTradeResult]      = useState<TradeResult | null>(null);
+  const [resultKey,        setResultKey]        = useState(0);
   const [mobileTab,        setMobileTab]        = useState<"chart" | "trade" | "panels">("chart");
   const [mobileMenuOpen,   setMobileMenuOpen]   = useState(false);
   const [isDark,           setIsDark]           = useState(true);
@@ -1060,6 +1061,8 @@ export default function DashboardPage() {
   const bidPrice      = currentPrice > 0 ? currentPrice * (1 - spread) : 0;
   const assetInfo     = ALL_ASSETS.find((a) => a.symbol === selectedAsset);
   const potentialWin  = amount * PAYOUT_RATE;
+  const localeRate    = getLocaleConfig().rate;
+  const localAmount   = Math.round(amount * localeRate);
   // Active balance depends on mode
   const activeBalance = accountMode === "real" ? realBalance : balance;
   const canTrade      = currentPrice > 0 && !placing && activeBalance !== null && activeBalance >= amount && amount >= 1;
@@ -1213,7 +1216,7 @@ export default function DashboardPage() {
           if (rr.ok) {
             const rd = await rr.json();
             setBalance(rd.balance);
-            showNotif("✨ Saldo demo reposto para $5.000!", "win");
+            showNotif(`✨ Saldo demo reposto para ${formatCurrency(rd.balance)}!`, "win");
           } else if (rr.status === 429) {
             const rd = await rr.json();
             const nextTime = rd.nextReset ? new Date(rd.nextReset).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }) : "";
@@ -1255,6 +1258,7 @@ export default function DashboardPage() {
         setTrades((prev) => prev.map((t) => t.id === id ? { ...t, ...settled } : t));
         await fetchUser();
         const isWin = settled.result === "WIN";
+        setResultKey((k) => k + 1);
         setTradeResult({ profit: isWin ? settled.profit : settled.amount, isWin, asset: settled.asset, amount: settled.amount });
         showNotif(
           isWin
@@ -1400,8 +1404,11 @@ export default function DashboardPage() {
           </div>
           <div className="flex items-center bg-white/3 border border-white/8 rounded-xl overflow-hidden focus-within:border-amber-500/30 transition-colors">
             <button onClick={() => setAmount((a) => Math.max(1, a - 5))} className="w-9 h-10 text-white/30 hover:text-white hover:bg-white/5 transition-colors font-bold text-lg">−</button>
-            <input type="number" value={amount} onChange={(e) => setAmount(Math.max(1, Number(e.target.value)))} min={1}
-              className="flex-1 bg-transparent text-center text-white text-sm font-mono focus:outline-none py-2 min-w-0" />
+            <div className="flex flex-1 items-center justify-center gap-0.5 py-2 min-w-0">
+              <span className="text-white/30 text-xs font-semibold">{getLocaleConfig().currencySymbol}</span>
+              <input type="number" value={localAmount} onChange={(e) => setAmount(Math.max(1, Number(e.target.value) / localeRate))} min={1}
+                className="bg-transparent text-center text-white text-sm font-mono focus:outline-none w-20" />
+            </div>
             <button onClick={() => setAmount((a) => a + 5)} className="w-9 h-10 text-white/30 hover:text-white hover:bg-white/5 transition-colors font-bold text-lg">+</button>
           </div>
           <div className="grid grid-cols-4 gap-1 mt-1.5">
@@ -1856,7 +1863,7 @@ export default function DashboardPage() {
 
             {/* Trade result overlay */}
             {tradeResult && (
-              <TradeResultOverlay result={tradeResult} onDone={() => setTradeResult(null)} />
+              <TradeResultOverlay key={resultKey} result={tradeResult} onDone={() => setTradeResult(null)} />
             )}
 
             {/* Chart — always mounted so it initialises behind the loading overlay */}
@@ -1994,8 +2001,11 @@ export default function DashboardPage() {
             <div className="flex items-center bg-white/5 border border-white/10 rounded-xl overflow-hidden shrink-0">
               <button onClick={() => setAmount((a) => Math.max(1, a - 5))}
                 className="w-10 h-12 text-white/40 hover:text-white text-xl font-light transition-colors flex items-center justify-center">−</button>
-              <input type="number" value={amount} onChange={(e) => setAmount(Math.max(1, Number(e.target.value)))} min={1}
-                className="w-16 bg-transparent text-center text-white text-sm font-mono font-bold focus:outline-none" />
+              <div className="flex items-center justify-center gap-0.5 w-20">
+                <span className="text-white/30 text-[10px] font-semibold">{getLocaleConfig().currencySymbol}</span>
+                <input type="number" value={localAmount} onChange={(e) => setAmount(Math.max(1, Number(e.target.value) / localeRate))} min={1}
+                  className="bg-transparent text-center text-white text-sm font-mono font-bold focus:outline-none w-14" />
+              </div>
               <button onClick={() => setAmount((a) => a + 5)}
                 className="w-10 h-12 text-white/40 hover:text-white text-xl font-light transition-colors flex items-center justify-center">+</button>
             </div>

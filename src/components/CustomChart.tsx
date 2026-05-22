@@ -245,34 +245,17 @@ export default function CustomChart({
     const cpd2  = cpd1 * 1.75;
     const cOff  = ((seed1 % 100) / 100) * Math.PI * 2;
 
-    // Backfill ticks missed while the tab was in the background
+    // When returning to the tab, restart the interval to flush any
+    // backed-up throttled callbacks that would otherwise fire in rapid
+    // succession and produce a flat line on the chart.
     function handleVisibility() {
       if (document.visibilityState !== "visible") return;
-      const buf = bufRef.current;
-      if (buf.length === 0) return;
-      const lastT  = buf[buf.length - 1].t;
-      const nowMs  = Date.now();
-      const missed = Math.min(Math.floor((nowMs - lastT) / TICK_MS) - 1, MAX_BUF);
-      if (missed <= 0) return;
-      let prev = buf[buf.length - 1].p;
-      for (let i = 1; i <= missed; i++) {
-        const t  = lastT + i * TICK_MS;
-        const mr = (initialPrice - prev) * 0.006;
-        const cycle = prev * vol * 0.22 * (
-          Math.sin(t / cpd1 * Math.PI * 2 + cOff) * 0.6 +
-          Math.sin(t / cpd2 * Math.PI * 2) * 0.3
-        );
-        const delta = (Math.random() - 0.5) * vol * 0.9 * prev;
-        const next  = Math.max(prev * 0.98, prev + delta + cycle + mr);
-        buf.push({ t, p: next });
-        if (buf.length > MAX_BUF) buf.shift();
-        prev = next;
-      }
-      curRef.current = prev;
+      if (timerRef.current) clearInterval(timerRef.current);
+      timerRef.current = setInterval(tick, TICK_MS);
     }
     document.addEventListener("visibilitychange", handleVisibility);
 
-    timerRef.current = setInterval(() => {
+    function tick() {
       const prev  = curRef.current || initialPrice;
       const nowMs = Date.now();
       const mr    = (initialPrice - prev) * 0.006; // stronger mean-reversion
@@ -368,7 +351,9 @@ export default function CustomChart({
         const pp = sl.map(t => t.p);
         onOhlcRef.current?.({ open: pp[0], high: Math.max(...pp), low: Math.min(...pp), close: pp[pp.length - 1] });
       }
-    }, TICK_MS);
+    }
+
+    timerRef.current = setInterval(tick, TICK_MS);
 
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);

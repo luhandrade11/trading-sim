@@ -9,7 +9,6 @@ const BASE_NAV = [
   { href: "/afiliados/dashboard/links",     label: "Meus links",    icon: "⛓" },
   { href: "/afiliados/dashboard/players",   label: "Jogadores",     icon: "👥" },
   { href: "/afiliados/dashboard/rede",      label: "Minha rede",    icon: "🌐" },
-  { href: "/afiliados/dashboard/ranking",   label: "Ranking",       icon: "🏆" },
   { href: "/afiliados/dashboard/revenues",  label: "Receitas",      icon: "◎" },
   { href: "/afiliados/dashboard/saques",    label: "Saques",        icon: "↗" },
   { href: "/afiliados/dashboard/suporte",   label: "Suporte",       icon: "🎫" },

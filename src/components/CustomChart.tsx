@@ -17,8 +17,8 @@ function assetSeed(a: string) {
 
 // ── Per-asset params ───────────────────────────────────────────────────────────
 const VOL: Record<string, number> = {
-  "BTC/USD": 0.000042, "ETH/USD": 0.000051,
-  "EUR/USD": 0.0000032, "GBP/USD": 0.0000039, "SOL/USD": 0.000063,
+  "BTC/USD": 0.00055, "ETH/USD": 0.00068,
+  "EUR/USD": 0.000042, "GBP/USD": 0.000051, "SOL/USD": 0.00085,
 };
 const DEC: Record<string, number> = {
   "BTC/USD": 2, "ETH/USD": 2, "EUR/USD": 5, "GBP/USD": 5, "SOL/USD": 3,
@@ -32,8 +32,8 @@ const TICK_MS = 500;
 const BASE_MS = 700;
 const dt      = TICK_MS / BASE_MS;          // ≈ 0.714
 const DSCALE  = Math.sqrt(dt);              // ≈ 0.845 — Brownian (√dt) scaling
-const MAX_BUF = 1200;
-const HIST    = 420;                        // 210 s of seeded history at 500 ms/tick
+const MAX_BUF = 1600;
+const HIST    = 800;                        // 400 s of seeded history — large pool so last 56 visible ticks look natural
 
 // Visible ticks scaled so each timeframe covers the same wall-clock window
 const VIS_TICKS: Record<string, number> = { "5s": 56, "30s": 112, "1m": 196, "5m": 364 };
@@ -224,12 +224,12 @@ export default function CustomChart({
     for (let i = 0; i < HIST; i++) {
       raw.unshift(p);
       const t   = now - (HIST - i) * TICK_MS;
-      const mr  = (initialPrice - p) * 0.05 * dt;           // drift scales linearly with dt
-      const cyc = p * vol * 0.10 * (
+      const mr  = (initialPrice - p) * 0.18 * dt;            // strong mean-reversion keeps history near initialPrice
+      const cyc = p * vol * 0.30 * (
         Math.sin(t / cpd1 * Math.PI * 2 + cOff) * 0.6 +
         Math.sin(t / cpd2 * Math.PI * 2) * 0.3
-      ) * dt;                                                // periodic drift scales with dt
-      p = p + (rand() - 0.5) * vol * 0.38 * initialPrice * DSCALE + cyc + mr; // Brownian scales √dt
+      ) * dt;
+      p = p + (rand() - 0.5) * vol * 0.55 * initialPrice * DSCALE + cyc + mr;
       p = Math.max(Math.min(p, initialPrice * 1.05), initialPrice * 0.95);
     }
     bufRef.current  = raw.map((price, i) => ({ t: now - (HIST - i) * TICK_MS, p: price }));
@@ -272,7 +272,7 @@ export default function CustomChart({
       const nowMs = Date.now();
       const mr    = (initialPrice - prev) * 0.006 * dt;  // mean-reversion scales linearly
       // Cyclic drift — scales linearly with dt; periods use BASE_MS for consistent rhythm
-      const cycle = prev * vol * 0.10 * (
+      const cycle = prev * vol * 0.28 * (
         Math.sin(nowMs / cpd1 * Math.PI * 2 + cOff) * 0.6 +
         Math.sin(nowMs / cpd2 * Math.PI * 2) * 0.3
       ) * dt;
@@ -335,7 +335,7 @@ export default function CustomChart({
       }
 
       // Brownian step scales with √dt; manipulation is a drift force → scales linearly
-      const delta = (Math.random() - 0.5) * vol * 0.28 * prev * DSCALE;
+      const delta = (Math.random() - 0.5) * vol * 0.55 * prev * DSCALE;
       const next  = Math.max(prev * 0.98, prev + delta + cycle + mr + manipulation * prev * dt);
       prevPriceRef.current = curRef.current || next; // save for smoothstep interpolation
       tickStartRef.current = nowMs;
@@ -534,10 +534,12 @@ export default function CustomChart({
       if (!av.init) {
         av.lo = tLo; av.hi = tHi; av.wStart = tWStart; av.wEnd = tWEnd; av.init = true;
       } else if (isCandles) {
-        // Candle mode: snap everything immediately.
-        // Any lerp makes all bars drift/jitter at 60fps which looks broken.
+        // Candle mode: X snaps (bars must stay fixed horizontally);
+        // Y uses a fast lerp (settles in <3 frames, looks instant) to avoid
+        // a hard jump when a new price extreme enters the visible window.
         av.wStart = tWStart; av.wEnd = tWEnd;
-        av.lo = tLo; av.hi = tHi;
+        av.lo = lp(av.lo, tLo, 0.18);
+        av.hi = lp(av.hi, tHi, 0.18);
       } else {
         // Line mode: smooth X scroll + gentle Y breathing
         av.wStart = lp(av.wStart, tWStart, 0.08);

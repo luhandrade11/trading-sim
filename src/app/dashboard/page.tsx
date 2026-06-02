@@ -13,7 +13,7 @@ import PostWinPopup from "@/components/PostWinPopup";
 import OnboardingWizard from "@/components/OnboardingWizard";
 import DailyMissions from "@/components/DailyMissions";
 import SignalsChat from "@/components/SignalsChat";
-import type { TradeAnnotation, Timeframe, ChartMode, DrawTool } from "@/components/CustomChart";
+import type { TradeAnnotation, Timeframe, DrawTool } from "@/components/CustomChart";
 import { PAYOUT_RATE, ALL_ASSETS, DEFAULT_TABS, DURATIONS, getSpread } from "@/lib/constants";
 import { computeStats, formatPrice } from "@/lib/utils";
 import { useI18n, LOCALES, setLocale as setGlobalLocale, formatCurrency } from "@/lib/i18n";
@@ -1039,7 +1039,6 @@ export default function DashboardPage() {
   const [tradeWinStates,   setTradeWinStates]   = useState<Record<string, boolean>>({});
   const tradeWinStatesRef    = useRef<Record<string, boolean>>({});
   const [chartTimeframe,     setChartTimeframe]     = useState<Timeframe>("5s");
-  const [chartMode,          setChartMode]          = useState<ChartMode>("line");
   const [drawTool,           setDrawTool]           = useState<DrawTool>("none");
   const [drawToolsOpen,      setDrawToolsOpen]      = useState(false);
   const [clearTrigger,       setClearTrigger]       = useState(0);
@@ -1890,15 +1889,6 @@ export default function DashboardPage() {
                   </button>
                 ))}
               </div>
-              {/* Line / Candle toggle */}
-              <div className="flex items-center bg-white/3 border border-white/5 rounded-lg overflow-hidden">
-                <button onClick={() => setChartMode("line")}
-                  className={`px-2.5 py-1 text-[9px] font-bold transition-colors ${chartMode === "line" ? "bg-amber-400/15 text-amber-400" : "text-white/30 hover:text-white/60"}`}
-                  title="Linha">⟆</button>
-                <button onClick={() => setChartMode("candle")}
-                  className={`px-2.5 py-1 text-[9px] font-bold transition-colors ${chartMode === "candle" ? "bg-amber-400/15 text-amber-400" : "text-white/30 hover:text-white/60"}`}
-                  title="Candles">▨</button>
-              </div>
               {/* Drawing tools — collapsed by default */}
               <div className="relative flex items-center">
                 {/* Toggle button */}
@@ -1984,7 +1974,6 @@ export default function DashboardPage() {
               simEntryOverrides={simEntryOverrideRef.current}
               tradeMode={accountMode}
               timeframe={chartTimeframe}
-              chartMode={chartMode}
               drawTool={drawTool}
               clearTrigger={clearTrigger}
               recentResults={recentResults}

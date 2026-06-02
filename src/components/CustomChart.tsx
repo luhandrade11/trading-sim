@@ -37,12 +37,10 @@ const HIST    = 800;                        // 400 s of seeded history — large
 
 // Visible ticks scaled so each timeframe covers the same wall-clock window
 const VIS_TICKS: Record<string, number> = { "5s": 56, "30s": 112, "1m": 196, "5m": 364 };
-// Candle groupings scaled for same candle duration as original
-const TICKS_PER_CANDLE: Record<string, number> = { "5s": 1, "30s": 8, "1m": 15, "5m": 59 };
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 export type Timeframe = "5s" | "30s" | "1m" | "5m";
-export type ChartMode = "line" | "candle";
+export type ChartMode = "line";
 export type DrawTool  = "none" | "hline" | "trendline" | "eraser";
 
 export interface TradeAnnotation {
@@ -62,7 +60,6 @@ interface Props {
   simEntryOverrides?: Map<string, number>;
   tradeMode?:          "demo" | "real";
   timeframe?:          Timeframe;
-  chartMode?:          ChartMode;
   drawTool?:           DrawTool;
   clearTrigger?:       number;
   recentResults?:      boolean[];   // last N settled results (true=WIN) for current mode
@@ -150,7 +147,7 @@ function tradeOutcome(
 
 export default function CustomChart({
   asset, initialPrice, trades, simEntryOverrides,
-  tradeMode = "demo", timeframe = "5s", chartMode = "line", drawTool = "none",
+  tradeMode = "demo", timeframe = "5s", drawTool = "none",
   clearTrigger = 0, recentResults = [], totalSettledTrades = 0,
   winRateOverride, globalRealRate, globalDemoRate,
   onPriceUpdate, onSettleTrade, onWinStatesChange, onOhlcChange,
@@ -172,7 +169,6 @@ export default function CustomChart({
   const onSettleRef  = useRef(onSettleTrade);
   const onWinRef     = useRef(onWinStatesChange);
   const onOhlcRef    = useRef(onOhlcChange);
-  const chartModeRef         = useRef(chartMode);
   const timeframeRef         = useRef(timeframe);
   const drawToolRef          = useRef(drawTool);
   const tradeModeRef         = useRef(tradeMode);
@@ -191,7 +187,6 @@ export default function CustomChart({
   onSettleRef.current        = onSettleTrade;
   onWinRef.current           = onWinStatesChange;
   onOhlcRef.current          = onOhlcChange;
-  chartModeRef.current       = chartMode;
   timeframeRef.current       = timeframe;
   drawToolRef.current        = drawTool;
   tradeModeRef.current       = tradeMode;
@@ -494,7 +489,6 @@ export default function CustomChart({
       const buf = bufRef.current;
       const dec = DEC[asset] ?? 2;
       const tf  = timeframeRef.current;
-      const cm  = chartModeRef.current;
 
       // Background
       ctx.fillStyle = "#060c18";
@@ -542,23 +536,12 @@ export default function CustomChart({
       const tWStart = vis[0].t;
       const tWEnd   = vis[VIS - 1].t + rightPadMs;
 
-      // ── Lerp the view so Y-rescaling and X-scrolling are animated ──────
-      // X tracks fast (scrolling should feel live); Y tracks slower (scale
-      // changes feel dramatic/jumpy if instant).
-      const av        = animViewRef.current;
-      const lp        = (a: number, b: number, k: number) => a + (b - a) * k;
-      const isCandles = cm === "candle";
+      // ── Lerp the view — smooth X scroll + gentle Y breathing ──────────
+      const av = animViewRef.current;
+      const lp = (a: number, b: number, k: number) => a + (b - a) * k;
       if (!av.init) {
         av.lo = tLo; av.hi = tHi; av.wStart = tWStart; av.wEnd = tWEnd; av.init = true;
-      } else if (isCandles) {
-        // Candle mode: X snaps (bars must stay fixed horizontally);
-        // Y uses a fast lerp (settles in <3 frames, looks instant) to avoid
-        // a hard jump when a new price extreme enters the visible window.
-        av.wStart = tWStart; av.wEnd = tWEnd;
-        av.lo = lp(av.lo, tLo, 0.18);
-        av.hi = lp(av.hi, tHi, 0.18);
       } else {
-        // Line mode: smooth X scroll + gentle Y breathing
         av.wStart = lp(av.wStart, tWStart, 0.08);
         av.wEnd   = lp(av.wEnd,   tWEnd,   0.08);
         av.lo     = lp(av.lo,     tLo,     0.06);
@@ -778,104 +761,47 @@ export default function CustomChart({
         }
       }
 
-      // ── Chart data (line or candle) ───────────────────────────────────────
+      // ── Chart data ───────────────────────────────────────────────────────
       // lastP / firstP / livePrice already computed above (bounds section)
 
       const up     = livePrice >= firstP;
       const lc     = up ? "#10b981" : "#ef4444";
 
-      if (cm === "line") {
-        // Build draw points: historical ticks + a 60-fps smoothstep live point.
-        // Between each 500ms tick, the live point smoothly interpolates from
-        // prevPrice → curPrice using an ease-in-out curve, so the line grows
-        // continuously at 60fps without waiting for the next tick.
-        const drawPts  = [...vis, { t: now, p: livePrice }];
-        const N        = drawPts.length;
+      // ── Line chart ────────────────────────────────────────────────────────
+      // Historical ticks + a 60-fps smoothstep live point so the line grows
+      // continuously at 60fps without waiting for the next tick.
+      const drawPts = [...vis, { t: now, p: livePrice }];
+      const N       = drawPts.length;
 
-        function smoothPath(pts: typeof drawPts) {
-          if (pts.length < 2) return;
-          ctx!.moveTo(toX(pts[0].t), toY(pts[0].p));
-          for (let i = 1; i < pts.length - 1; i++) {
-            const cx = toX(pts[i].t),     cy = toY(pts[i].p);
-            const mx = (cx + toX(pts[i + 1].t)) / 2;
-            const my = (cy + toY(pts[i + 1].p)) / 2;
-            ctx!.quadraticCurveTo(cx, cy, mx, my);
-          }
-          ctx!.lineTo(toX(pts[pts.length - 1].t), toY(pts[pts.length - 1].p));
+      function smoothPath(pts: typeof drawPts) {
+        if (pts.length < 2) return;
+        ctx!.moveTo(toX(pts[0].t), toY(pts[0].p));
+        for (let i = 1; i < pts.length - 1; i++) {
+          const cx = toX(pts[i].t),     cy = toY(pts[i].p);
+          const mx = (cx + toX(pts[i + 1].t)) / 2;
+          const my = (cy + toY(pts[i + 1].p)) / 2;
+          ctx!.quadraticCurveTo(cx, cy, mx, my);
         }
-
-        // Area fill
-        const grd = ctx.createLinearGradient(0, 0, 0, H);
-        grd.addColorStop(0, up ? "rgba(16,185,129,0.12)" : "rgba(239,68,68,0.12)");
-        grd.addColorStop(1, "transparent");
-        ctx.fillStyle = grd;
-        ctx.beginPath();
-        smoothPath(drawPts);
-        ctx.lineTo(toX(drawPts[N - 1].t), H);
-        ctx.lineTo(toX(drawPts[0].t), H);
-        ctx.closePath();
-        ctx.fill();
-
-        // Line stroke
-        ctx.strokeStyle = lc; ctx.lineWidth = 1.8; ctx.lineJoin = "round";
-        ctx.beginPath();
-        smoothPath(drawPts);
-        ctx.stroke();
-
-      } else {
-        // Candle chart — each candle is anchored to a FIXED absolute time bucket
-        // so that old candles never change shape when new ticks arrive.
-        // Old approach grouped by index-in-vis, meaning every new tick reshuffled
-        // all group memberships and caused every candle to reshape every 500 ms.
-        const tpc            = TICKS_PER_CANDLE[tf] ?? 1;
-        const candlePeriodMs = TICK_MS * tpc;
-        const pxPerMs        = W / wDur;
-        const candleW        = Math.max(2, pxPerMs * candlePeriodMs * 0.76);
-        const halfCandle     = candleW / 2;
-
-        // Build map: absolute bucket index → prices[]
-        const candleMap = new Map<number, number[]>();
-        for (const tick of vis) {
-          const key = Math.floor(tick.t / candlePeriodMs);
-          if (!candleMap.has(key)) candleMap.set(key, []);
-          candleMap.get(key)!.push(tick.p);
-        }
-
-        for (const [key, prices] of [...candleMap.entries()].sort((a, b) => a[0] - b[0])) {
-          const open   = prices[0];
-          const close  = prices[prices.length - 1];
-          const high   = Math.max(...prices);
-          const low    = Math.min(...prices);
-          // Center the candle at the middle of its fixed bucket window
-          const x      = toX(key * candlePeriodMs + candlePeriodMs * 0.5);
-          const green  = close >= open;
-          const col    = green ? "#10b981" : "#ef4444";
-          const yO     = toY(open);
-          const yC     = toY(close);
-          const bodyT  = Math.min(yO, yC);
-          const bodyH  = Math.max(1.5, Math.abs(yC - yO));
-          const yH     = toY(high);
-          const yL     = toY(low);
-
-          ctx.strokeStyle = col;
-          ctx.lineWidth   = 1;
-
-          // High wick
-          if (yH < bodyT) { ctx.beginPath(); ctx.moveTo(x, yH); ctx.lineTo(x, bodyT); ctx.stroke(); }
-          // Low wick
-          if (yL > bodyT + bodyH) { ctx.beginPath(); ctx.moveTo(x, bodyT + bodyH); ctx.lineTo(x, yL); ctx.stroke(); }
-
-          // Body — hollow for doji (very small body), filled otherwise
-          ctx.fillStyle = col;
-          if (bodyH <= 2) {
-            ctx.fillRect(x - halfCandle, bodyT - 0.5, candleW, 2);
-          } else if (green) {
-            ctx.strokeRect(x - halfCandle, bodyT, candleW, bodyH);
-          } else {
-            ctx.fillRect(x - halfCandle, bodyT, candleW, bodyH);
-          }
-        }
+        ctx!.lineTo(toX(pts[pts.length - 1].t), toY(pts[pts.length - 1].p));
       }
+
+      // Area fill
+      const grd = ctx.createLinearGradient(0, 0, 0, H);
+      grd.addColorStop(0, up ? "rgba(16,185,129,0.12)" : "rgba(239,68,68,0.12)");
+      grd.addColorStop(1, "transparent");
+      ctx.fillStyle = grd;
+      ctx.beginPath();
+      smoothPath(drawPts);
+      ctx.lineTo(toX(drawPts[N - 1].t), H);
+      ctx.lineTo(toX(drawPts[0].t), H);
+      ctx.closePath();
+      ctx.fill();
+
+      // Line stroke
+      ctx.strokeStyle = lc; ctx.lineWidth = 1.8; ctx.lineJoin = "round";
+      ctx.beginPath();
+      smoothPath(drawPts);
+      ctx.stroke();
 
       // ── Watermark ────────────────────────────────────────────────────────
       ctx.save(); ctx.globalAlpha = 0.03; ctx.fillStyle = "#fff";
@@ -884,22 +810,18 @@ export default function CustomChart({
       ctx.restore();
 
       // ── Current price dashed reference ───────────────────────────────────
-      // In line mode use livePrice (the smoothstep-interpolated point at t=now)
-      // so the dot, reference line, and price tag all sit at the tip of the line.
-      const displayP = cm === "line" ? livePrice : lastP;
-      const curY = toY(displayP);
+      const curY = toY(livePrice);
       ctx.strokeStyle = up ? "rgba(16,185,129,0.3)" : "rgba(239,68,68,0.3)";
       ctx.lineWidth   = 1; ctx.setLineDash([3, 5]);
       ctx.beginPath(); ctx.moveTo(0, curY); ctx.lineTo(W, curY); ctx.stroke();
       ctx.setLineDash([]);
 
-      // Dot — placed at the tip of the line (t=now in line mode, last tick in candle mode)
-      const dotX = cm === "line" ? Math.min(toX(now), W - 4) : toX(vis[VIS - 1].t);
+      const dotX = Math.min(toX(now), W - 4);
       ctx.fillStyle = lc;
       ctx.beginPath(); ctx.arc(dotX, curY, 3.5, 0, Math.PI * 2); ctx.fill();
 
       // Price tag
-      const tag = displayP.toLocaleString("en-US", { minimumFractionDigits: dec, maximumFractionDigits: dec });
+      const tag = livePrice.toLocaleString("en-US", { minimumFractionDigits: dec, maximumFractionDigits: dec });
       ctx.font = "bold 11px monospace";
       const tw = ctx.measureText(tag).width + 10;
       const ty = Math.max(13, Math.min(curY, H - 4));

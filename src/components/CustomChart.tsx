@@ -830,23 +830,31 @@ export default function CustomChart({
         ctx.stroke();
 
       } else {
-        // Candle chart — width derived from actual time-to-pixel ratio so it
-        // stays correct even when rightPadMs stretches the visible window.
-        const tpc         = TICKS_PER_CANDLE[tf] ?? 1;
-        const pxPerMs     = W / wDur;
-        const candleW     = Math.max(2, pxPerMs * TICK_MS * tpc * 0.76);
-        const halfCandle  = candleW / 2;
+        // Candle chart — each candle is anchored to a FIXED absolute time bucket
+        // so that old candles never change shape when new ticks arrive.
+        // Old approach grouped by index-in-vis, meaning every new tick reshuffled
+        // all group memberships and caused every candle to reshape every 500 ms.
+        const tpc            = TICKS_PER_CANDLE[tf] ?? 1;
+        const candlePeriodMs = TICK_MS * tpc;
+        const pxPerMs        = W / wDur;
+        const candleW        = Math.max(2, pxPerMs * candlePeriodMs * 0.76);
+        const halfCandle     = candleW / 2;
 
-        for (let i = 0; i < VIS; i += tpc) {
-          const group = vis.slice(i, i + tpc);
-          if (group.length === 0) continue;
-          const pp     = group.map(t => t.p);
-          const open   = pp[0];
-          const close  = pp[pp.length - 1];
-          const high   = Math.max(...pp);
-          const low    = Math.min(...pp);
-          // Anchor at start of the candle's first tick + half-candle duration
-          const x      = toX(group[0].t + TICK_MS * tpc * 0.5);
+        // Build map: absolute bucket index → prices[]
+        const candleMap = new Map<number, number[]>();
+        for (const tick of vis) {
+          const key = Math.floor(tick.t / candlePeriodMs);
+          if (!candleMap.has(key)) candleMap.set(key, []);
+          candleMap.get(key)!.push(tick.p);
+        }
+
+        for (const [key, prices] of [...candleMap.entries()].sort((a, b) => a[0] - b[0])) {
+          const open   = prices[0];
+          const close  = prices[prices.length - 1];
+          const high   = Math.max(...prices);
+          const low    = Math.min(...prices);
+          // Center the candle at the middle of its fixed bucket window
+          const x      = toX(key * candlePeriodMs + candlePeriodMs * 0.5);
           const green  = close >= open;
           const col    = green ? "#10b981" : "#ef4444";
           const yO     = toY(open);

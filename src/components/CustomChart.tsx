@@ -17,27 +17,28 @@ function assetSeed(a: string) {
 
 // ── Per-asset params ───────────────────────────────────────────────────────────
 const VOL: Record<string, number> = {
-  "BTC/USD": 0.00014, "ETH/USD": 0.00017,
-  "EUR/USD": 0.000011, "GBP/USD": 0.000013, "SOL/USD": 0.00021,
+  "BTC/USD": 0.000042, "ETH/USD": 0.000051,
+  "EUR/USD": 0.0000032, "GBP/USD": 0.0000039, "SOL/USD": 0.000063,
 };
 const DEC: Record<string, number> = {
   "BTC/USD": 2, "ETH/USD": 2, "EUR/USD": 5, "GBP/USD": 5, "SOL/USD": 3,
 };
 
-// Tick rate: 100 ms gives 10 price updates/sec → chart is genuinely fluid at 60 fps.
-// BASE_MS is the old 700 ms reference kept for cycle-period formulas (same chart rhythm)
-// and for proportional scaling of drift/manipulation forces.
-const TICK_MS = 100;
+// TICK_MS=500 ms → 2 price updates/sec (calm, slow movement).
+// Line mode uses a 60-fps smoothstep live-point so it still feels fluid.
+// Candle mode uses raw discrete ticks with no lerp → stable, crisp bars.
+// BASE_MS kept at 700 for cycle-period formulas (same chart rhythm as original).
+const TICK_MS = 500;
 const BASE_MS = 700;
-const dt      = TICK_MS / BASE_MS;          // ≈ 0.143 — linear time-step normaliser
-const DSCALE  = Math.sqrt(dt);              // ≈ 0.378 — Brownian (√dt) scaling
-const MAX_BUF = 6000;                       // ~600 s of history at 100 ms/tick
-const HIST    = 2100;                       // same ~210 s of seeded history as before
+const dt      = TICK_MS / BASE_MS;          // ≈ 0.714
+const DSCALE  = Math.sqrt(dt);              // ≈ 0.845 — Brownian (√dt) scaling
+const MAX_BUF = 1200;
+const HIST    = 420;                        // 210 s of seeded history at 500 ms/tick
 
-// Visible ticks per timeframe — scaled ×7 to show the same wall-clock window
-const VIS_TICKS: Record<string, number> = { "5s": 280, "30s": 560, "1m": 980, "5m": 1820 };
-// Ticks per candle — scaled ×7 so each candle covers the same duration as before
-const TICKS_PER_CANDLE: Record<string, number> = { "5s": 7, "30s": 42, "1m": 77, "5m": 294 };
+// Visible ticks scaled so each timeframe covers the same wall-clock window
+const VIS_TICKS: Record<string, number> = { "5s": 56, "30s": 112, "1m": 196, "5m": 364 };
+// Candle groupings scaled for same candle duration as original
+const TICKS_PER_CANDLE: Record<string, number> = { "5s": 1, "30s": 8, "1m": 15, "5m": 59 };
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 export type Timeframe = "5s" | "30s" | "1m" | "5m";
@@ -154,13 +155,15 @@ export default function CustomChart({
   winRateOverride, globalRealRate, globalDemoRate,
   onPriceUpdate, onSettleTrade, onWinStatesChange, onOhlcChange,
 }: Props) {
-  const canvasRef   = useRef<HTMLCanvasElement>(null);
-  const bufRef      = useRef<Tick[]>([]);
-  const curRef      = useRef(0);
-  const settledRef  = useRef<Set<string>>(new Set());
-  const entryMapRef = useRef<Map<string, number>>(new Map());
-  const rafRef      = useRef(0);
-  const timerRef    = useRef<ReturnType<typeof setInterval> | undefined>(undefined);
+  const canvasRef    = useRef<HTMLCanvasElement>(null);
+  const bufRef       = useRef<Tick[]>([]);
+  const curRef       = useRef(0);
+  const prevPriceRef = useRef(0);   // price from BEFORE last tick — used for smoothstep line
+  const tickStartRef = useRef(0);   // timestamp of last tick fire
+  const settledRef   = useRef<Set<string>>(new Set());
+  const entryMapRef  = useRef<Map<string, number>>(new Map());
+  const rafRef       = useRef(0);
+  const timerRef     = useRef<ReturnType<typeof setInterval> | undefined>(undefined);
 
   // Always-current prop refs
   const tradesRef    = useRef(trades);
@@ -332,8 +335,10 @@ export default function CustomChart({
       }
 
       // Brownian step scales with √dt; manipulation is a drift force → scales linearly
-      const delta = (Math.random() - 0.5) * vol * 0.38 * prev * DSCALE;
+      const delta = (Math.random() - 0.5) * vol * 0.28 * prev * DSCALE;
       const next  = Math.max(prev * 0.98, prev + delta + cycle + mr + manipulation * prev * dt);
+      prevPriceRef.current = curRef.current || next; // save for smoothstep interpolation
+      tickStartRef.current = nowMs;
       curRef.current = next;
 
       bufRef.current.push({ t: nowMs, p: next });
@@ -528,15 +533,17 @@ export default function CustomChart({
       const isCandles = cm === "candle";
       if (!av.init) {
         av.lo = tLo; av.hi = tHi; av.wStart = tWStart; av.wEnd = tWEnd; av.init = true;
+      } else if (isCandles) {
+        // Candle mode: snap everything immediately.
+        // Any lerp makes all bars drift/jitter at 60fps which looks broken.
+        av.wStart = tWStart; av.wEnd = tWEnd;
+        av.lo = tLo; av.hi = tHi;
       } else {
-        // Candles: X axis snaps (discrete bars must stay fixed),
-        //          Y axis lerps fast so scale adapts quickly on timeframe switch.
-        // Line:    X lerps smoothly (continuous scroll feel),
-        //          Y lerps gently (organic breathing scale).
-        av.wStart = isCandles ? tWStart         : lp(av.wStart, tWStart, 0.08);
-        av.wEnd   = isCandles ? tWEnd           : lp(av.wEnd,   tWEnd,   0.08);
-        av.lo     = lp(av.lo, tLo, isCandles ? 0.12 : 0.03);
-        av.hi     = lp(av.hi, tHi, isCandles ? 0.12 : 0.03);
+        // Line mode: smooth X scroll + gentle Y breathing
+        av.wStart = lp(av.wStart, tWStart, 0.08);
+        av.wEnd   = lp(av.wEnd,   tWEnd,   0.08);
+        av.lo     = lp(av.lo,     tLo,     0.03);
+        av.hi     = lp(av.hi,     tHi,     0.03);
       }
 
       const lo     = av.lo;
@@ -766,21 +773,29 @@ export default function CustomChart({
       const lc     = up ? "#10b981" : "#ef4444";
 
       if (cm === "line") {
-        // With TICK_MS=100 ms the buffer already has enough resolution to look
-        // fluid at 60 fps.  We still run the points through a quadratic bezier
-        // spline (midpoint method) for extra silkiness.
-        function smoothPath(pts: Tick[]) {
-          const N = pts.length;
-          if (N < 2) return;
+        // Build draw points: historical ticks + a 60-fps smoothstep live point.
+        // Between each 500ms tick, the live point smoothly interpolates from
+        // prevPrice → curPrice using an ease-in-out curve, so the line grows
+        // continuously at 60fps without waiting for the next tick.
+        const elapsed  = Math.min(TICK_MS, now - (tickStartRef.current || now));
+        const t        = elapsed / TICK_MS;
+        const smooth   = t * t * (3 - 2 * t);                      // smoothstep
+        const fromP    = prevPriceRef.current || vis[VIS - 1].p;
+        const toP      = curRef.current       || vis[VIS - 1].p;
+        const liveP    = fromP + (toP - fromP) * smooth;
+        const drawPts  = [...vis, { t: now, p: liveP }];
+        const N        = drawPts.length;
+
+        function smoothPath(pts: typeof drawPts) {
+          if (pts.length < 2) return;
           ctx!.moveTo(toX(pts[0].t), toY(pts[0].p));
-          for (let i = 1; i < N - 1; i++) {
-            const cx = toX(pts[i].t);
-            const cy = toY(pts[i].p);
+          for (let i = 1; i < pts.length - 1; i++) {
+            const cx = toX(pts[i].t),     cy = toY(pts[i].p);
             const mx = (cx + toX(pts[i + 1].t)) / 2;
             const my = (cy + toY(pts[i + 1].p)) / 2;
             ctx!.quadraticCurveTo(cx, cy, mx, my);
           }
-          ctx!.lineTo(toX(pts[N - 1].t), toY(pts[N - 1].p));
+          ctx!.lineTo(toX(pts[pts.length - 1].t), toY(pts[pts.length - 1].p));
         }
 
         // Area fill
@@ -789,16 +804,16 @@ export default function CustomChart({
         grd.addColorStop(1, "transparent");
         ctx.fillStyle = grd;
         ctx.beginPath();
-        smoothPath(vis);
-        ctx.lineTo(toX(vis[VIS - 1].t), H);
-        ctx.lineTo(toX(vis[0].t), H);
+        smoothPath(drawPts);
+        ctx.lineTo(toX(drawPts[N - 1].t), H);
+        ctx.lineTo(toX(drawPts[0].t), H);
         ctx.closePath();
         ctx.fill();
 
         // Line stroke
         ctx.strokeStyle = lc; ctx.lineWidth = 1.8; ctx.lineJoin = "round";
         ctx.beginPath();
-        smoothPath(vis);
+        smoothPath(drawPts);
         ctx.stroke();
 
       } else {

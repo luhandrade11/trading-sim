@@ -667,70 +667,63 @@ export default function CustomChart({
 
         if (dotOnScreen) {
           // Thin solid vertical line
-          ctx.strokeStyle = `${solid}0.3)`; ctx.lineWidth = 1; ctx.setLineDash([]);
+          ctx.strokeStyle = `${solid}0.25)`; ctx.lineWidth = 1; ctx.setLineDash([]);
           ctx.beginPath(); ctx.moveTo(xCr, 0); ctx.lineTo(xCr, H); ctx.stroke();
 
-          // Soft radial glow behind the marker
-          const glow = ctx.createRadialGradient(xCr, yE, 0, xCr, yE, 32);
-          glow.addColorStop(0, `rgba(${rgb},0.28)`);
+          // Subtle radial glow
+          const glow = ctx.createRadialGradient(xCr, yE, 0, xCr, yE, 18);
+          glow.addColorStop(0, `rgba(${rgb},0.18)`);
           glow.addColorStop(1, `rgba(${rgb},0)`);
           ctx.fillStyle = glow;
-          ctx.beginPath(); ctx.arc(xCr, yE, 32, 0, Math.PI * 2); ctx.fill();
+          ctx.beginPath(); ctx.arc(xCr, yE, 18, 0, Math.PI * 2); ctx.fill();
 
-          // Outer pulse ring 1
-          ctx.strokeStyle = `rgba(${rgb},${(1 - pulse) * 0.5})`; ctx.lineWidth = 1.5;
-          ctx.beginPath(); ctx.arc(xCr, yE, 14 + pulse * 14, 0, Math.PI * 2); ctx.stroke();
-          // Outer pulse ring 2 (offset)
-          ctx.strokeStyle = `rgba(${rgb},${(1 - pulse2) * 0.3})`; ctx.lineWidth = 1;
-          ctx.beginPath(); ctx.arc(xCr, yE, 14 + pulse2 * 14, 0, Math.PI * 2); ctx.stroke();
+          // Single soft pulse ring
+          ctx.strokeStyle = `rgba(${rgb},${(1 - pulse) * 0.35})`; ctx.lineWidth = 1;
+          ctx.beginPath(); ctx.arc(xCr, yE, 8 + pulse * 10, 0, Math.PI * 2); ctx.stroke();
 
-          // Outer white halo
-          ctx.strokeStyle = "rgba(255,255,255,0.18)"; ctx.lineWidth = 2;
-          ctx.beginPath(); ctx.arc(xCr, yE, 13, 0, Math.PI * 2); ctx.stroke();
-
-          // Main solid disc
+          // Main solid disc — smaller and cleaner
           ctx.fillStyle = `${solid}1)`;
-          ctx.beginPath(); ctx.arc(xCr, yE, 11, 0, Math.PI * 2); ctx.fill();
+          ctx.beginPath(); ctx.arc(xCr, yE, 7, 0, Math.PI * 2); ctx.fill();
 
-          // Inner white ring
-          ctx.strokeStyle = "rgba(255,255,255,0.5)"; ctx.lineWidth = 1.5;
-          ctx.beginPath(); ctx.arc(xCr, yE, 11, 0, Math.PI * 2); ctx.stroke();
+          // Thin white border
+          ctx.strokeStyle = "rgba(255,255,255,0.55)"; ctx.lineWidth = 1.2;
+          ctx.beginPath(); ctx.arc(xCr, yE, 7, 0, Math.PI * 2); ctx.stroke();
 
           // Direction arrow
-          ctx.font = "bold 12px system-ui, sans-serif";
+          ctx.font = "bold 8px system-ui, sans-serif";
           ctx.fillStyle = "#fff"; ctx.textAlign = "center";
-          ctx.fillText(isUp ? "▲" : "▼", xCr, yE + 4.5);
+          ctx.fillText(isUp ? "▲" : "▼", xCr, yE + 3);
           ctx.textAlign = "left";
 
           // ── Floating "COMPRA / VENDA" flag label ────────────────────────
           const label    = isUp ? "COMPRA" : "VENDA";
           const priceStr = entry.toFixed(dec);
-          ctx.font = "bold 10px monospace";
-          const flagW = ctx.measureText(`${label}  ${priceStr}`).width + 18;
-          const flagH = 22;
+          ctx.font = "bold 9px monospace";
+          const flagW = ctx.measureText(`${label}  ${priceStr}`).width + 14;
+          const flagH = 18;
           // Try right of dot first, flip left if it would overflow
-          const flagX = xCr + 16 + flagW < W ? xCr + 16 : xCr - 16 - flagW;
+          const flagX = xCr + 12 + flagW < W ? xCr + 12 : xCr - 12 - flagW;
           const flagY = yE - flagH / 2;
 
           // Flag pill
-          ctx.fillStyle = `${solid}0.92)`;
-          if (ctx.roundRect) ctx.roundRect(flagX, flagY, flagW, flagH, 5);
+          ctx.fillStyle = `${solid}0.88)`;
+          if (ctx.roundRect) ctx.roundRect(flagX, flagY, flagW, flagH, 4);
           else ctx.rect(flagX, flagY, flagW, flagH);
           ctx.fill();
 
           // Connecting line from disc edge to flag
-          const lineEndX = xCr + 16 + flagW < W ? xCr + 12 : xCr - 12;
+          const lineEndX = xCr + 12 + flagW < W ? xCr + 8 : xCr - 8;
           ctx.strokeStyle = `${solid}0.6)`; ctx.lineWidth = 1;
           ctx.beginPath(); ctx.moveTo(lineEndX, yE); ctx.lineTo(flagX + (xCr + 16 + flagW < W ? 0 : flagW), yE); ctx.stroke();
 
           // Flag text — label on left, price on right
           ctx.fillStyle = "#fff"; ctx.textAlign = "left";
           ctx.font = "bold 10px monospace";
-          ctx.fillText(label, flagX + 8, yE + 4);
+          ctx.fillText(label, flagX + 6, yE + 3.5);
           ctx.textAlign = "right";
-          ctx.font = "10px monospace";
-          ctx.fillStyle = "rgba(255,255,255,0.8)";
-          ctx.fillText(priceStr, flagX + flagW - 6, yE + 4);
+          ctx.font = "9px monospace";
+          ctx.fillStyle = "rgba(255,255,255,0.75)";
+          ctx.fillText(priceStr, flagX + flagW - 5, yE + 3.5);
           ctx.textAlign = "left";
         }
 

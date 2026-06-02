@@ -768,9 +768,22 @@ export default function CustomChart({
       const lc     = up ? "#10b981" : "#ef4444";
 
       // ── Line chart ────────────────────────────────────────────────────────
-      // Historical ticks + a 60-fps smoothstep live point so the line grows
-      // continuously at 60fps without waiting for the next tick.
-      const drawPts = [...vis, { t: now, p: livePrice }];
+      // Build the draw path carefully to avoid a kink at tick boundaries.
+      //
+      // Bug with the naive [...vis, {now, livePrice}]:
+      //   At tick-fire moment, vis[VIS-1] jumps to the NEW price while
+      //   livePrice is still near the OLD price (smooth≈0). The bezier passes
+      //   through vis[VIS-1] (new price) and then the live point "pulls back"
+      //   to the old price — visible as a brief reversal / tranco.
+      //
+      // Fix: exclude vis[VIS-1] from the historical path and anchor the live
+      //   extension at (_fromP = previous price) at the latest tick timestamp.
+      //   livePrice then only moves FORWARD from _fromP → _toP, never backward.
+      const drawPts = [
+        ...vis.slice(0, VIS - 1),
+        { t: tickStartRef.current || vis[VIS - 1].t, p: _fromP },
+        { t: now, p: livePrice },
+      ];
       const N       = drawPts.length;
 
       function smoothPath(pts: typeof drawPts) {

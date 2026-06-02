@@ -17,8 +17,8 @@ function assetSeed(a: string) {
 
 // ── Per-asset params ───────────────────────────────────────────────────────────
 const VOL: Record<string, number> = {
-  "BTC/USD": 0.00032, "ETH/USD": 0.00038,
-  "EUR/USD": 0.000024, "GBP/USD": 0.000029, "SOL/USD": 0.00048,
+  "BTC/USD": 0.00014, "ETH/USD": 0.00017,
+  "EUR/USD": 0.000011, "GBP/USD": 0.000013, "SOL/USD": 0.00021,
 };
 const DEC: Record<string, number> = {
   "BTC/USD": 2, "ETH/USD": 2, "EUR/USD": 5, "GBP/USD": 5, "SOL/USD": 3,
@@ -523,15 +523,20 @@ export default function CustomChart({
       // ── Lerp the view so Y-rescaling and X-scrolling are animated ──────
       // X tracks fast (scrolling should feel live); Y tracks slower (scale
       // changes feel dramatic/jumpy if instant).
-      const av = animViewRef.current;
-      const lp = (a: number, b: number, k: number) => a + (b - a) * k;
+      const av        = animViewRef.current;
+      const lp        = (a: number, b: number, k: number) => a + (b - a) * k;
+      const isCandles = cm === "candle";
       if (!av.init) {
         av.lo = tLo; av.hi = tHi; av.wStart = tWStart; av.wEnd = tWEnd; av.init = true;
       } else {
-        av.wStart = lp(av.wStart, tWStart, 0.08);  // X: smooth scroll
-        av.wEnd   = lp(av.wEnd,   tWEnd,   0.08);
-        av.lo     = lp(av.lo,     tLo,     0.03);  // Y: very gentle rescale
-        av.hi     = lp(av.hi,     tHi,     0.03);
+        // Candles: X axis snaps (discrete bars must stay fixed),
+        //          Y axis lerps fast so scale adapts quickly on timeframe switch.
+        // Line:    X lerps smoothly (continuous scroll feel),
+        //          Y lerps gently (organic breathing scale).
+        av.wStart = isCandles ? tWStart         : lp(av.wStart, tWStart, 0.08);
+        av.wEnd   = isCandles ? tWEnd           : lp(av.wEnd,   tWEnd,   0.08);
+        av.lo     = lp(av.lo, tLo, isCandles ? 0.12 : 0.03);
+        av.hi     = lp(av.hi, tHi, isCandles ? 0.12 : 0.03);
       }
 
       const lo     = av.lo;

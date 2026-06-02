@@ -17,8 +17,8 @@ function assetSeed(a: string) {
 
 // ── Per-asset params ───────────────────────────────────────────────────────────
 const VOL: Record<string, number> = {
-  "BTC/USD": 0.0018, "ETH/USD": 0.0022,
-  "EUR/USD": 0.00014, "GBP/USD": 0.00017, "SOL/USD": 0.0028,
+  "BTC/USD": 0.0010, "ETH/USD": 0.0012,
+  "EUR/USD": 0.000078, "GBP/USD": 0.000095, "SOL/USD": 0.0015,
 };
 const DEC: Record<string, number> = {
   "BTC/USD": 2, "ETH/USD": 2, "EUR/USD": 5, "GBP/USD": 5, "SOL/USD": 3,
@@ -528,10 +528,10 @@ export default function CustomChart({
       if (!av.init) {
         av.lo = tLo; av.hi = tHi; av.wStart = tWStart; av.wEnd = tWEnd; av.init = true;
       } else {
-        av.wStart = lp(av.wStart, tWStart, 0.14);  // X: fast scroll
-        av.wEnd   = lp(av.wEnd,   tWEnd,   0.14);
-        av.lo     = lp(av.lo,     tLo,     0.05);  // Y: gentle rescale
-        av.hi     = lp(av.hi,     tHi,     0.05);
+        av.wStart = lp(av.wStart, tWStart, 0.08);  // X: smooth scroll
+        av.wEnd   = lp(av.wEnd,   tWEnd,   0.08);
+        av.lo     = lp(av.lo,     tLo,     0.03);  // Y: very gentle rescale
+        av.hi     = lp(av.hi,     tHi,     0.03);
       }
 
       const lo     = av.lo;
@@ -594,114 +594,161 @@ export default function CustomChart({
       ctx.setLineDash([]);
 
       // ── Trade annotations ─────────────────────────────────────────────────
-      const pulse = (Date.now() % 1600) / 1600; // 0→1 cycle every 1.6s
+      const pulse  = (Date.now() % 1800) / 1800; // 0→1 cycle every 1.8 s
+      const pulse2 = (pulse + 0.5) % 1;
+
       for (const trade of tradesRef.current) {
         const entry = overridesRef.current?.get(trade.id) ?? entryMapRef.current.get(trade.id);
         if (entry === undefined) continue;
-        const cur     = curRef.current;
-        const isWin   = trade.direction === "UP" ? cur > entry : cur < entry;
-        const cSolid  = isWin ? "rgba(16,185,129," : "rgba(239,68,68,";
-        const cGreen  = "16,185,129";
-        const cRed    = "239,68,68";
-        const rgb     = isWin ? cGreen : cRed;
+        const cur    = curRef.current;
+        const isUp   = trade.direction === "UP";
+        const isWin  = isUp ? cur > entry : cur < entry;
+        const rgb    = isWin ? "16,185,129" : "239,68,68";
+        const solid  = `rgba(${rgb},`;
 
         const yE   = toY(entry);
         const yCur = toY(cur);
 
-        // ── P&L zone: filled area between entry line and current price ─────
-        // This makes it instantly obvious if the trade is winning or losing.
-        const zoneTop    = Math.min(yE, yCur);
-        const zoneBottom = Math.max(yE, yCur);
-        if (zoneBottom - zoneTop > 1) {
-          const zoneGrad = ctx.createLinearGradient(0, zoneTop, 0, zoneBottom);
+        // ── P&L fill zone ─────────────────────────────────────────────────
+        const zTop = Math.min(yE, yCur), zBot = Math.max(yE, yCur);
+        if (zBot - zTop > 1) {
+          const zg = ctx.createLinearGradient(0, zTop, 0, zBot);
           if (isWin) {
-            zoneGrad.addColorStop(0, "rgba(16,185,129,0.18)");
-            zoneGrad.addColorStop(1, "rgba(16,185,129,0.04)");
+            zg.addColorStop(0, "rgba(16,185,129,0.22)");
+            zg.addColorStop(1, "rgba(16,185,129,0.05)");
           } else {
-            zoneGrad.addColorStop(0, "rgba(239,68,68,0.04)");
-            zoneGrad.addColorStop(1, "rgba(239,68,68,0.18)");
+            zg.addColorStop(0, "rgba(239,68,68,0.05)");
+            zg.addColorStop(1, "rgba(239,68,68,0.22)");
           }
-          ctx.fillStyle = zoneGrad;
-          ctx.fillRect(0, zoneTop, W, zoneBottom - zoneTop);
+          ctx.fillStyle = zg;
+          ctx.fillRect(0, zTop, W, zBot - zTop);
         }
 
-        // ── Full-width horizontal entry price line ─────────────────────────
-        ctx.strokeStyle = `${cSolid}0.7)`; ctx.lineWidth = 2; ctx.setLineDash([7, 5]);
+        // ── Horizontal entry line ──────────────────────────────────────────
+        ctx.strokeStyle = `${solid}0.8)`; ctx.lineWidth = 1.5; ctx.setLineDash([8, 5]);
         ctx.beginPath(); ctx.moveTo(0, yE); ctx.lineTo(W, yE); ctx.stroke();
         ctx.setLineDash([]);
 
-        // ── Entry vertical line (at createdAt time, full height) ──────────
+        // ── Entry vertical line + assertive marker ────────────────────────
         const createdMs = new Date(trade.createdAt).getTime();
-        const xCr = toX(createdMs);
-        if (xCr >= -5 && xCr <= W + 5) {
-          ctx.strokeStyle = `${cSolid}0.4)`; ctx.lineWidth = 1.5; ctx.setLineDash([4, 6]);
+        const xCr       = toX(createdMs);
+        const dotOnScreen = xCr >= -2 && xCr <= W + 2;
+
+        if (dotOnScreen) {
+          // Thin solid vertical line
+          ctx.strokeStyle = `${solid}0.3)`; ctx.lineWidth = 1; ctx.setLineDash([]);
           ctx.beginPath(); ctx.moveTo(xCr, 0); ctx.lineTo(xCr, H); ctx.stroke();
-          ctx.setLineDash([]);
 
-          // ── Animated pulse ring at entry point ─────────────────────────
-          const ringR = 5 + pulse * 16;
-          const ringA = (1 - pulse) * 0.55;
-          ctx.strokeStyle = `rgba(${rgb},${ringA})`; ctx.lineWidth = 2;
-          ctx.beginPath(); ctx.arc(xCr, yE, ringR, 0, Math.PI * 2); ctx.stroke();
+          // Soft radial glow behind the marker
+          const glow = ctx.createRadialGradient(xCr, yE, 0, xCr, yE, 32);
+          glow.addColorStop(0, `rgba(${rgb},0.28)`);
+          glow.addColorStop(1, `rgba(${rgb},0)`);
+          ctx.fillStyle = glow;
+          ctx.beginPath(); ctx.arc(xCr, yE, 32, 0, Math.PI * 2); ctx.fill();
 
-          // Second ring offset by half phase
-          const pulse2 = (pulse + 0.5) % 1;
-          const ring2R = 5 + pulse2 * 16;
-          const ring2A = (1 - pulse2) * 0.35;
-          ctx.strokeStyle = `rgba(${rgb},${ring2A})`; ctx.lineWidth = 1.5;
-          ctx.beginPath(); ctx.arc(xCr, yE, ring2R, 0, Math.PI * 2); ctx.stroke();
+          // Outer pulse ring 1
+          ctx.strokeStyle = `rgba(${rgb},${(1 - pulse) * 0.5})`; ctx.lineWidth = 1.5;
+          ctx.beginPath(); ctx.arc(xCr, yE, 14 + pulse * 14, 0, Math.PI * 2); ctx.stroke();
+          // Outer pulse ring 2 (offset)
+          ctx.strokeStyle = `rgba(${rgb},${(1 - pulse2) * 0.3})`; ctx.lineWidth = 1;
+          ctx.beginPath(); ctx.arc(xCr, yE, 14 + pulse2 * 14, 0, Math.PI * 2); ctx.stroke();
 
-          // Solid center dot
-          ctx.fillStyle = `${cSolid}0.95)`;
-          ctx.beginPath(); ctx.arc(xCr, yE, 5, 0, Math.PI * 2); ctx.fill();
-          ctx.fillStyle = "#fff";
-          ctx.beginPath(); ctx.arc(xCr, yE, 2.2, 0, Math.PI * 2); ctx.fill();
+          // Outer white halo
+          ctx.strokeStyle = "rgba(255,255,255,0.18)"; ctx.lineWidth = 2;
+          ctx.beginPath(); ctx.arc(xCr, yE, 13, 0, Math.PI * 2); ctx.stroke();
+
+          // Main solid disc
+          ctx.fillStyle = `${solid}1)`;
+          ctx.beginPath(); ctx.arc(xCr, yE, 11, 0, Math.PI * 2); ctx.fill();
+
+          // Inner white ring
+          ctx.strokeStyle = "rgba(255,255,255,0.5)"; ctx.lineWidth = 1.5;
+          ctx.beginPath(); ctx.arc(xCr, yE, 11, 0, Math.PI * 2); ctx.stroke();
+
+          // Direction arrow
+          ctx.font = "bold 12px system-ui, sans-serif";
+          ctx.fillStyle = "#fff"; ctx.textAlign = "center";
+          ctx.fillText(isUp ? "▲" : "▼", xCr, yE + 4.5);
+          ctx.textAlign = "left";
+
+          // ── Floating "COMPRA / VENDA" flag label ────────────────────────
+          const label    = isUp ? "COMPRA" : "VENDA";
+          const priceStr = entry.toFixed(dec);
+          ctx.font = "bold 10px monospace";
+          const flagW = ctx.measureText(`${label}  ${priceStr}`).width + 18;
+          const flagH = 22;
+          // Try right of dot first, flip left if it would overflow
+          const flagX = xCr + 16 + flagW < W ? xCr + 16 : xCr - 16 - flagW;
+          const flagY = yE - flagH / 2;
+
+          // Flag pill
+          ctx.fillStyle = `${solid}0.92)`;
+          if (ctx.roundRect) ctx.roundRect(flagX, flagY, flagW, flagH, 5);
+          else ctx.rect(flagX, flagY, flagW, flagH);
+          ctx.fill();
+
+          // Connecting line from disc edge to flag
+          const lineEndX = xCr + 16 + flagW < W ? xCr + 12 : xCr - 12;
+          ctx.strokeStyle = `${solid}0.6)`; ctx.lineWidth = 1;
+          ctx.beginPath(); ctx.moveTo(lineEndX, yE); ctx.lineTo(flagX + (xCr + 16 + flagW < W ? 0 : flagW), yE); ctx.stroke();
+
+          // Flag text — label on left, price on right
+          ctx.fillStyle = "#fff"; ctx.textAlign = "left";
+          ctx.font = "bold 10px monospace";
+          ctx.fillText(label, flagX + 8, yE + 4);
+          ctx.textAlign = "right";
+          ctx.font = "10px monospace";
+          ctx.fillStyle = "rgba(255,255,255,0.8)";
+          ctx.fillText(priceStr, flagX + flagW - 6, yE + 4);
+          ctx.textAlign = "left";
         }
 
-        // ── Entry price badge on the right edge ───────────────────────────
-        const arrow    = trade.direction === "UP" ? "▲" : "▼";
-        const stateStr = isWin ? "✓" : "✗";
-        const badgeTxt = `${arrow} ${entry.toFixed(dec)}`;
-        ctx.font = "bold 10px monospace";
-        const bw = ctx.measureText(badgeTxt).width + 28; // extra for state icon
-        const bx = W - bw - 4;
-        // Badge background
-        ctx.fillStyle = `${cSolid}0.92)`;
-        ctx.beginPath();
-        if (ctx.roundRect) ctx.roundRect(bx, yE - 9, bw, 17, 4);
-        else ctx.rect(bx, yE - 9, bw, 17);
-        ctx.fill();
-        // Win/loss state icon on left side of badge
+        // ── Right-edge price badge ─────────────────────────────────────────
+        const arrow = isUp ? "▲" : "▼";
+        const pnlPct = ((cur - entry) / entry * 100 * (isUp ? 1 : -1)).toFixed(2);
+        const badge1 = `${arrow} ${entry.toFixed(dec)}`;
+        const badge2 = `${isWin ? "+" : ""}${pnlPct}%`;
         ctx.font = "bold 11px monospace";
-        ctx.fillStyle = "#fff";
-        ctx.textAlign = "left";
-        ctx.fillText(stateStr, bx + 5, yE + 2);
-        // Price + direction text
-        ctx.font = "bold 10px monospace";
-        ctx.fillText(badgeTxt, bx + 18, yE + 2);
+        const b1w = ctx.measureText(badge1).width;
+        ctx.font = "10px monospace";
+        const b2w = ctx.measureText(badge2).width;
+        const bw  = Math.max(b1w, b2w) + 20;
+        const bh  = 32;
+        const bx  = W - bw - 4;
+        const by  = Math.max(4, Math.min(yE - bh / 2, H - bh - 4));
 
-        // ── Expiry vertical line ──────────────────────────────────────────
+        ctx.fillStyle = `${solid}0.92)`;
+        if (ctx.roundRect) ctx.roundRect(bx, by, bw, bh, 5);
+        else ctx.rect(bx, by, bw, bh);
+        ctx.fill();
+
+        ctx.fillStyle = "#fff"; ctx.textAlign = "center";
+        ctx.font = "bold 11px monospace";
+        ctx.fillText(badge1, bx + bw / 2, by + 13);
+        ctx.font = "bold 10px monospace";
+        ctx.fillStyle = isWin ? "#86efac" : "#fca5a5";
+        ctx.fillText(badge2, bx + bw / 2, by + 26);
+        ctx.textAlign = "left";
+
+        // ── Expiry vertical line + countdown ─────────────────────────────
         const exMs = new Date(trade.expiresAt).getTime();
         const xEx  = toX(exMs);
         if (xEx >= 0 && xEx <= W) {
-          ctx.strokeStyle = `${cSolid}0.75)`; ctx.lineWidth = 2; ctx.setLineDash([5, 4]);
+          ctx.strokeStyle = `${solid}0.7)`; ctx.lineWidth = 2; ctx.setLineDash([5, 4]);
           ctx.beginPath(); ctx.moveTo(xEx, 0); ctx.lineTo(xEx, H); ctx.stroke();
           ctx.setLineDash([]);
 
-          // Prominent countdown pill
           const remSec = Math.max(0, Math.round((exMs - now) / 1000));
           if (remSec > 0) {
             const timeStr = remSec >= 60 ? `${Math.floor(remSec / 60)}m${remSec % 60}s` : `${remSec}s`;
             ctx.font = "bold 11px monospace";
-            const tw = ctx.measureText(timeStr).width + 12;
-            const tx = xEx - tw / 2;
-            ctx.fillStyle = `${cSolid}0.92)`;
-            ctx.beginPath();
-            if (ctx.roundRect) ctx.roundRect(tx, 5, tw, 19, 4);
-            else ctx.rect(tx, 5, tw, 19);
+            const tw = ctx.measureText(timeStr).width + 14;
+            ctx.fillStyle = `${solid}0.92)`;
+            if (ctx.roundRect) ctx.roundRect(xEx - tw / 2, 5, tw, 20, 4);
+            else ctx.rect(xEx - tw / 2, 5, tw, 20);
             ctx.fill();
             ctx.fillStyle = "#fff"; ctx.textAlign = "center";
-            ctx.fillText(timeStr, xEx, 18);
+            ctx.fillText(timeStr, xEx, 19);
             ctx.textAlign = "left";
           }
         }

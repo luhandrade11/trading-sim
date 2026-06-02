@@ -53,9 +53,7 @@ function RegisterForm() {
         <div className="absolute bottom-0 right-0 w-72 h-72 bg-emerald-500/5 rounded-full blur-3xl pointer-events-none" />
 
         <div className="flex items-center gap-3 relative z-10">
-          <div className="w-9 h-9 bg-gradient-to-br from-amber-400 to-amber-600 rounded-xl flex items-center justify-center shadow-lg">
-            <span className="text-[#080c14] font-black text-sm tracking-tight">PB</span>
-          </div>
+          <img src="/logo.png" alt="Prime Broker" className="w-12 h-12 object-contain" />
           <span className="font-bold text-lg tracking-tight">
             <span className="text-white">Prime</span>
             <span className="text-amber-400"> Broker</span>
@@ -94,9 +92,7 @@ function RegisterForm() {
         <div className="w-full max-w-sm">
           {/* Mobile logo */}
           <div className="flex items-center gap-2 justify-center mb-10 lg:hidden">
-            <div className="w-8 h-8 bg-gradient-to-br from-amber-400 to-amber-600 rounded-xl flex items-center justify-center">
-              <span className="text-[#080c14] font-black text-xs">PB</span>
-            </div>
+            <img src="/logo.png" alt="Prime Broker" className="w-11 h-11 object-contain" />
             <span className="font-bold text-base">
               <span className="text-white">Prime</span>
               <span className="text-amber-400"> Broker</span>

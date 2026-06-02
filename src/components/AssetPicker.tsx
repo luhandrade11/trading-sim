@@ -12,9 +12,11 @@ interface AssetInfo {
 interface Props {
   assets: AssetInfo[];
   openAssets: string[];
+  selectedAsset?: string;
   prices: Record<string, { price: number; change24h: number }>;
   onAdd: (symbol: string) => void;
   onRemove: (symbol: string) => void;
+  onSelect?: (symbol: string) => void;
   onClose: () => void;
 }
 
@@ -23,26 +25,39 @@ function AssetRow({
   price,
   change24h,
   isOpen,
+  isSelected,
   onToggle,
+  onSelect,
 }: {
   asset: AssetInfo;
   price: number;
   change24h: number;
   isOpen: boolean;
+  isSelected: boolean;
   onToggle: () => void;
+  onSelect?: () => void;
 }) {
   return (
-    <div className="flex items-center justify-between px-5 py-2.5 hover:bg-[#111827]/70 transition-colors border-b border-[#1e2a42]/30 last:border-0">
-      <div className="flex items-center gap-3">
+    <div
+      className={`flex items-center justify-between px-4 py-3 border-b border-[#1e2a42]/30 last:border-0 transition-colors ${
+        isSelected ? "bg-amber-400/5 border-l-2 border-l-amber-400" : "hover:bg-[#111827]/70"
+      }`}
+    >
+      {/* Left — clickable for switching */}
+      <button
+        onClick={onSelect}
+        className="flex items-center gap-3 flex-1 min-w-0 text-left"
+        disabled={!onSelect}
+      >
         <div className={`w-2 h-2 rounded-full shrink-0 ${asset.type === "crypto" ? "bg-amber-400" : "bg-blue-400"}`} />
-        <div>
-          <div className="text-white text-xs font-semibold">{asset.symbol}</div>
-          <div className="text-slate-600 text-[10px]">{asset.name}</div>
+        <div className="min-w-0">
+          <div className={`text-xs font-bold ${isSelected ? "text-amber-400" : "text-white"}`}>{asset.symbol}</div>
+          <div className="text-slate-600 text-[10px] truncate">{asset.name}</div>
         </div>
-      </div>
+      </button>
 
-      <div className="flex items-center gap-4">
-        <div className="text-right min-w-[80px]">
+      <div className="flex items-center gap-3 shrink-0">
+        <div className="text-right min-w-[72px]">
           <div className="text-white text-xs font-mono">
             {price > 0 ? `$${formatPrice(price, asset.symbol)}` : <span className="text-slate-700">—</span>}
           </div>
@@ -55,16 +70,31 @@ function AssetRow({
           )}
         </div>
 
-        <button
-          onClick={onToggle}
-          className={`px-3 py-1 rounded-lg text-[10px] font-bold transition-all whitespace-nowrap ${
-            isOpen
-              ? "bg-rose-500/10 text-rose-400 border border-rose-500/20 hover:bg-rose-500/20"
-              : "bg-amber-400/10 text-amber-400 border border-amber-400/20 hover:bg-amber-400/20"
-          }`}
-        >
-          {isOpen ? "− Remover" : "+ Adicionar"}
-        </button>
+        {/* On mobile with onSelect: show compact toggle. On desktop: show full label */}
+        {onSelect ? (
+          <button
+            onClick={(e) => { e.stopPropagation(); onToggle(); }}
+            title={isOpen ? "Remover" : "Adicionar"}
+            className={`w-7 h-7 flex items-center justify-center rounded-lg text-sm font-bold transition-all ${
+              isOpen
+                ? "bg-rose-500/10 text-rose-400 border border-rose-500/20 hover:bg-rose-500/20"
+                : "bg-amber-400/10 text-amber-400 border border-amber-400/20 hover:bg-amber-400/20"
+            }`}
+          >
+            {isOpen ? "−" : "+"}
+          </button>
+        ) : (
+          <button
+            onClick={onToggle}
+            className={`px-3 py-1 rounded-lg text-[10px] font-bold transition-all whitespace-nowrap ${
+              isOpen
+                ? "bg-rose-500/10 text-rose-400 border border-rose-500/20 hover:bg-rose-500/20"
+                : "bg-amber-400/10 text-amber-400 border border-amber-400/20 hover:bg-amber-400/20"
+            }`}
+          >
+            {isOpen ? "− Remover" : "+ Adicionar"}
+          </button>
+        )}
       </div>
     </div>
   );
@@ -73,9 +103,11 @@ function AssetRow({
 export default function AssetPicker({
   assets,
   openAssets,
+  selectedAsset,
   prices,
   onAdd,
   onRemove,
+  onSelect,
   onClose,
 }: Props) {
   const [search, setSearch] = useState("");
@@ -89,6 +121,13 @@ export default function AssetPicker({
   const crypto = filtered.filter((a) => a.type === "crypto");
   const forex  = filtered.filter((a) => a.type === "forex");
 
+  function handleSelect(symbol: string) {
+    if (!onSelect) return;
+    if (!openAssets.includes(symbol)) onAdd(symbol);
+    onSelect(symbol);
+    onClose();
+  }
+
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
       <div className="absolute inset-0 bg-[#080c14]/80 backdrop-blur-md" onClick={onClose} />
@@ -98,9 +137,13 @@ export default function AssetPicker({
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-[#1e2a42] shrink-0">
           <div>
-            <h2 className="text-white font-bold text-sm">Selecionar Ativo</h2>
+            <h2 className="text-white font-bold text-sm">
+              {onSelect ? "Selecionar Ativo" : "Gerenciar Ativos"}
+            </h2>
             <p className="text-slate-600 text-[10px] mt-0.5">
-              {openAssets.length} abertos · {assets.length} disponíveis
+              {onSelect
+                ? "Toque no ativo para negociar"
+                : `${openAssets.length} abertos · ${assets.length} disponíveis`}
             </p>
           </div>
           <button
@@ -147,11 +190,13 @@ export default function AssetPicker({
                     price={p?.price ?? 0}
                     change24h={p?.change24h ?? 0}
                     isOpen={openAssets.includes(asset.symbol)}
+                    isSelected={selectedAsset === asset.symbol}
                     onToggle={() =>
                       openAssets.includes(asset.symbol)
                         ? onRemove(asset.symbol)
                         : onAdd(asset.symbol)
                     }
+                    onSelect={onSelect ? () => handleSelect(asset.symbol) : undefined}
                   />
                 );
               })}
@@ -174,11 +219,13 @@ export default function AssetPicker({
                     price={p?.price ?? 0}
                     change24h={p?.change24h ?? 0}
                     isOpen={openAssets.includes(asset.symbol)}
+                    isSelected={selectedAsset === asset.symbol}
                     onToggle={() =>
                       openAssets.includes(asset.symbol)
                         ? onRemove(asset.symbol)
                         : onAdd(asset.symbol)
                     }
+                    onSelect={onSelect ? () => handleSelect(asset.symbol) : undefined}
                   />
                 );
               })}
@@ -196,7 +243,9 @@ export default function AssetPicker({
         {/* Footer hint */}
         <div className="px-5 py-3 border-t border-[#1e2a42] shrink-0">
           <p className="text-slate-700 text-[10px] text-center">
-            Pelo menos 1 ativo deve estar aberto na barra de negociação
+            {onSelect
+              ? "Toque no nome do ativo para começar a negociar · + / − para gerenciar lista"
+              : "Pelo menos 1 ativo deve estar aberto na barra de negociação"}
           </p>
         </div>
       </div>

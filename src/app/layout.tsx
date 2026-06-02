@@ -18,8 +18,8 @@ export const metadata: Metadata = {
   description: "Plataforma profissional de simulação de trading com dados de mercado em tempo real. Cripto e Forex.",
   keywords: ["trading", "simulador", "cripto", "forex", "bitcoin", "opções binárias"],
   icons: {
-    icon: "/favicon.svg",
-    shortcut: "/favicon.svg",
+    icon: "/logo.png",
+    shortcut: "/logo.png",
   },
   openGraph: {
     title: "Prime Broker — Simulador de Trading",

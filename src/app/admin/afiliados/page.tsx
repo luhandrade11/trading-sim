@@ -11,6 +11,7 @@ interface Affiliate {
   balance: number;
   totalEarned: number;
   parentAffiliateId: string | null;
+  parentAffiliate?: { id: string; name: string } | null;
   createdAt: string;
   status: string;
   _count: { referredUsers: number; subAffiliates: number; revenues: number };
@@ -109,6 +110,7 @@ export default function AdminAfiliadosPage() {
   const [loadingPending, setLoadingPending] = useState(false);
   const [pendingRate, setPendingRate] = useState<Record<string, string>>({});
   const [actioning, setActioning] = useState<string | null>(null);
+  const [pendingErrors, setPendingErrors] = useState<Record<string, string>>({});
 
   const loadList = useCallback(() => {
     setLoadingList(true);
@@ -221,23 +223,30 @@ export default function AdminAfiliadosPage() {
 
   async function handlePendingAction(affId: string, action: "approve" | "reject") {
     setActioning(affId);
+    setPendingErrors((prev) => ({ ...prev, [affId]: "" }));
     const rate = pendingRate[affId] !== undefined ? Number(pendingRate[affId]) / 100 : 0.90;
     const body = action === "approve"
       ? { status: "ACTIVE", commissionRate: rate }
       : { status: "REJECTED" };
-    await fetch(`/api/admin/afiliados/${affId}`, {
+    const r = await fetch(`/api/admin/afiliados/${affId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
-    });
+    }).catch(() => null);
     setActioning(null);
+    if (!r?.ok) {
+      const d = await r?.json().catch(() => ({}));
+      setPendingErrors((prev) => ({ ...prev, [affId]: d?.error ?? "Erro ao processar" }));
+      return;
+    }
     loadPending();
+    loadList();
   }
 
   const pages = Math.ceil(total / 20);
 
   return (
-    <div className="p-6 lg:p-8 min-h-screen bg-[#0a0612] text-white">
+    <div className="p-6 lg:p-8 min-h-screen bg-[#070510] text-white">
       <div className="max-w-6xl mx-auto space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
@@ -261,7 +270,7 @@ export default function AdminAfiliadosPage() {
             {/* Tab: Lista */}
             <button
               onClick={() => setTab("list")}
-              className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${tab === "list" ? "bg-violet-500/15 text-violet-400 border border-violet-500/20" : "text-slate-400 hover:text-white border border-[#1e1532]"}`}
+              className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${tab === "list" ? "bg-violet-500/15 text-violet-400 border border-violet-500/20" : "text-slate-400 hover:text-white border border-white/6"}`}
             >
               Lista
             </button>
@@ -269,7 +278,7 @@ export default function AdminAfiliadosPage() {
             {/* Tab: Pendentes */}
             <button
               onClick={() => setTab("pending")}
-              className={`relative px-4 py-2 rounded-xl text-sm font-medium transition-all ${tab === "pending" ? "bg-amber-500/15 text-amber-400 border border-amber-500/20" : "text-slate-400 hover:text-white border border-[#1e1532]"}`}
+              className={`relative px-4 py-2 rounded-xl text-sm font-medium transition-all ${tab === "pending" ? "bg-amber-500/15 text-amber-400 border border-amber-500/20" : "text-slate-400 hover:text-white border border-white/6"}`}
             >
               Pendentes
               {pendingAffs.length > 0 && (
@@ -282,7 +291,7 @@ export default function AdminAfiliadosPage() {
             {/* Tab: Saques PIX */}
             <button
               onClick={() => setTab("withdrawals")}
-              className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${tab === "withdrawals" ? "bg-violet-500/15 text-violet-400 border border-violet-500/20" : "text-slate-400 hover:text-white border border-[#1e1532]"}`}
+              className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${tab === "withdrawals" ? "bg-violet-500/15 text-violet-400 border border-violet-500/20" : "text-slate-400 hover:text-white border border-white/6"}`}
             >
               Saques PIX
             </button>
@@ -299,13 +308,13 @@ export default function AdminAfiliadosPage() {
                 value={q}
                 onChange={(e) => { setQ(e.target.value); setPage(1); }}
                 placeholder="Buscar por nome ou email…"
-                className="flex-1 bg-[#0d0a1a] border border-[#1e1532] rounded-xl px-4 py-2.5 text-white placeholder-slate-600 text-sm focus:outline-none focus:border-violet-500/40"
+                className="flex-1 bg-[#0c0918] border border-white/6 rounded-xl px-4 py-2.5 text-white placeholder-slate-600 text-sm focus:outline-none focus:border-violet-500/40"
               />
             </div>
 
             {/* Table */}
-            <div className="bg-[#0d0a1a] border border-[#1e1532] rounded-2xl overflow-hidden">
-              <div className="hidden md:grid grid-cols-[1fr_100px_80px_100px_100px_100px_80px] gap-3 px-6 py-3 text-[10px] uppercase tracking-widest text-slate-600 border-b border-[#1e1532]">
+            <div className="bg-[#0c0918] border border-white/6 rounded-2xl overflow-hidden">
+              <div className="hidden md:grid grid-cols-[1fr_100px_80px_100px_100px_100px_80px] gap-3 px-6 py-3 text-[10px] uppercase tracking-widest text-slate-600 border-b border-white/6">
                 <span>Afiliado</span>
                 <span>Nível</span>
                 <span>Acordo</span>
@@ -322,7 +331,7 @@ export default function AdminAfiliadosPage() {
               ) : affiliates.length === 0 ? (
                 <div className="text-center py-16 text-slate-500 text-sm">Nenhum afiliado encontrado.</div>
               ) : (
-                <div className="divide-y divide-[#1e1532]">
+                <div className="divide-y divide-white/5">
                   {affiliates.map((a) => (
                     <div
                       key={a.id}
@@ -358,9 +367,9 @@ export default function AdminAfiliadosPage() {
             {/* Pagination */}
             {pages > 1 && (
               <div className="flex items-center justify-center gap-2">
-                <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1} className="px-4 py-2 rounded-xl border border-[#1e1532] text-sm text-slate-400 hover:text-white disabled:opacity-40 transition-colors">← Anterior</button>
+                <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1} className="px-4 py-2 rounded-xl border border-white/6 text-sm text-slate-400 hover:text-white disabled:opacity-40 transition-colors">← Anterior</button>
                 <span className="text-sm text-slate-500">{page} / {pages}</span>
-                <button onClick={() => setPage((p) => Math.min(pages, p + 1))} disabled={page === pages} className="px-4 py-2 rounded-xl border border-[#1e1532] text-sm text-slate-400 hover:text-white disabled:opacity-40 transition-colors">Próxima →</button>
+                <button onClick={() => setPage((p) => Math.min(pages, p + 1))} disabled={page === pages} className="px-4 py-2 rounded-xl border border-white/6 text-sm text-slate-400 hover:text-white disabled:opacity-40 transition-colors">Próxima →</button>
               </div>
             )}
           </>
@@ -369,62 +378,135 @@ export default function AdminAfiliadosPage() {
         {/* PENDING TAB */}
         {tab === "pending" && (
           <div className="space-y-4">
-            <p className="text-sm text-slate-500">Afiliados cadastrados pelo site oficial aguardando aprovação.</p>
+            <div className="flex items-center justify-between">
+              <p className="text-sm text-slate-500">
+                Todos os afiliados aguardando aprovação — cadastros diretos e recrutados por outros afiliados.
+              </p>
+              <button
+                onClick={loadPending}
+                className="text-xs text-slate-500 hover:text-white border border-white/6 px-3 py-1.5 rounded-lg transition-colors"
+              >
+                Atualizar
+              </button>
+            </div>
 
-            <div className="bg-[#0d0a1a] border border-[#1e1532] rounded-2xl overflow-hidden">
+            <div className="bg-[#0c0918] border border-white/6 rounded-2xl overflow-hidden">
+              {/* Column headers */}
+              <div className="hidden md:grid grid-cols-[1fr_180px_130px_200px] gap-4 px-6 py-3 text-[10px] uppercase tracking-widest text-slate-600 border-b border-white/6">
+                <span>Afiliado</span>
+                <span>Origem</span>
+                <span>Rev. Share</span>
+                <span className="text-right">Ações</span>
+              </div>
+
               {loadingPending ? (
                 <div className="flex items-center justify-center py-16">
                   <div className="w-5 h-5 border-2 border-violet-400/30 border-t-violet-400 rounded-full animate-spin" />
                 </div>
               ) : pendingAffs.length === 0 ? (
-                <div className="text-center py-16 text-slate-500 text-sm">Nenhum cadastro pendente.</div>
+                <div className="text-center py-16">
+                  <svg className="w-8 h-8 mx-auto mb-3 text-slate-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                  </svg>
+                  <p className="text-slate-500 text-sm">Nenhum cadastro pendente.</p>
+                </div>
               ) : (
-                <div className="divide-y divide-[#1e1532]">
-                  {pendingAffs.map((a) => (
-                    <div key={a.id} className="px-6 py-4">
-                      <div className="flex items-start justify-between gap-4">
-                        <div>
-                          <div className="font-semibold text-white text-sm">{a.name}</div>
-                          <div className="text-xs text-slate-500">{a.email}</div>
-                          <div className="text-xs text-slate-600 mt-0.5">
-                            {new Date(a.createdAt).toLocaleString("pt-BR")}
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-3 flex-shrink-0">
-                          {/* Commission rate input */}
-                          <div className="flex items-center gap-1.5">
-                            <label className="text-[10px] text-slate-600 uppercase tracking-wide">Rev. Share</label>
-                            <div className="flex items-center gap-1 bg-[#080c14] border border-[#1e1532] rounded-lg px-2 py-1.5">
-                              <input
-                                type="number"
-                                value={pendingRate[a.id] ?? "90"}
-                                onChange={(e) => setPendingRate((prev) => ({ ...prev, [a.id]: e.target.value }))}
-                                min={1} max={100} step={1}
-                                className="w-10 bg-transparent text-white text-sm font-bold text-right focus:outline-none"
-                              />
-                              <span className="text-slate-500 text-xs">%</span>
+                <div className="divide-y divide-white/5">
+                  {pendingAffs.map((a) => {
+                    const isActioning = actioning === a.id;
+                    const err = pendingErrors[a.id];
+                    const isDirect = !a.parentAffiliateId;
+                    return (
+                      <div key={a.id} className="px-6 py-4 space-y-2">
+                        <div className="grid md:grid-cols-[1fr_180px_130px_200px] gap-4 items-center">
+                          {/* Info */}
+                          <div>
+                            <div className="font-semibold text-white text-sm">{a.name}</div>
+                            <div className="text-xs text-slate-500">{a.email}</div>
+                            <div className="text-xs text-slate-700 mt-0.5">
+                              {new Date(a.createdAt).toLocaleString("pt-BR")}
                             </div>
                           </div>
-                          {/* Approve */}
-                          <button
-                            onClick={() => handlePendingAction(a.id, "approve")}
-                            disabled={actioning === a.id}
-                            className="bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition-colors"
-                          >
-                            {actioning === a.id ? "…" : "Aprovar"}
-                          </button>
-                          {/* Reject */}
-                          <button
-                            onClick={() => handlePendingAction(a.id, "reject")}
-                            disabled={actioning === a.id}
-                            className="bg-rose-500/20 hover:bg-rose-500/30 text-rose-400 text-xs font-bold px-3 py-1.5 rounded-lg transition-colors"
-                          >
-                            Rejeitar
-                          </button>
+
+                          {/* Origem */}
+                          <div>
+                            {isDirect ? (
+                              <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-sky-400 bg-sky-500/10 border border-sky-500/20 px-2.5 py-1 rounded-full">
+                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
+                                </svg>
+                                Direto — sem link
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-violet-400 bg-violet-500/10 border border-violet-500/20 px-2.5 py-1 rounded-full">
+                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.1-1.1"/>
+                                </svg>
+                                {a.parentAffiliate?.name ?? "Afiliado"}
+                              </span>
+                            )}
+                          </div>
+
+                          {/* Rate */}
+                          <div className="flex items-center gap-1 bg-[#070510] border border-white/6 rounded-lg px-2 py-1.5 w-fit">
+                            <input
+                              type="number"
+                              value={pendingRate[a.id] ?? "90"}
+                              onChange={(e) => setPendingRate((prev) => ({ ...prev, [a.id]: e.target.value }))}
+                              min={1} max={100} step={1}
+                              disabled={isActioning}
+                              className="w-10 bg-transparent text-white text-sm font-bold text-right focus:outline-none disabled:opacity-50"
+                            />
+                            <span className="text-slate-500 text-xs">%</span>
+                          </div>
+
+                          {/* Actions */}
+                          <div className="flex items-center gap-2 md:justify-end">
+                            <button
+                              onClick={() => handlePendingAction(a.id, "approve")}
+                              disabled={isActioning}
+                              className="bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 text-white text-xs font-bold px-4 py-1.5 rounded-lg transition-colors flex items-center gap-1.5"
+                            >
+                              {isActioning ? (
+                                <span className="inline-block w-3 h-3 border border-white border-t-transparent rounded-full animate-spin" />
+                              ) : (
+                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7"/>
+                                </svg>
+                              )}
+                              Aprovar
+                            </button>
+                            <button
+                              onClick={() => handlePendingAction(a.id, "reject")}
+                              disabled={isActioning}
+                              className="bg-rose-500/15 hover:bg-rose-500/25 text-rose-400 text-xs font-bold px-4 py-1.5 rounded-lg transition-colors border border-rose-500/20 flex items-center gap-1.5"
+                            >
+                              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12"/>
+                              </svg>
+                              Rejeitar
+                            </button>
+                            <button
+                              onClick={() => setSelectedId(a.id)}
+                              className="text-slate-500 hover:text-white border border-white/6 text-xs px-3 py-1.5 rounded-lg transition-colors"
+                            >
+                              Detalhes
+                            </button>
+                          </div>
                         </div>
+
+                        {/* Error */}
+                        {err && (
+                          <div className="flex items-center gap-2 bg-rose-500/8 border border-rose-500/20 rounded-lg px-3 py-2 text-xs text-rose-400">
+                            <svg className="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                            </svg>
+                            {err}
+                          </div>
+                        )}
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>
@@ -437,19 +519,19 @@ export default function AdminAfiliadosPage() {
             <div className="flex gap-2">
               {(["PENDING", "ALL"] as const).map((s) => (
                 <button key={s} onClick={() => setWTab(s)}
-                  className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${wTab === s ? "bg-violet-500/15 text-violet-400 border border-violet-500/20" : "text-slate-400 border border-[#1e1532]"}`}>
+                  className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${wTab === s ? "bg-violet-500/15 text-violet-400 border border-violet-500/20" : "text-slate-400 border border-white/6"}`}>
                   {s === "PENDING" ? "Pendentes" : "Todos"}
                 </button>
               ))}
             </div>
 
-            <div className="bg-[#0d0a1a] border border-[#1e1532] rounded-2xl overflow-hidden">
+            <div className="bg-[#0c0918] border border-white/6 rounded-2xl overflow-hidden">
               {loadingW ? (
                 <div className="flex items-center justify-center py-16"><div className="w-5 h-5 border-2 border-violet-400/30 border-t-violet-400 rounded-full animate-spin" /></div>
               ) : withdrawals.length === 0 ? (
                 <div className="text-center py-16 text-slate-500 text-sm">Nenhum saque encontrado.</div>
               ) : (
-                <div className="divide-y divide-[#1e1532]">
+                <div className="divide-y divide-white/5">
                   {withdrawals.map((w) => (
                     <div key={w.id} className="px-6 py-4 flex items-center justify-between gap-4">
                       <div>
@@ -489,7 +571,7 @@ export default function AdminAfiliadosPage() {
       {/* DETAIL MODAL */}
       {selectedId && (
         <div className="fixed inset-0 bg-black/70 z-50 flex items-start justify-center p-4 overflow-y-auto" onClick={(e) => { if (e.target === e.currentTarget) setSelectedId(null); }}>
-          <div className="bg-[#0d0a1a] border border-[#1e1532] rounded-2xl w-full max-w-2xl my-8" onClick={(e) => e.stopPropagation()}>
+          <div className="bg-[#0c0918] border border-white/6 rounded-2xl w-full max-w-2xl my-8" onClick={(e) => e.stopPropagation()}>
             {loadingDetail ? (
               <div className="flex items-center justify-center py-16"><div className="w-5 h-5 border-2 border-violet-400/30 border-t-violet-400 rounded-full animate-spin" /></div>
             ) : detail ? (
@@ -514,7 +596,7 @@ export default function AdminAfiliadosPage() {
                 </div>
 
                 {/* Edit acordo + saldo */}
-                <div className="bg-[#080c14] border border-[#1e1532] rounded-xl p-4 space-y-4">
+                <div className="bg-[#070510] border border-white/6 rounded-xl p-4 space-y-4">
                   <h3 className="font-bold text-white text-sm">Editar acordo e saldo</h3>
                   <div className="grid grid-cols-3 gap-3">
                     <div>
@@ -525,7 +607,7 @@ export default function AdminAfiliadosPage() {
                           value={editRate}
                           onChange={(e) => setEditRate(e.target.value)}
                           min={0} max={100} step={1}
-                          className="flex-1 bg-[#0d0a1a] border border-[#1e1532] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-violet-500/40"
+                          className="flex-1 bg-[#0c0918] border border-white/6 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-violet-500/40"
                         />
                         <span className="text-slate-500 text-sm">%</span>
                       </div>
@@ -537,7 +619,7 @@ export default function AdminAfiliadosPage() {
                         value={editBalance}
                         onChange={(e) => setEditBalance(e.target.value)}
                         step="0.01"
-                        className="w-full bg-[#0d0a1a] border border-[#1e1532] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-violet-500/40"
+                        className="w-full bg-[#0c0918] border border-white/6 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-violet-500/40"
                       />
                     </div>
                     <div>
@@ -545,7 +627,7 @@ export default function AdminAfiliadosPage() {
                       <select
                         value={editLevel}
                         onChange={(e) => setEditLevel(e.target.value)}
-                        className="w-full bg-[#0d0a1a] border border-[#1e1532] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-violet-500/40"
+                        className="w-full bg-[#0c0918] border border-white/6 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-violet-500/40"
                       >
                         <option value="1">1 — Direto</option>
                         <option value="2">2</option>
@@ -570,7 +652,7 @@ export default function AdminAfiliadosPage() {
                     { label: "Receitas", value: String(detail._count.revenues), color: "text-violet-400" },
                     { label: "Saques", value: String(detail._count.withdrawals), color: "text-slate-300" },
                   ].map((s) => (
-                    <div key={s.label} className="bg-[#080c14] border border-[#1e1532] rounded-xl p-3 text-center">
+                    <div key={s.label} className="bg-[#070510] border border-white/6 rounded-xl p-3 text-center">
                       <div className={`text-lg font-black ${s.color}`}>{s.value}</div>
                       <div className="text-[10px] text-slate-600">{s.label}</div>
                     </div>
@@ -583,7 +665,7 @@ export default function AdminAfiliadosPage() {
                     <h3 className="font-bold text-white text-sm mb-3">Sub-afiliados ({detail.subAffiliates.length})</h3>
                     <div className="space-y-2">
                       {detail.subAffiliates.map((s) => (
-                        <div key={s.id} className="bg-[#080c14] border border-[#1e1532] rounded-xl px-4 py-3 flex items-center justify-between">
+                        <div key={s.id} className="bg-[#070510] border border-white/6 rounded-xl px-4 py-3 flex items-center justify-between">
                           <div>
                             <div className="text-sm font-medium text-white">{s.name}</div>
                             <div className="text-xs text-slate-500">{s.email} · {LEVEL_LABEL[s.level]}</div>
@@ -599,7 +681,7 @@ export default function AdminAfiliadosPage() {
                 )}
 
                 {/* Move player */}
-                <div className="bg-[#080c14] border border-[#1e1532] rounded-xl p-4">
+                <div className="bg-[#070510] border border-white/6 rounded-xl p-4">
                   <h3 className="font-bold text-white text-sm mb-3">Mover jogador de base</h3>
                   <form onSubmit={handleMovePlayer} className="space-y-3">
                     <div>
@@ -609,7 +691,7 @@ export default function AdminAfiliadosPage() {
                         value={moveUserId}
                         onChange={(e) => setMoveUserId(e.target.value)}
                         placeholder="cuid do usuário"
-                        className="w-full bg-[#0d0a1a] border border-[#1e1532] rounded-lg px-3 py-2 text-white text-sm font-mono focus:outline-none focus:border-violet-500/40 placeholder-slate-700"
+                        className="w-full bg-[#0c0918] border border-white/6 rounded-lg px-3 py-2 text-white text-sm font-mono focus:outline-none focus:border-violet-500/40 placeholder-slate-700"
                       />
                     </div>
                     <div>
@@ -619,7 +701,7 @@ export default function AdminAfiliadosPage() {
                         value={moveToAffId}
                         onChange={(e) => setMoveToAffId(e.target.value)}
                         placeholder="cuid do afiliado destino (opcional)"
-                        className="w-full bg-[#0d0a1a] border border-[#1e1532] rounded-lg px-3 py-2 text-white text-sm font-mono focus:outline-none focus:border-violet-500/40 placeholder-slate-700"
+                        className="w-full bg-[#0c0918] border border-white/6 rounded-lg px-3 py-2 text-white text-sm font-mono focus:outline-none focus:border-violet-500/40 placeholder-slate-700"
                       />
                     </div>
                     <button type="submit" disabled={moving || !moveUserId.trim()}
@@ -635,7 +717,7 @@ export default function AdminAfiliadosPage() {
                     <h3 className="font-bold text-white text-sm mb-3">Jogadores vinculados ({detail._count.referredUsers})</h3>
                     <div className="space-y-1.5 max-h-60 overflow-y-auto">
                       {detail.referredUsers.map((u) => (
-                        <div key={u.id} className="bg-[#080c14] border border-[#1e1532] rounded-lg px-3 py-2.5 flex items-center justify-between text-xs">
+                        <div key={u.id} className="bg-[#070510] border border-white/6 rounded-lg px-3 py-2.5 flex items-center justify-between text-xs">
                           <div>
                             <span className="text-white font-medium">{u.name}</span>
                             <span className="text-slate-600 ml-2 font-mono">{u.id.slice(-8)}</span>
@@ -651,7 +733,7 @@ export default function AdminAfiliadosPage() {
                 )}
 
                 {/* Delete */}
-                <div className="border-t border-[#1e1532] pt-4">
+                <div className="border-t border-white/6 pt-4">
                   <button onClick={handleDelete}
                     className="bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 text-rose-400 text-sm font-bold px-5 py-2.5 rounded-xl transition-colors">
                     Excluir afiliado

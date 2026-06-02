@@ -62,7 +62,7 @@ function EditModal({ user, onClose, onSaved }: {
 
   return (
     <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4" onClick={onClose}>
-      <div className="bg-[#0d0a1a] border border-[#1e1532] rounded-2xl p-6 w-full max-w-md" onClick={(e) => e.stopPropagation()}>
+      <div className="bg-[#0c0918] border border-white/6 rounded-2xl p-6 w-full max-w-md" onClick={(e) => e.stopPropagation()}>
         <h2 className="text-white font-bold text-lg mb-1">{user.name}</h2>
         <p className="text-slate-500 text-sm mb-5">{user.email}</p>
 
@@ -75,12 +75,12 @@ function EditModal({ user, onClose, onSaved }: {
             <div>
               <label className="text-xs text-slate-400 uppercase font-semibold tracking-wide">Saldo Demo</label>
               <input type="number" value={balance} onChange={(e) => setBalance(e.target.value)} min="0" step="0.01"
-                className="mt-1 w-full bg-[#080c14] border border-[#1e1532] rounded-xl px-3 py-2 text-white text-sm focus:outline-none focus:border-violet-500/50" />
+                className="mt-1 w-full bg-[#070510] border border-white/6 rounded-xl px-3 py-2 text-white text-sm focus:outline-none focus:border-violet-500/50" />
             </div>
             <div>
               <label className="text-xs text-slate-400 uppercase font-semibold tracking-wide">Saldo Real</label>
               <input type="number" value={realBalance} onChange={(e) => setRealBalance(e.target.value)} min="0" step="0.01"
-                className="mt-1 w-full bg-[#080c14] border border-[#1e1532] rounded-xl px-3 py-2 text-white text-sm focus:outline-none focus:border-violet-500/50" />
+                className="mt-1 w-full bg-[#070510] border border-white/6 rounded-xl px-3 py-2 text-white text-sm focus:outline-none focus:border-violet-500/50" />
             </div>
           </div>
 
@@ -90,7 +90,7 @@ function EditModal({ user, onClose, onSaved }: {
             </label>
             <input type="number" value={winRate} onChange={(e) => setWinRate(e.target.value)} min="0" max="100"
               placeholder="Ex: 100 = influencer sempre ganha"
-              className="mt-1 w-full bg-[#080c14] border border-[#1e1532] rounded-xl px-3 py-2 text-white text-sm focus:outline-none focus:border-violet-500/50 placeholder-slate-700" />
+              className="mt-1 w-full bg-[#070510] border border-white/6 rounded-xl px-3 py-2 text-white text-sm focus:outline-none focus:border-violet-500/50 placeholder-slate-700" />
             <p className="text-slate-600 text-xs mt-1">100 = sempre ganha · 0 = sempre perde · vazio = taxa padrão da casa</p>
           </div>
 
@@ -98,7 +98,7 @@ function EditModal({ user, onClose, onSaved }: {
             <label className="text-xs text-slate-400 uppercase font-semibold tracking-wide">Nota Interna</label>
             <textarea value={adminNote} onChange={(e) => setAdminNote(e.target.value)} rows={2} maxLength={500}
               placeholder="Influencer, suspeito, etc."
-              className="mt-1 w-full bg-[#080c14] border border-[#1e1532] rounded-xl px-3 py-2 text-white text-sm focus:outline-none focus:border-violet-500/50 placeholder-slate-700 resize-none" />
+              className="mt-1 w-full bg-[#070510] border border-white/6 rounded-xl px-3 py-2 text-white text-sm focus:outline-none focus:border-violet-500/50 placeholder-slate-700 resize-none" />
           </div>
 
           <label className="flex items-center gap-3 cursor-pointer">
@@ -114,7 +114,7 @@ function EditModal({ user, onClose, onSaved }: {
         </div>
 
         <div className="flex gap-3 mt-6">
-          <button onClick={onClose} className="flex-1 bg-[#1e1532] hover:bg-[#2a1e4a] text-white rounded-xl py-2.5 text-sm font-semibold transition-all">
+          <button onClick={onClose} className="flex-1 bg-white/6 hover:bg-white/8 text-white rounded-xl py-2.5 text-sm font-semibold transition-all">
             Cancelar
           </button>
           <button onClick={save} disabled={loading}
@@ -156,7 +156,7 @@ export default function AdminUsers() {
     <div className="p-8">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-white">Usuários</h1>
+          <h1 className="text-xl font-black text-white">Usuários</h1>
           <p className="text-slate-500 text-sm mt-1">{total} usuários cadastrados</p>
         </div>
         <input
@@ -164,14 +164,14 @@ export default function AdminUsers() {
           value={search}
           onChange={(e) => doSearch(e.target.value)}
           placeholder="Buscar por nome ou email…"
-          className="bg-[#0d0a1a] border border-[#1e1532] rounded-xl px-4 py-2.5 text-white text-sm w-64 focus:outline-none focus:border-violet-500/50 placeholder-slate-700"
+          className="bg-[#0c0918] border border-white/6 rounded-xl px-4 py-2.5 text-white text-sm w-64 focus:outline-none focus:border-violet-500/50 placeholder-slate-700"
         />
       </div>
 
-      <div className="bg-[#0d0a1a] border border-[#1e1532] rounded-2xl overflow-hidden">
+      <div className="bg-[#0c0918] border border-white/6 rounded-2xl overflow-hidden">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-[#1e1532]">
+            <tr className="border-b border-white/6">
               {["Usuário", "Demo", "Real", "Trades", "Win Rate", "Status", ""].map((h) => (
                 <th key={h} className="text-left px-4 py-3 text-slate-500 text-xs uppercase font-semibold tracking-wide">{h}</th>
               ))}
@@ -183,7 +183,7 @@ export default function AdminUsers() {
             ) : users.length === 0 ? (
               <tr><td colSpan={7} className="text-center py-10 text-slate-500">Nenhum usuário encontrado</td></tr>
             ) : users.map((u) => (
-              <tr key={u.id} className="border-b border-[#1e1532]/50 hover:bg-white/2 transition-colors">
+              <tr key={u.id} className="border-b border-white/6/50 hover:bg-white/2 transition-colors">
                 <td className="px-4 py-3">
                   <p className="text-white font-semibold">{u.name}</p>
                   <p className="text-slate-500 text-xs">{u.email}</p>
@@ -229,10 +229,10 @@ export default function AdminUsers() {
       {pages > 1 && (
         <div className="flex items-center justify-center gap-2 mt-4">
           <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1}
-            className="px-3 py-1.5 bg-[#0d0a1a] border border-[#1e1532] text-slate-400 rounded-lg text-sm disabled:opacity-40">←</button>
+            className="px-3 py-1.5 bg-[#0c0918] border border-white/6 text-slate-400 rounded-lg text-sm disabled:opacity-40">←</button>
           <span className="text-slate-400 text-sm">{page} / {pages}</span>
           <button onClick={() => setPage((p) => Math.min(pages, p + 1))} disabled={page === pages}
-            className="px-3 py-1.5 bg-[#0d0a1a] border border-[#1e1532] text-slate-400 rounded-lg text-sm disabled:opacity-40">→</button>
+            className="px-3 py-1.5 bg-[#0c0918] border border-white/6 text-slate-400 rounded-lg text-sm disabled:opacity-40">→</button>
         </div>
       )}
 

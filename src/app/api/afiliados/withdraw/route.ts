@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAffiliateSession } from "@/lib/affiliateAuth";
 import { prisma } from "@/lib/prisma";
+import { writeAuditLog } from "@/lib/auditLog";
 
 export async function GET() {
   const affiliateId = await getAffiliateSession();
@@ -24,13 +25,15 @@ export async function POST(req: NextRequest) {
   const amount = Number(body?.amount);
   const pixKey = String(body?.pixKey ?? "").trim();
 
-  if (!amount || amount < 50)
+  if (!Number.isFinite(amount) || amount < 50)
     return NextResponse.json({ error: "Valor mínimo de saque: $50" }, { status: 400 });
-  if (!pixKey)
-    return NextResponse.json({ error: "Chave PIX obrigatória" }, { status: 400 });
+  if (pixKey.length < 5 || pixKey.length > 200)
+    return NextResponse.json({ error: "Chave PIX inválida" }, { status: 400 });
 
   const affiliate = await prisma.affiliate.findUnique({ where: { id: affiliateId } });
   if (!affiliate) return NextResponse.json({ error: "Afiliado não encontrado" }, { status: 404 });
+  if (affiliate.status !== "ACTIVE")
+    return NextResponse.json({ error: "Conta não autorizada para saques" }, { status: 403 });
 
   // 7-day cooldown between withdrawals
   if (affiliate.lastWithdrawalAt) {
@@ -65,5 +68,6 @@ export async function POST(req: NextRequest) {
     throw err;
   }
 
+  writeAuditLog(affiliateId, "affiliate", "withdrawal_requested", affiliateId, { amount, pixKey: pixKey.slice(0, 30) + "…" });
   return NextResponse.json({ ok: true });
 }

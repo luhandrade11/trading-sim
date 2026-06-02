@@ -214,9 +214,7 @@ function ChartLoadingOverlay({ asset }: { asset: string }) {
       style={{ opacity: fadeOut ? 0 : 1, pointerEvents: fadeOut ? "none" : "auto" }}
     >
       {/* Logo */}
-      <div className="w-14 h-14 bg-gradient-to-br from-amber-400 to-amber-600 rounded-2xl flex items-center justify-center shadow-xl shadow-amber-500/20">
-        <span className="text-[#080c14] font-black text-base">PB</span>
-      </div>
+      <img src="/logo.png" alt="Prime Broker" className="w-20 h-20 object-contain" />
 
       {/* Asset name */}
       <div className="text-center">
@@ -1415,9 +1413,7 @@ export default function DashboardPage() {
     return (
       <div className="min-h-screen bg-[#050509] flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
-          <div className="w-10 h-10 bg-gradient-to-br from-amber-400 to-amber-600 rounded-xl flex items-center justify-center">
-            <span className="text-[#080c14] font-black text-sm">PB</span>
-          </div>
+          <img src="/logo.png" alt="Prime Broker" className="w-14 h-14 object-contain" />
           <div className="w-6 h-6 border-2 border-amber-400/30 border-t-amber-400 rounded-full animate-spin" />
         </div>
       </div>
@@ -1631,8 +1627,16 @@ export default function DashboardPage() {
         resetReady={demoResetReady()} onDemoReset={handleReset}
         onGoReal={() => { setDepositModalOpen(false); router.push("/dashboard/deposit"); }} />
       {showAssetPicker && (
-        <AssetPicker assets={ALL_ASSETS} openAssets={openAssets} prices={prices}
-          onAdd={addAsset} onRemove={removeAsset} onClose={() => setShowAssetPicker(false)} />
+        <AssetPicker
+          assets={ALL_ASSETS}
+          openAssets={openAssets}
+          selectedAsset={selectedAsset}
+          prices={prices}
+          onAdd={addAsset}
+          onRemove={removeAsset}
+          onSelect={(symbol) => setSelectedAsset(symbol)}
+          onClose={() => setShowAssetPicker(false)}
+        />
       )}
 
       {/* Onboarding wizard */}
@@ -1677,9 +1681,7 @@ export default function DashboardPage() {
       {/* ── HEADER (desktop) ── */}
       <header className="hidden md:flex h-20 bg-[#0a0c14] border-b border-white/5 items-center px-4 gap-3 shrink-0 z-10">
         <div className="flex items-center gap-3 shrink-0 pr-4 border-r border-white/5">
-          <div className="w-12 h-12 bg-gradient-to-br from-amber-400 to-amber-600 rounded-2xl flex items-center justify-center shadow-lg shadow-amber-500/20">
-            <span className="text-[#080c14] font-black text-sm">PB</span>
-          </div>
+          <img src="/logo.png" alt="Prime Broker" className="w-16 h-16 object-contain" />
           <span className="font-black text-lg tracking-tight">
             <span className="text-white">Prime</span><span className="text-amber-400"> Broker</span>
           </span>
@@ -1756,9 +1758,7 @@ export default function DashboardPage() {
       <header className="mobile-header-only md:hidden bg-[#0a0c14] border-b border-white/5 shrink-0 z-10">
         {/* Row 1: logo · asset/price · menu */}
         <div className="h-12 flex items-center px-4 gap-2">
-          <div className="w-7 h-7 bg-gradient-to-br from-amber-400 to-amber-600 rounded-lg flex items-center justify-center shrink-0">
-            <span className="text-[#080c14] font-black text-[9px]">PB</span>
-          </div>
+          <img src="/logo.png" alt="Prime Broker" className="w-10 h-10 object-contain shrink-0" />
           <button onClick={() => setShowAssetPicker(true)} className="flex items-center gap-1.5 flex-1 min-w-0">
             <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${assetInfo?.type === "forex" ? "bg-blue-400" : "bg-amber-400"}`} />
             <span className="text-white text-sm font-bold">{selectedAsset}</span>

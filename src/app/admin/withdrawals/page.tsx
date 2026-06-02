@@ -62,7 +62,7 @@ export default function AdminWithdrawals() {
     <div className="p-8">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-white">Saques</h1>
+          <h1 className="text-xl font-black text-white">Saques</h1>
           <p className="text-slate-500 text-sm mt-1">{total} solicitações</p>
         </div>
         <div className="flex gap-2">
@@ -71,7 +71,7 @@ export default function AdminWithdrawals() {
               className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
                 filter === f
                   ? "bg-violet-500/20 text-violet-400 border border-violet-500/30"
-                  : "bg-[#0d0a1a] border border-[#1e1532] text-slate-500 hover:text-slate-300"
+                  : "bg-[#0c0918] border border-white/6 text-slate-500 hover:text-slate-300"
               }`}>
               {f === "PENDING" ? "Pendentes" : f === "APPROVED" ? "Aprovados" : f === "REJECTED" ? "Rejeitados" : "Todos"}
             </button>
@@ -79,10 +79,10 @@ export default function AdminWithdrawals() {
         </div>
       </div>
 
-      <div className="bg-[#0d0a1a] border border-[#1e1532] rounded-2xl overflow-hidden">
+      <div className="bg-[#0c0918] border border-white/6 rounded-2xl overflow-hidden">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-[#1e1532]">
+            <tr className="border-b border-white/6">
               {["Usuário", "Valor", "Método", "Chave/Destino", "Status", "Data", "Ações"].map((h) => (
                 <th key={h} className="text-left px-4 py-3 text-slate-500 text-xs uppercase font-semibold tracking-wide">{h}</th>
               ))}
@@ -94,7 +94,7 @@ export default function AdminWithdrawals() {
             ) : withdrawals.length === 0 ? (
               <tr><td colSpan={7} className="text-center py-10 text-slate-500">Nenhum saque encontrado</td></tr>
             ) : withdrawals.map((w) => (
-              <tr key={w.id} className="border-b border-[#1e1532]/50 hover:bg-white/2 transition-colors">
+              <tr key={w.id} className="border-b border-white/6/50 hover:bg-white/2 transition-colors">
                 <td className="px-4 py-3">
                   <p className="text-white font-semibold">{w.user.name}</p>
                   <p className="text-slate-500 text-xs">{w.user.email}</p>
@@ -145,10 +145,10 @@ export default function AdminWithdrawals() {
       {pages > 1 && (
         <div className="flex items-center justify-center gap-2 mt-4">
           <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1}
-            className="px-3 py-1.5 bg-[#0d0a1a] border border-[#1e1532] text-slate-400 rounded-lg text-sm disabled:opacity-40">←</button>
+            className="px-3 py-1.5 bg-[#0c0918] border border-white/6 text-slate-400 rounded-lg text-sm disabled:opacity-40">←</button>
           <span className="text-slate-400 text-sm">{page} / {pages}</span>
           <button onClick={() => setPage((p) => Math.min(pages, p + 1))} disabled={page === pages}
-            className="px-3 py-1.5 bg-[#0d0a1a] border border-[#1e1532] text-slate-400 rounded-lg text-sm disabled:opacity-40">→</button>
+            className="px-3 py-1.5 bg-[#0c0918] border border-white/6 text-slate-400 rounded-lg text-sm disabled:opacity-40">→</button>
         </div>
       )}
     </div>

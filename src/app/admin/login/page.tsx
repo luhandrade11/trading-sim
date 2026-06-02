@@ -43,16 +43,14 @@ export default function AdminLogin() {
     <div className="min-h-screen bg-[#0a0612] flex items-center justify-center p-6">
       <div className="w-full max-w-sm">
         <div className="flex items-center gap-3 justify-center mb-10">
-          <div className="w-10 h-10 bg-gradient-to-br from-violet-400 to-violet-600 rounded-xl flex items-center justify-center shadow-lg">
-            <span className="text-[#080c14] font-black text-sm">ADM</span>
-          </div>
+          <img src="/logo.png" alt="Prime Broker" className="w-11 h-11 object-contain" />
           <div>
-            <p className="text-white font-bold text-lg leading-none">Prime Broker</p>
-            <p className="text-violet-400 text-xs font-semibold">Painel Administrativo</p>
+            <p className="text-white font-black text-base leading-tight">Prime Broker</p>
+            <p className="text-violet-400/70 text-[11px] font-semibold tracking-wide">Painel Administrativo</p>
           </div>
         </div>
 
-        <div className="bg-[#0d1117] border border-[#1e1532] rounded-2xl p-7 shadow-2xl">
+        <div className="bg-[#0c0918] border border-white/6 rounded-2xl p-7 shadow-2xl">
           <h1 className="text-xl font-bold text-white mb-6">
             {needs2fa ? "Verificação em Dois Fatores" : "Entrar como Admin"}
           </h1>
@@ -77,7 +75,7 @@ export default function AdminLogin() {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     required
-                    className="w-full bg-[#080c14] border border-[#1e1532] rounded-xl px-4 py-3 text-white text-sm placeholder-slate-700 focus:outline-none focus:border-violet-500/50 focus:ring-1 focus:ring-violet-500/20 transition-all"
+                    className="w-full bg-[#080c14] border border-white/6 rounded-xl px-4 py-3 text-white text-sm placeholder-slate-700 focus:outline-none focus:border-violet-500/50 focus:ring-1 focus:ring-violet-500/20 transition-all"
                     placeholder="admin@example.com"
                   />
                 </div>
@@ -88,7 +86,7 @@ export default function AdminLogin() {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required
-                    className="w-full bg-[#080c14] border border-[#1e1532] rounded-xl px-4 py-3 text-white text-sm placeholder-slate-700 focus:outline-none focus:border-violet-500/50 focus:ring-1 focus:ring-violet-500/20 transition-all"
+                    className="w-full bg-[#080c14] border border-white/6 rounded-xl px-4 py-3 text-white text-sm placeholder-slate-700 focus:outline-none focus:border-violet-500/50 focus:ring-1 focus:ring-violet-500/20 transition-all"
                     placeholder="••••••••"
                   />
                 </div>
@@ -107,7 +105,7 @@ export default function AdminLogin() {
                   onChange={(e) => setTotpToken(e.target.value.replace(/\D/g, ""))}
                   required
                   autoFocus
-                  className="w-full bg-[#080c14] border border-[#1e1532] rounded-xl px-4 py-3 text-white text-2xl font-mono text-center tracking-[0.5em] placeholder-slate-700 focus:outline-none focus:border-violet-500/50 focus:ring-1 focus:ring-violet-500/20 transition-all"
+                  className="w-full bg-[#080c14] border border-white/6 rounded-xl px-4 py-3 text-white text-2xl font-mono text-center tracking-[0.5em] placeholder-slate-700 focus:outline-none focus:border-violet-500/50 focus:ring-1 focus:ring-violet-500/20 transition-all"
                   placeholder="000000"
                 />
                 <p className="text-xs text-slate-600 text-center mt-2">Código de 6 dígitos do seu app autenticador</p>

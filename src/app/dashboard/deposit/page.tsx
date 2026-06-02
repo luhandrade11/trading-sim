@@ -6,6 +6,8 @@ import { useSession } from "next-auth/react";
 
 const BRL_RATE = 5.20; // client-side estimate for display only
 
+function t(isBR: boolean, pt: string, en: string) { return isBR ? pt : en; }
+
 function isBrazilianUser(): boolean {
   try {
     const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
@@ -39,8 +41,8 @@ function AmountStep({ onNext, isBR }: { onNext: (amount: number) => void; isBR: 
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-black text-white">Depositar</h1>
-        <p className="text-sm text-white/30 mt-1">Quanto você quer depositar?</p>
+        <h1 className="text-2xl font-black text-white">{t(isBR, "Depositar", "Deposit")}</h1>
+        <p className="text-sm text-white/30 mt-1">{t(isBR, "Quanto você quer depositar?", "How much do you want to deposit?")}</p>
       </div>
 
       {/* Promo banner */}
@@ -51,9 +53,9 @@ function AmountStep({ onNext, isBR }: { onNext: (amount: number) => void; isBR: 
         <div className="relative flex items-center gap-4 p-4 sm:p-5">
           <div className="text-3xl sm:text-4xl">⚡</div>
           <div className="flex-1">
-            <div className="text-white font-black text-sm sm:text-base">Primeiro depósito dobrado!</div>
+            <div className="text-white font-black text-sm sm:text-base">{t(isBR, "Primeiro depósito dobrado!", "First deposit doubled!")}</div>
             <div className="text-violet-300/80 text-xs mt-1">
-              Use o código <span className="font-bold text-white">COPA100K</span> e receba 100% de bônus.
+              {t(isBR, "Use o código", "Use code")} <span className="font-bold text-white">COPA100K</span> {t(isBR, "e receba 100% de bônus.", "and get 100% bonus.")}
             </div>
           </div>
           <div className="hidden sm:flex items-center gap-1.5 shrink-0 px-3 py-1.5 bg-white/15 border border-white/20 rounded-xl text-xs font-mono font-bold text-white">
@@ -65,7 +67,7 @@ function AmountStep({ onNext, isBR }: { onNext: (amount: number) => void; isBR: 
       {/* Amount card */}
       <div className="bg-[#0d1117] border border-white/8 rounded-2xl p-5 space-y-4">
         <div className="text-xs font-bold text-white/40 uppercase tracking-widest">
-          Valor ({suffix})
+          {t(isBR, "Valor", "Amount")} ({suffix})
         </div>
         <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
           {presets.map(p => (
@@ -92,7 +94,7 @@ function AmountStep({ onNext, isBR }: { onNext: (amount: number) => void; isBR: 
           <div className="flex items-center gap-2 p-3 bg-emerald-500/8 border border-emerald-500/20 rounded-xl">
             <span className="text-emerald-400">🎁</span>
             <span className="text-emerald-300 text-xs font-medium">
-              Bônus de +{amount >= 500 ? "50" : "25"}% incluso para esse valor!
+              {t(isBR, `Bônus de +${amount >= 500 ? "50" : "25"}% incluso para esse valor!`, `+${amount >= 500 ? "50" : "25"}% bonus included for this amount!`)}
             </span>
           </div>
         )}
@@ -101,9 +103,9 @@ function AmountStep({ onNext, isBR }: { onNext: (amount: number) => void; isBR: 
       {/* Preview */}
       <div className="grid grid-cols-3 gap-3 text-center">
         {[
-          { label: "Você deposita", val: `${prefix}${amount}`,         accent: "text-white" },
-          { label: "Bônus",         val: `+${prefix}${bonus}`,         accent: "text-emerald-400" },
-          { label: "Total",         val: `${prefix}${amount + bonus}`, accent: "text-amber-400" },
+          { label: t(isBR, "Você deposita", "You deposit"), val: `${prefix}${amount}`,         accent: "text-white" },
+          { label: t(isBR, "Bônus", "Bonus"),               val: `+${prefix}${bonus}`,         accent: "text-emerald-400" },
+          { label: "Total",                                  val: `${prefix}${amount + bonus}`, accent: "text-amber-400" },
         ].map(item => (
           <div key={item.label} className="bg-white/3 border border-white/8 rounded-2xl p-4">
             <div className={`text-lg font-black ${item.accent}`}>{item.val}</div>
@@ -114,13 +116,13 @@ function AmountStep({ onNext, isBR }: { onNext: (amount: number) => void; isBR: 
 
       <button onClick={() => onNext(amount)}
         className="w-full py-4 bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-white font-black text-base rounded-2xl transition-all shadow-lg shadow-emerald-900/30 flex items-center justify-center gap-2">
-        Continuar — {prefix}{amount}
+        {t(isBR, "Continuar", "Continue")} — {prefix}{amount}
         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" />
         </svg>
       </button>
       <p className="text-center text-[9px] text-white/20">
-        Depósito mínimo: {prefix}{minVal} · Seguro e criptografado
+        {t(isBR, "Depósito mínimo", "Minimum deposit")}: {prefix}{minVal} · {t(isBR, "Seguro e criptografado", "Secure and encrypted")}
       </p>
     </div>
   );
@@ -131,7 +133,7 @@ function MethodStep({
   amount, isBR, onBack, onPix, onCard,
 }: {
   amount: number; isBR: boolean; onBack: () => void;
-  onPix: () => void; onCard: () => void;
+  onPix: () => void; onCard: () => void; // onPix → BravoPay checkout
 }) {
   const prefix = isBR ? "R$" : "$";
 
@@ -145,9 +147,9 @@ function MethodStep({
           </svg>
         </button>
         <div>
-          <h1 className="text-xl font-black text-white">Método de pagamento</h1>
+          <h1 className="text-xl font-black text-white">{t(isBR, "Método de pagamento", "Payment method")}</h1>
           <p className="text-sm text-white/30">
-            Depósito de <span className="text-emerald-400 font-bold">{prefix}{amount}</span>
+            {t(isBR, "Depósito de", "Deposit of")} <span className="text-emerald-400 font-bold">{prefix}{amount}</span>
           </p>
         </div>
       </div>
@@ -185,7 +187,7 @@ function MethodStep({
             </svg>
           </div>
           <div className="flex-1">
-            <div className="text-sm font-bold text-white group-hover:text-blue-300 transition-colors">Cartão de Crédito / Débito</div>
+            <div className="text-sm font-bold text-white group-hover:text-blue-300 transition-colors">{t(isBR, "Cartão de Crédito / Débito", "Credit / Debit Card")}</div>
             <div className="text-[10px] text-white/30 mt-0.5">Visa · Mastercard · Elo · American Express</div>
           </div>
           <div className="shrink-0">
@@ -207,7 +209,7 @@ function MethodStep({
           </div>
           <div className="flex-1">
             <div className="text-sm font-bold text-white group-hover:text-white transition-colors">Apple Pay</div>
-            <div className="text-[10px] text-white/30 mt-0.5">Face ID · Touch ID · Um toque</div>
+            <div className="text-[10px] text-white/30 mt-0.5">{t(isBR, "Face ID · Touch ID · Um toque", "Face ID · Touch ID · One tap")}</div>
           </div>
           <div className="shrink-0">
             <div className="text-[9px] font-semibold px-2 py-1 rounded-full bg-white/5 text-white/30">1–3 min</div>
@@ -220,10 +222,10 @@ function MethodStep({
 
       <div className="text-center py-2">
         <p className="text-[10px] text-white/20">
-          Outro método?{" "}
+          {t(isBR, "Outro método?", "Other payment method?")}{" "}
           <a href="https://wa.me/5511999999999" target="_blank" rel="noopener noreferrer"
             className="text-amber-400/60 hover:text-amber-400 transition-colors">
-            Fale com o suporte
+            {t(isBR, "Fale com o suporte", "Contact support")}
           </a>
         </p>
       </div>
@@ -386,6 +388,149 @@ function PixModal({ onClose, amount, isBR }: { onClose: () => void; amount: numb
   );
 }
 
+// ─── BravoPay Modal — PIX inline (copy_paste + QR) ────────────────────────────
+type BravopayCharge = {
+  id: string; copyPaste: string; expiresAt?: string;
+  amountBrl: string; amountUsd: number;
+};
+
+function BravopayModal({ onClose, amount, isBR }: { onClose: () => void; amount: number; isBR: boolean }) {
+  const [loading, setLoading] = useState(true);
+  const [error,   setError]   = useState("");
+  const [charge,  setCharge]  = useState<BravopayCharge | null>(null);
+  const [copied,  setCopied]  = useState(false);
+  const [paid,    setPaid]    = useState(false);
+  const pollRef = useRef<ReturnType<typeof setInterval> | undefined>(undefined);
+
+  useEffect(() => {
+    async function create() {
+      try {
+        const body = isBR ? { amountBrl: amount } : { amount };
+        const res  = await fetch("/api/payments/bravopay/create", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        });
+        const d = await res.json();
+        if (!res.ok) { setError(d.error ?? "Erro ao gerar PIX"); setLoading(false); return; }
+        setCharge(d);
+        setLoading(false);
+
+        pollRef.current = setInterval(async () => {
+          try {
+            const r = await fetch(`/api/payments/bravopay/status?id=${d.id}`);
+            const s = await r.json();
+            if (s.status === "PAID") { clearInterval(pollRef.current); setPaid(true); }
+          } catch { /* ignore */ }
+        }, 4000);
+      } catch {
+        setError("Erro de conexão. Tente novamente.");
+        setLoading(false);
+      }
+    }
+    create();
+    return () => { if (pollRef.current) clearInterval(pollRef.current); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  async function copyCode() {
+    if (!charge?.copyPaste) return;
+    await navigator.clipboard.writeText(charge.copyPaste);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 3000);
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={paid ? onClose : undefined} />
+      <div className="relative bg-[#0d1117] border border-white/10 rounded-2xl p-6 w-full max-w-sm max-h-[90vh] overflow-y-auto">
+        <button onClick={onClose} className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-xl bg-white/5 hover:bg-white/10 text-white/40 hover:text-white transition-all z-10">✕</button>
+
+        <div className="flex items-center gap-3 mb-5">
+          <div className="w-12 h-12 rounded-2xl bg-emerald-500/20 flex items-center justify-center text-2xl shrink-0">⚡</div>
+          <div>
+            <div className="text-white font-bold">PIX</div>
+            <div className="text-[10px] text-white/30">Depósito instantâneo · BravoPay</div>
+          </div>
+        </div>
+
+        {loading && (
+          <div className="flex flex-col items-center gap-3 py-10">
+            <div className="w-10 h-10 border-2 border-emerald-400/30 border-t-emerald-400 rounded-full animate-spin" />
+            <p className="text-white/40 text-xs">Gerando código PIX…</p>
+          </div>
+        )}
+
+        {!loading && error && (
+          <div className="space-y-3">
+            <p className="text-rose-400 text-sm text-center">{error}</p>
+            <button onClick={onClose} className="w-full py-2.5 bg-white/5 hover:bg-white/10 text-white/60 text-sm rounded-xl transition-all">Fechar</button>
+          </div>
+        )}
+
+        {paid && (
+          <div className="flex flex-col items-center gap-4 py-6">
+            <div className="w-16 h-16 rounded-full bg-emerald-500/20 flex items-center justify-center text-4xl">✅</div>
+            <div className="text-center">
+              <div className="text-white font-black text-lg">Pagamento confirmado!</div>
+              <div className="text-emerald-400 text-sm mt-1">R$ {charge?.amountBrl} creditado na sua conta real</div>
+            </div>
+            <button onClick={onClose} className="w-full py-3 bg-gradient-to-r from-emerald-600 to-emerald-500 text-white font-bold rounded-xl text-sm">
+              Continuar operando
+            </button>
+          </div>
+        )}
+
+        {!loading && !error && !paid && charge && (
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-2 text-center">
+              <div className="p-3 bg-white/3 border border-white/8 rounded-xl">
+                <div className="text-[9px] text-white/30 uppercase tracking-wider mb-1">Você paga</div>
+                <div className="text-xl font-black text-white">R$ {charge.amountBrl}</div>
+              </div>
+              <div className="p-3 bg-white/3 border border-white/8 rounded-xl">
+                <div className="text-[9px] text-white/30 uppercase tracking-wider mb-1">Você recebe</div>
+                <div className="text-xl font-black text-emerald-400">R$ {charge.amountBrl}</div>
+              </div>
+            </div>
+
+            {/* QR Code gerado a partir do copy_paste */}
+            <div className="flex justify-center">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={`https://api.qrserver.com/v1/create-qr-code/?data=${encodeURIComponent(charge.copyPaste)}&size=200x200&bgcolor=FFFFFF&margin=10`}
+                alt="QR Code PIX"
+                className="w-44 h-44 rounded-xl border border-white/10 bg-white"
+              />
+            </div>
+
+            <div className="flex items-center justify-center gap-2 text-white/30 text-[10px]">
+              <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse" />
+              Aguardando pagamento…
+            </div>
+
+            <div className="space-y-1">
+              <div className="text-[9px] text-white/30 uppercase tracking-wider">PIX Copia e Cola</div>
+              <div className="flex items-center gap-2 p-3 bg-white/5 border border-white/10 rounded-xl">
+                <span className="flex-1 text-[9px] font-mono text-white/50 truncate">{charge.copyPaste}</span>
+                <button onClick={copyCode}
+                  className={`shrink-0 px-2.5 py-1.5 rounded-lg text-[10px] font-bold transition-all ${
+                    copied ? "bg-emerald-500/20 text-emerald-400" : "bg-white/8 text-white/40 hover:text-white"
+                  }`}>
+                  {copied ? "Copiado!" : "Copiar"}
+                </button>
+              </div>
+            </div>
+
+            <p className="text-center text-[9px] text-white/20">
+              Válido por 1 hora · Saldo creditado automaticamente após pagamento
+            </p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ─── Card Modal ────────────────────────────────────────────────────────────────
 function CardModal({ onClose, amount, isBR }: { onClose: () => void; amount: number; isBR: boolean }) {
   const [loading, setLoading] = useState(false);
@@ -473,7 +618,7 @@ export default function DepositPage() {
 
   const [step,   setStep]   = useState<"amount" | "method">("amount");
   const [amount, setAmount] = useState(100);
-  const [modal,  setModal]  = useState<"pix" | "card" | null>(null);
+  const [modal,  setModal]  = useState<"pix" | "card" | "bravopay" | null>(null);
   const [isBR,   setIsBR]   = useState(false);
 
   useEffect(() => { setIsBR(isBrazilianUser()); }, []);
@@ -489,8 +634,9 @@ export default function DepositPage() {
 
   return (
     <div className="min-h-screen bg-[#050509] text-white">
-      {modal === "pix"  && <PixModal  amount={amount} isBR={isBR} onClose={() => setModal(null)} />}
-      {modal === "card" && <CardModal amount={amount} isBR={isBR} onClose={() => setModal(null)} />}
+      {modal === "pix"      && <PixModal      amount={amount} isBR={isBR} onClose={() => setModal(null)} />}
+      {modal === "bravopay" && <BravopayModal amount={amount} isBR={isBR} onClose={() => setModal(null)} />}
+      {modal === "card"     && <CardModal     amount={amount} isBR={isBR} onClose={() => setModal(null)} />}
 
       {/* Header */}
       <header className="h-16 bg-[#0a0c14] border-b border-white/5 flex items-center px-6 gap-4 sticky top-0 z-10">
@@ -501,9 +647,7 @@ export default function DepositPage() {
           </svg>
         </button>
         <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 bg-gradient-to-br from-amber-400 to-amber-600 rounded-xl flex items-center justify-center">
-            <span className="text-[#080c14] font-black text-[10px]">PB</span>
-          </div>
+          <img src="/logo.png" alt="Prime Broker" className="w-11 h-11 object-contain" />
           <span className="font-black text-sm tracking-tight">
             <span className="text-white">Prime</span><span className="text-amber-400"> Broker</span>
           </span>
@@ -535,7 +679,7 @@ export default function DepositPage() {
           <MethodStep
             amount={amount} isBR={isBR}
             onBack={() => setStep("amount")}
-            onPix={() => setModal("pix")}
+            onPix={() => setModal("bravopay")}
             onCard={() => setModal("card")}
           />
         )}

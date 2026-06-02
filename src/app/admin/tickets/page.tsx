@@ -93,7 +93,7 @@ export default function AdminTicketsPage() {
   return (
     <div className="p-8 max-w-7xl">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-white">Tickets de Suporte</h1>
+        <h1 className="text-xl font-black text-white">Tickets de Suporte</h1>
         <p className="text-slate-500 text-sm mt-1">{total} tickets no total</p>
       </div>
 
@@ -108,7 +108,7 @@ export default function AdminTicketsPage() {
                 className={`px-3 py-1.5 rounded-xl text-xs font-medium border transition-all ${
                   statusFilter === s
                     ? "bg-violet-500/15 text-violet-400 border-violet-500/30"
-                    : "bg-transparent text-slate-500 border-[#1e1532] hover:text-slate-300"
+                    : "bg-transparent text-slate-500 border-white/6 hover:text-slate-300"
                 }`}
               >
                 {s === "" ? "Todos" : STATUS_LABELS[s]}
@@ -116,7 +116,7 @@ export default function AdminTicketsPage() {
             ))}
           </div>
 
-          <div className="bg-[#0d0a1a] border border-[#1e1532] rounded-2xl overflow-hidden">
+          <div className="bg-[#0c0918] border border-white/6 rounded-2xl overflow-hidden">
             {loading ? (
               <div className="flex items-center justify-center py-16">
                 <div className="w-5 h-5 border-2 border-violet-400/20 border-t-violet-400 rounded-full animate-spin" />
@@ -124,7 +124,7 @@ export default function AdminTicketsPage() {
             ) : tickets.length === 0 ? (
               <div className="text-center py-16 text-slate-600 text-sm">Nenhum ticket.</div>
             ) : (
-              <div className="divide-y divide-[#1e1532]">
+              <div className="divide-y divide-white/5">
                 {tickets.map((t) => (
                   <button
                     key={t.id}
@@ -159,18 +159,18 @@ export default function AdminTicketsPage() {
           {pages > 1 && (
             <div className="flex items-center justify-center gap-2 mt-4">
               <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1}
-                className="px-3 py-1.5 rounded-xl border border-[#1e1532] text-xs text-slate-400 hover:text-white disabled:opacity-40">← Anterior</button>
+                className="px-3 py-1.5 rounded-xl border border-white/6 text-xs text-slate-400 hover:text-white disabled:opacity-40">← Anterior</button>
               <span className="text-xs text-slate-500">{page}/{pages}</span>
               <button onClick={() => setPage((p) => Math.min(pages, p + 1))} disabled={page === pages}
-                className="px-3 py-1.5 rounded-xl border border-[#1e1532] text-xs text-slate-400 hover:text-white disabled:opacity-40">Próxima →</button>
+                className="px-3 py-1.5 rounded-xl border border-white/6 text-xs text-slate-400 hover:text-white disabled:opacity-40">Próxima →</button>
             </div>
           )}
         </div>
 
         {/* Detail panel */}
         {active ? (
-          <div className="bg-[#0d0a1a] border border-[#1e1532] rounded-2xl overflow-hidden flex flex-col h-[calc(100vh-200px)]">
-            <div className="px-5 py-4 border-b border-[#1e1532]">
+          <div className="bg-[#0c0918] border border-white/6 rounded-2xl overflow-hidden flex flex-col h-[calc(100vh-200px)]">
+            <div className="px-5 py-4 border-b border-white/6">
               <div className="flex items-center gap-2 mb-1">
                 <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full border ${STATUS_STYLES[active.status] ?? ""}`}>
                   {STATUS_LABELS[active.status]}
@@ -190,7 +190,7 @@ export default function AdminTicketsPage() {
                   <div className={`max-w-[80%] px-4 py-3 rounded-2xl text-sm leading-relaxed ${
                     m.authorType === "admin"
                       ? "bg-violet-500/15 text-violet-100 rounded-br-sm"
-                      : "bg-[#161228] border border-[#1e1532] text-slate-300 rounded-bl-sm"
+                      : "bg-[#161228] border border-white/6 text-slate-300 rounded-bl-sm"
                   }`}>
                     <div className="text-[10px] mb-1 opacity-60">
                       {m.authorType === "admin" ? "Admin" : active.author?.name}
@@ -204,12 +204,12 @@ export default function AdminTicketsPage() {
 
             {/* Reply box */}
             {active.status !== "CLOSED" ? (
-              <div className="p-4 border-t border-[#1e1532] space-y-3">
+              <div className="p-4 border-t border-white/6 space-y-3">
                 <div className="flex gap-2">
                   <select
                     value={newStatus}
                     onChange={(e) => setNewStatus(e.target.value)}
-                    className="bg-[#080c14] border border-[#1e1532] rounded-lg px-2 py-1.5 text-xs text-white focus:outline-none"
+                    className="bg-[#070510] border border-white/6 rounded-lg px-2 py-1.5 text-xs text-white focus:outline-none"
                   >
                     <option value="OPEN">Aberto</option>
                     <option value="IN_PROGRESS">Em andamento</option>
@@ -221,7 +221,7 @@ export default function AdminTicketsPage() {
                   onChange={(e) => setReply(e.target.value)}
                   placeholder="Resposta do admin…"
                   rows={3}
-                  className="w-full bg-[#080c14] border border-[#1e1532] rounded-xl px-3 py-2.5 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-violet-500/40 resize-none"
+                  className="w-full bg-[#070510] border border-white/6 rounded-xl px-3 py-2.5 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-violet-500/40 resize-none"
                 />
                 <button
                   onClick={sendReply}
@@ -232,7 +232,7 @@ export default function AdminTicketsPage() {
                 </button>
               </div>
             ) : (
-              <div className="px-5 py-4 border-t border-[#1e1532] text-center text-sm text-slate-600">
+              <div className="px-5 py-4 border-t border-white/6 text-center text-sm text-slate-600">
                 Ticket fechado.{" "}
                 <button onClick={() => {
                   setNewStatus("OPEN");
@@ -246,7 +246,7 @@ export default function AdminTicketsPage() {
             )}
           </div>
         ) : (
-          <div className="bg-[#0d0a1a] border border-[#1e1532] rounded-2xl flex items-center justify-center h-64">
+          <div className="bg-[#0c0918] border border-white/6 rounded-2xl flex items-center justify-center h-64">
             <p className="text-slate-600 text-sm">Selecione um ticket para responder.</p>
           </div>
         )}

@@ -53,8 +53,8 @@ function fmt(n: number) {
 
 function Card({ title, badge, children }: { title: string; badge?: number; children: React.ReactNode }) {
   return (
-    <div className="bg-[#0d0a1a] border border-[#1e1532] rounded-2xl overflow-hidden">
-      <div className="px-5 py-4 border-b border-[#1e1532] flex items-center justify-between">
+    <div className="bg-[#0c0918] border border-white/6 rounded-2xl overflow-hidden">
+      <div className="px-5 py-4 border-b border-white/6 flex items-center justify-between">
         <h2 className="font-bold text-white text-sm">{title}</h2>
         {badge !== undefined && badge > 0 && (
           <span className="bg-rose-500/15 text-rose-400 border border-rose-500/25 text-xs font-bold px-2 py-0.5 rounded-full">
@@ -89,7 +89,7 @@ export default function FraudPage() {
   return (
     <div className="p-8 max-w-6xl space-y-8">
       <div>
-        <h1 className="text-2xl font-bold text-white">Detecção de Fraudes</h1>
+        <h1 className="text-xl font-black text-white">Detecção de Fraudes</h1>
         <p className="text-slate-500 text-sm mt-1">Padrões suspeitos dos últimos 7 dias</p>
       </div>
 
@@ -98,7 +98,7 @@ export default function FraudPage() {
         {data.suspiciousWinRate.length === 0 ? (
           <div className="text-center py-10 text-slate-600 text-sm">Nenhum usuário suspeito encontrado.</div>
         ) : (
-          <div className="divide-y divide-[#1e1532]">
+          <div className="divide-y divide-white/5">
             {data.suspiciousWinRate.map((u) => (
               <div key={u.id} className="px-5 py-3.5 flex items-center justify-between gap-4">
                 <div className="min-w-0">
@@ -134,7 +134,7 @@ export default function FraudPage() {
         {data.bulkWithdrawals.length === 0 ? (
           <div className="text-center py-10 text-slate-600 text-sm">Nenhum padrão detectado.</div>
         ) : (
-          <div className="divide-y divide-[#1e1532]">
+          <div className="divide-y divide-white/5">
             {data.bulkWithdrawals.map((u) => (
               <div key={u.id} className="px-5 py-3.5 flex items-center justify-between gap-4">
                 <div className="min-w-0">
@@ -162,7 +162,7 @@ export default function FraudPage() {
         {data.largeWithdrawals.length === 0 ? (
           <div className="text-center py-10 text-slate-600 text-sm">Nenhum saque grande.</div>
         ) : (
-          <div className="divide-y divide-[#1e1532]">
+          <div className="divide-y divide-white/5">
             {data.largeWithdrawals.map((w) => (
               <div key={w.id} className="px-5 py-3.5 flex items-center justify-between gap-4">
                 <div className="min-w-0">
@@ -189,7 +189,7 @@ export default function FraudPage() {
         {data.rapidDepositors.length === 0 ? (
           <div className="text-center py-10 text-slate-600 text-sm">Nenhum padrão detectado.</div>
         ) : (
-          <div className="divide-y divide-[#1e1532]">
+          <div className="divide-y divide-white/5">
             {data.rapidDepositors.map((u) => (
               <div key={u.id} className="px-5 py-3.5 flex items-center justify-between gap-4">
                 <div className="min-w-0">

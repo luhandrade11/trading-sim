@@ -29,8 +29,8 @@ export async function POST(req: NextRequest) {
   if (isBR) {
     // amount is already in BRL (e.g. 100 = R$100)
     const amountBrl = raw;
-    if (!amountBrl || amountBrl < 50 || amountBrl > 250_000)
-      return NextResponse.json({ error: "Valor inválido (min R$50)" }, { status: 400 });
+    if (!amountBrl || amountBrl < 20 || amountBrl > 250_000)
+      return NextResponse.json({ error: "Valor inválido (min R$20)" }, { status: 400 });
 
     currency     = "brl";
     unitAmount   = Math.round(amountBrl * 100);                         // R$100 → 10000 cents

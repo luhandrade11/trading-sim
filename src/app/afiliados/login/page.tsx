@@ -67,9 +67,7 @@ export default function AfiliadosLoginPage() {
     <div className="min-h-screen bg-[#080c14] flex items-center justify-center p-6">
       <div className="w-full max-w-sm">
         <div className="flex items-center gap-2 justify-center mb-10">
-          <div className="w-9 h-9 bg-gradient-to-br from-emerald-400 to-emerald-600 rounded-xl flex items-center justify-center shadow-lg">
-            <span className="text-[#080c14] font-black text-sm">PB</span>
-          </div>
+          <img src="/logo.png" alt="Prime Broker" className="w-12 h-12 object-contain" />
           <span className="font-bold text-lg tracking-tight">
             <span className="text-white">Prime</span>
             <span className="text-emerald-400"> Afiliados</span>
@@ -81,7 +79,7 @@ export default function AfiliadosLoginPage() {
           <p className="text-slate-500 text-sm">Acesse seu dashboard de afiliado</p>
         </div>
 
-        <div className="bg-[#0d1117] border border-[#1e2a42] rounded-2xl p-7">
+        <div className="bg-[#0d1117] border border-white/6 rounded-2xl p-7">
           <form onSubmit={handleSubmit} className="space-y-5">
             {statusBanner}
 
@@ -93,7 +91,7 @@ export default function AfiliadosLoginPage() {
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="seu@email.com"
                 required
-                className="w-full bg-[#080c14] border border-[#1e2a42] rounded-xl px-4 py-3 text-white placeholder-slate-700 text-sm focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/20 transition-all"
+                className="w-full bg-[#080c14] border border-white/6 rounded-xl px-4 py-3 text-white placeholder-slate-700 text-sm focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/20 transition-all"
               />
             </div>
 
@@ -105,7 +103,7 @@ export default function AfiliadosLoginPage() {
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Sua senha"
                 required
-                className="w-full bg-[#080c14] border border-[#1e2a42] rounded-xl px-4 py-3 text-white placeholder-slate-700 text-sm focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/20 transition-all"
+                className="w-full bg-[#080c14] border border-white/6 rounded-xl px-4 py-3 text-white placeholder-slate-700 text-sm focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/20 transition-all"
               />
             </div>
 

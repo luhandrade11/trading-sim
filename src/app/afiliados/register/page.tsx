@@ -85,13 +85,11 @@ function AfiliadosRegisterForm() {
   return (
     <div className="min-h-screen bg-[#080c14] flex">
       {/* Left panel */}
-      <div className="hidden lg:flex lg:w-1/2 flex-col justify-between p-12 border-r border-[#1e2a42] relative overflow-hidden">
+      <div className="hidden lg:flex lg:w-1/2 flex-col justify-between p-12 border-r border-white/6 relative overflow-hidden">
         <div className="absolute -top-40 -left-40 w-96 h-96 bg-emerald-500/5 rounded-full blur-3xl pointer-events-none" />
 
         <div className="flex items-center gap-3 relative z-10">
-          <div className="w-9 h-9 bg-gradient-to-br from-emerald-400 to-emerald-600 rounded-xl flex items-center justify-center shadow-lg">
-            <span className="text-[#080c14] font-black text-sm">PB</span>
-          </div>
+          <img src="/logo.png" alt="Prime Broker" className="w-12 h-12 object-contain" />
           <span className="font-bold text-lg tracking-tight text-white">
             Prime<span className="text-emerald-400"> Afiliados</span>
           </span>
@@ -131,9 +129,7 @@ function AfiliadosRegisterForm() {
       <div className="flex-1 flex items-center justify-center p-6">
         <div className="w-full max-w-sm">
           <div className="flex items-center gap-2 justify-center mb-10 lg:hidden">
-            <div className="w-8 h-8 bg-gradient-to-br from-emerald-400 to-emerald-600 rounded-xl flex items-center justify-center">
-              <span className="text-[#080c14] font-black text-xs">PB</span>
-            </div>
+            <img src="/logo.png" alt="Prime Broker" className="w-11 h-11 object-contain" />
             <span className="font-bold text-base text-white">
               Prime<span className="text-emerald-400"> Afiliados</span>
             </span>
@@ -150,7 +146,7 @@ function AfiliadosRegisterForm() {
             )}
           </div>
 
-          <div className="bg-[#0d1117] border border-[#1e2a42] rounded-2xl p-7">
+          <div className="bg-[#0d1117] border border-white/6 rounded-2xl p-7">
             <form onSubmit={handleSubmit} className="space-y-5">
               {error && (
                 <div className="bg-rose-500/10 border border-rose-500/20 rounded-xl px-4 py-3 text-rose-400 text-sm">
@@ -166,7 +162,7 @@ function AfiliadosRegisterForm() {
                   onChange={(e) => setName(e.target.value)}
                   placeholder="Seu nome"
                   required
-                  className="w-full bg-[#080c14] border border-[#1e2a42] rounded-xl px-4 py-3 text-white placeholder-slate-700 text-sm focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/20 transition-all"
+                  className="w-full bg-[#080c14] border border-white/6 rounded-xl px-4 py-3 text-white placeholder-slate-700 text-sm focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/20 transition-all"
                 />
               </div>
 
@@ -178,7 +174,7 @@ function AfiliadosRegisterForm() {
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="seu@email.com"
                   required
-                  className="w-full bg-[#080c14] border border-[#1e2a42] rounded-xl px-4 py-3 text-white placeholder-slate-700 text-sm focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/20 transition-all"
+                  className="w-full bg-[#080c14] border border-white/6 rounded-xl px-4 py-3 text-white placeholder-slate-700 text-sm focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/20 transition-all"
                 />
               </div>
 
@@ -191,7 +187,7 @@ function AfiliadosRegisterForm() {
                   placeholder="Mínimo 6 caracteres"
                   minLength={6}
                   required
-                  className="w-full bg-[#080c14] border border-[#1e2a42] rounded-xl px-4 py-3 text-white placeholder-slate-700 text-sm focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/20 transition-all"
+                  className="w-full bg-[#080c14] border border-white/6 rounded-xl px-4 py-3 text-white placeholder-slate-700 text-sm focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/20 transition-all"
                 />
               </div>
 

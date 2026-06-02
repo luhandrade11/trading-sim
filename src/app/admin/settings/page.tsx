@@ -82,7 +82,7 @@ export default function AdminSettings() {
   return (
     <div className="p-8 max-w-2xl">
       <div className="mb-8">
-        <h1 className="text-2xl font-bold text-white">Configurações</h1>
+        <h1 className="text-xl font-black text-white">Configurações</h1>
         <p className="text-slate-500 text-sm mt-1">Controles globais da plataforma</p>
       </div>
 
@@ -92,7 +92,7 @@ export default function AdminSettings() {
 
       <div className="space-y-6">
         {/* Win rates */}
-        <div className="bg-[#0d0a1a] border border-[#1e1532] rounded-2xl p-6">
+        <div className="bg-[#0c0918] border border-white/6 rounded-2xl p-6">
           <h2 className="text-white font-bold mb-1">Controle de Win Rate Global</h2>
           <p className="text-slate-500 text-xs mb-5">
             Altera a taxa de vitória para todos os usuários (sem override individual).
@@ -149,7 +149,7 @@ export default function AdminSettings() {
         </div>
 
         {/* Payment gateway */}
-        <div className="bg-[#0d0a1a] border border-[#1e1532] rounded-2xl p-6">
+        <div className="bg-[#0c0918] border border-white/6 rounded-2xl p-6">
           <h2 className="text-white font-bold mb-1">Gateway de Pagamento PIX</h2>
           <p className="text-slate-500 text-xs mb-4">Qual provedor processar os depósitos PIX</p>
 
@@ -162,7 +162,7 @@ export default function AdminSettings() {
                 className={`flex-1 border rounded-xl p-4 cursor-pointer transition-all ${
                   settings.pixGateway === opt.value
                     ? "border-violet-500/50 bg-violet-500/5"
-                    : "border-[#1e1532] hover:border-[#2e1e52]"
+                    : "border-white/6 hover:border-[#2e1e52]"
                 }`}
               >
                 <input type="radio" name="pixGateway" value={opt.value}
@@ -179,7 +179,7 @@ export default function AdminSettings() {
         </div>
 
         {/* Welcome bonus */}
-        <div className="bg-[#0d0a1a] border border-[#1e1532] rounded-2xl p-6">
+        <div className="bg-[#0c0918] border border-white/6 rounded-2xl p-6">
           <h2 className="text-white font-bold mb-1">Bônus de Boas-Vindas</h2>
           <p className="text-slate-500 text-xs mb-5">
             Crédito extra concedido a cada novo usuário no cadastro.
@@ -194,7 +194,7 @@ export default function AdminSettings() {
                   type="number" min="0" step="1"
                   value={settings.welcomeBonusDemo}
                   onChange={(e) => setSettings((s) => ({ ...s, welcomeBonusDemo: e.target.value }))}
-                  className="w-full bg-[#080c14] border border-[#1e1532] rounded-xl pl-7 pr-4 py-2.5 text-white text-sm focus:outline-none focus:border-violet-500/40"
+                  className="w-full bg-[#070510] border border-white/6 rounded-xl pl-7 pr-4 py-2.5 text-white text-sm focus:outline-none focus:border-violet-500/40"
                 />
               </div>
               <p className="text-slate-600 text-xs mt-1">
@@ -211,7 +211,7 @@ export default function AdminSettings() {
                   type="number" min="0" step="1"
                   value={settings.welcomeBonusReal}
                   onChange={(e) => setSettings((s) => ({ ...s, welcomeBonusReal: e.target.value }))}
-                  className="w-full bg-[#080c14] border border-[#1e1532] rounded-xl pl-7 pr-4 py-2.5 text-white text-sm focus:outline-none focus:border-violet-500/40"
+                  className="w-full bg-[#070510] border border-white/6 rounded-xl pl-7 pr-4 py-2.5 text-white text-sm focus:outline-none focus:border-violet-500/40"
                 />
               </div>
               <p className="text-slate-600 text-xs mt-1">
@@ -224,7 +224,7 @@ export default function AdminSettings() {
         </div>
 
         {/* Monetization settings */}
-        <div className="bg-[#0d0a1a] border border-[#1e1532] rounded-2xl p-6">
+        <div className="bg-[#0c0918] border border-white/6 rounded-2xl p-6">
           <h2 className="text-white font-bold mb-1">Monetização</h2>
           <p className="text-slate-500 text-xs mb-5">Bônus de primeiro depósito, cashback e recompensas de missão.</p>
           <div className="grid grid-cols-2 gap-6">
@@ -235,7 +235,7 @@ export default function AdminSettings() {
                   type="number" min="0" max="200" step="1"
                   value={settings.firstDepositBonusPct}
                   onChange={(e) => setSettings((s) => ({ ...s, firstDepositBonusPct: e.target.value }))}
-                  className="w-full bg-[#080c14] border border-[#1e1532] rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-violet-500/40"
+                  className="w-full bg-[#070510] border border-white/6 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-violet-500/40"
                 />
               </div>
               <p className="text-slate-600 text-xs mt-1">
@@ -249,7 +249,7 @@ export default function AdminSettings() {
                   type="number" min="0" max="100" step="1"
                   value={settings.cashbackPct}
                   onChange={(e) => setSettings((s) => ({ ...s, cashbackPct: e.target.value }))}
-                  className="w-full bg-[#080c14] border border-[#1e1532] rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-violet-500/40"
+                  className="w-full bg-[#070510] border border-white/6 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-violet-500/40"
                 />
               </div>
               <p className="text-slate-600 text-xs mt-1">% de cashback sobre perdas diárias reais</p>
@@ -262,7 +262,7 @@ export default function AdminSettings() {
                   type="number" min="0" step="1"
                   value={settings.cashbackMinLossUsd}
                   onChange={(e) => setSettings((s) => ({ ...s, cashbackMinLossUsd: e.target.value }))}
-                  className="w-full bg-[#080c14] border border-[#1e1532] rounded-xl pl-7 pr-4 py-2.5 text-white text-sm focus:outline-none focus:border-violet-500/40"
+                  className="w-full bg-[#070510] border border-white/6 rounded-xl pl-7 pr-4 py-2.5 text-white text-sm focus:outline-none focus:border-violet-500/40"
                 />
               </div>
               <p className="text-slate-600 text-xs mt-1">Perda mínima para ativar cashback</p>
@@ -275,7 +275,7 @@ export default function AdminSettings() {
                   type="number" min="0" step="1"
                   value={settings.missionRewardUsd}
                   onChange={(e) => setSettings((s) => ({ ...s, missionRewardUsd: e.target.value }))}
-                  className="w-full bg-[#080c14] border border-[#1e1532] rounded-xl pl-7 pr-4 py-2.5 text-white text-sm focus:outline-none focus:border-violet-500/40"
+                  className="w-full bg-[#070510] border border-white/6 rounded-xl pl-7 pr-4 py-2.5 text-white text-sm focus:outline-none focus:border-violet-500/40"
                 />
               </div>
               <p className="text-slate-600 text-xs mt-1">Recompensa por missão diária completa</p>
@@ -284,7 +284,7 @@ export default function AdminSettings() {
         </div>
 
         {/* Maintenance mode */}
-        <div className="bg-[#0d0a1a] border border-[#1e1532] rounded-2xl p-6">
+        <div className="bg-[#0c0918] border border-white/6 rounded-2xl p-6">
           <div className="flex items-center justify-between">
             <div>
               <h2 className="text-white font-bold">Modo Manutenção</h2>

@@ -107,8 +107,8 @@ export default function AfiliadoSuportePage() {
 
       {/* New ticket form */}
       {view === "new" && (
-        <div className="bg-[#0d1117] border border-[#1e2a42] rounded-2xl overflow-hidden">
-          <div className="px-5 py-4 border-b border-[#1e2a42] flex items-center justify-between">
+        <div className="bg-[#0d1117] border border-white/6 rounded-2xl overflow-hidden">
+          <div className="px-5 py-4 border-b border-white/6 flex items-center justify-between">
             <h2 className="font-bold text-white text-sm">Abrir novo ticket</h2>
             <button onClick={() => setView("list")} className="text-slate-500 hover:text-white text-sm">← Voltar</button>
           </div>
@@ -152,8 +152,8 @@ export default function AfiliadoSuportePage() {
 
       {/* Detail view */}
       {view === "detail" && active && (
-        <div className="bg-[#0d1117] border border-[#1e2a42] rounded-2xl overflow-hidden">
-          <div className="px-5 py-4 border-b border-[#1e2a42] flex items-start justify-between gap-3">
+        <div className="bg-[#0d1117] border border-white/6 rounded-2xl overflow-hidden">
+          <div className="px-5 py-4 border-b border-white/6 flex items-start justify-between gap-3">
             <div>
               <div className="flex items-center gap-2 mb-1">
                 <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full border ${STATUS_STYLES[active.status] ?? ""}`}>
@@ -170,7 +170,7 @@ export default function AfiliadoSuportePage() {
               <div key={m.id} className={`flex ${m.authorType === "admin" ? "justify-start" : "justify-end"}`}>
                 <div className={`max-w-[85%] px-4 py-3 rounded-2xl text-sm leading-relaxed ${
                   m.authorType === "admin"
-                    ? "bg-[#161228] border border-[#1e1532] text-slate-300 rounded-bl-sm"
+                    ? "bg-[#161228] border border-white/6 text-slate-300 rounded-bl-sm"
                     : "bg-emerald-500/15 text-emerald-100 rounded-br-sm"
                 }`}>
                   <div className="text-[10px] mb-1 opacity-60">
@@ -202,8 +202,8 @@ export default function AfiliadoSuportePage() {
 
       {/* Ticket list */}
       {view === "list" && (
-        <div className="bg-[#0d1117] border border-[#1e2a42] rounded-2xl overflow-hidden">
-          <div className="px-5 py-4 border-b border-[#1e2a42]">
+        <div className="bg-[#0d1117] border border-white/6 rounded-2xl overflow-hidden">
+          <div className="px-5 py-4 border-b border-white/6">
             <h2 className="font-bold text-white text-sm">Meus Tickets</h2>
           </div>
           {loading ? (
@@ -212,12 +212,12 @@ export default function AfiliadoSuportePage() {
             </div>
           ) : tickets.length === 0 ? (
             <div className="text-center py-14">
-              <div className="text-4xl mb-3">🎫</div>
+              <svg className="w-10 h-10 mx-auto mb-3 opacity-25" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M18.364 5.636l-3.536 3.536m0 5.656l3.536 3.536M9.172 9.172L5.636 5.636m3.536 9.192l-3.536 3.536M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-5 0a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
               <p className="text-sm text-slate-600">Nenhum ticket ainda.</p>
               <p className="text-xs text-slate-700 mt-1">Clique em "Novo Ticket" para entrar em contato.</p>
             </div>
           ) : (
-            <div className="divide-y divide-[#1e2a42]">
+            <div className="divide-y divide-white/5">
               {tickets.map((t) => (
                 <button key={t.id} onClick={() => openTicket(t.id)}
                   className="w-full px-5 py-4 text-left hover:bg-white/1 transition-colors">

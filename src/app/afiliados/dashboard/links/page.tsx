@@ -69,21 +69,21 @@ export default function AfiliadosLinksPage() {
       </div>
 
       {/* Create form */}
-      <div className="bg-[#0d1117] border border-[#1e2a42] rounded-2xl p-6">
+      <div className="bg-[#0d1117] border border-white/6 rounded-2xl p-6">
         <h2 className="font-bold text-white mb-4">Novo link</h2>
-        <form onSubmit={handleCreate} className="flex gap-3">
+        <form onSubmit={handleCreate} className="flex flex-col sm:flex-row gap-3">
           <input
             type="text"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             placeholder="Nome do link (ex: Instagram Bio, Grupo WhatsApp)"
             maxLength={80}
-            className="flex-1 bg-[#080c14] border border-[#1e2a42] rounded-xl px-4 py-3 text-white placeholder-slate-700 text-sm focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/20 transition-all"
+            className="flex-1 bg-[#080c14] border border-white/6 rounded-xl px-4 py-3 text-white placeholder-slate-700 text-sm focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/20 transition-all"
           />
           <button
             type="submit"
             disabled={creating || !title.trim()}
-            className="bg-gradient-to-r from-emerald-500 to-emerald-400 hover:from-emerald-400 hover:to-emerald-300 disabled:opacity-50 text-[#080c14] font-bold text-sm px-6 py-3 rounded-xl transition-all flex-shrink-0"
+            className="bg-gradient-to-r from-emerald-500 to-emerald-400 hover:from-emerald-400 hover:to-emerald-300 disabled:opacity-50 text-[#080c14] font-bold text-sm px-6 py-3 rounded-xl transition-all sm:flex-shrink-0"
           >
             {creating ? "Criando…" : "Criar link"}
           </button>
@@ -92,8 +92,8 @@ export default function AfiliadosLinksPage() {
       </div>
 
       {/* Links list */}
-      <div className="bg-[#0d1117] border border-[#1e2a42] rounded-2xl overflow-hidden">
-        <div className="px-6 py-4 border-b border-[#1e2a42]">
+      <div className="bg-[#0d1117] border border-white/6 rounded-2xl overflow-hidden">
+        <div className="px-6 py-4 border-b border-white/6">
           <h2 className="font-bold text-white">Links ativos <span className="text-slate-500 font-normal text-sm">({links.length})</span></h2>
         </div>
 
@@ -103,52 +103,53 @@ export default function AfiliadosLinksPage() {
           </div>
         ) : links.length === 0 ? (
           <div className="text-center py-16 text-slate-500">
-            <div className="text-4xl mb-3">🔗</div>
+            <svg className="w-10 h-10 mx-auto mb-3 opacity-25" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/></svg>
             <p className="text-sm">Nenhum link criado ainda.</p>
             <p className="text-xs text-slate-600 mt-1">Crie seu primeiro link acima!</p>
           </div>
         ) : (
-          <div className="divide-y divide-[#1e2a42]">
+          <div className="divide-y divide-white/5">
             {links.map((link) => (
-              <div key={link.id} className="px-6 py-5">
-                <div className="flex items-start justify-between gap-4">
-                  <div className="min-w-0 flex-1">
-                    <div className="font-semibold text-white text-sm">{link.title}</div>
-                    <div className="flex items-center gap-2 mt-1.5">
-                      <span className="text-xs text-emerald-400/70 font-mono bg-emerald-400/10 px-2 py-0.5 rounded-lg truncate max-w-xs">
-                        {baseUrl}/ref/{link.slug}
-                      </span>
-                      <button
-                        onClick={() => copy(link.slug)}
-                        className="text-[10px] text-slate-500 hover:text-emerald-400 transition-colors border border-[#1e2a42] hover:border-emerald-500/30 px-2 py-0.5 rounded-lg"
-                      >
-                        {copied === link.slug ? "✓ Copiado!" : "Copiar"}
-                      </button>
-                    </div>
+              <div key={link.id} className="px-5 py-4">
+                {/* Title + delete */}
+                <div className="flex items-start justify-between gap-2 mb-2">
+                  <div className="font-semibold text-white text-sm truncate">{link.title}</div>
+                  <button
+                    onClick={() => handleDelete(link.id)}
+                    className="text-slate-600 hover:text-rose-400 text-xs transition-colors px-2 py-1 rounded-lg hover:bg-rose-400/10 flex-shrink-0"
+                  >
+                    Excluir
+                  </button>
+                </div>
+                {/* URL + copy */}
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="text-[11px] text-emerald-400/70 font-mono bg-emerald-400/10 px-2 py-0.5 rounded-lg truncate flex-1 min-w-0">
+                    {baseUrl}/ref/{link.slug}
+                  </span>
+                  <button
+                    onClick={() => copy(link.slug)}
+                    className="text-[10px] text-slate-500 hover:text-emerald-400 transition-colors border border-white/6 hover:border-emerald-500/30 px-2 py-1 rounded-lg flex-shrink-0"
+                  >
+                    {copied === link.slug ? "✓ Copiado!" : "Copiar"}
+                  </button>
+                </div>
+                {/* Stats row */}
+                <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-1">
+                    <span className="text-sm font-black text-white">{link.clicks}</span>
+                    <span className="text-[10px] text-slate-600">cliques</span>
                   </div>
-
-                  <div className="flex items-center gap-6 flex-shrink-0">
-                    <div className="text-center">
-                      <div className="text-lg font-black text-white">{link.clicks}</div>
-                      <div className="text-[10px] text-slate-600">cliques</div>
-                    </div>
-                    <div className="text-center">
-                      <div className="text-lg font-black text-emerald-400">{link.conversions}</div>
-                      <div className="text-[10px] text-slate-600">cadastros</div>
-                    </div>
-                    <div className="text-center">
-                      <div className="text-lg font-black text-slate-300">
-                        {link.clicks > 0 ? `${((link.conversions / link.clicks) * 100).toFixed(0)}%` : "—"}
-                      </div>
-                      <div className="text-[10px] text-slate-600">conversão</div>
-                    </div>
-
-                    <button
-                      onClick={() => handleDelete(link.id)}
-                      className="text-slate-600 hover:text-rose-400 text-xs transition-colors px-3 py-2 rounded-lg hover:bg-rose-400/10"
-                    >
-                      Excluir
-                    </button>
+                  <div className="w-px h-3 bg-white/10" />
+                  <div className="flex items-center gap-1">
+                    <span className="text-sm font-black text-emerald-400">{link.conversions}</span>
+                    <span className="text-[10px] text-slate-600">cadastros</span>
+                  </div>
+                  <div className="w-px h-3 bg-white/10" />
+                  <div className="flex items-center gap-1">
+                    <span className="text-sm font-black text-slate-300">
+                      {link.clicks > 0 ? `${((link.conversions / link.clicks) * 100).toFixed(0)}%` : "—"}
+                    </span>
+                    <span className="text-[10px] text-slate-600">conv.</span>
                   </div>
                 </div>
               </div>
@@ -157,7 +158,7 @@ export default function AfiliadosLinksPage() {
         )}
       </div>
 
-      <div className="bg-[#0d1117] border border-[#1e2a42] rounded-2xl p-5">
+      <div className="bg-[#0d1117] border border-white/6 rounded-2xl p-5">
         <h3 className="font-semibold text-white text-sm mb-3">Como usar seus links</h3>
         <ul className="space-y-2 text-xs text-slate-400">
           <li className="flex gap-2"><span className="text-emerald-400">1.</span> Copie o link e compartilhe em qualquer canal — redes sociais, grupos, anúncios.</li>

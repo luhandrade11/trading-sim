@@ -13,7 +13,7 @@ export async function GET(req: NextRequest) {
   const skip    = (page - 1) * take;
 
   const where = pending
-    ? { status: "PENDING", parentAffiliateId: null as null }
+    ? { status: "PENDING" }
     : q
     ? { OR: [{ name: { contains: q, mode: "insensitive" as const } }, { email: { contains: q, mode: "insensitive" as const } }] }
     : {};
@@ -29,6 +29,7 @@ export async function GET(req: NextRequest) {
         id: true, name: true, email: true,
         commissionRate: true, level: true, balance: true, totalEarned: true,
         status: true, parentAffiliateId: true, createdAt: true,
+        parentAffiliate: { select: { id: true, name: true } },
         _count: { select: { referredUsers: true, subAffiliates: true, revenues: true } },
       },
     }),

@@ -30,8 +30,8 @@ export async function POST(req: NextRequest) {
 
   if (body.amountBrl) {
     amountBrl = Number(body.amountBrl);
-    if (!amountBrl || amountBrl < 50 || amountBrl > 250_000)
-      return NextResponse.json({ error: "Valor inválido (min R$50)" }, { status: 400 });
+    if (!amountBrl || amountBrl < 20 || amountBrl > 250_000)
+      return NextResponse.json({ error: "Valor inválido (min R$20)" }, { status: 400 });
     amountUsd = Math.round((amountBrl / BRL_RATE()) * 100) / 100;
   } else {
     amountUsd = Number(body.amount);

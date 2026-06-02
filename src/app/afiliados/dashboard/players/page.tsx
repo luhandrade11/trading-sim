@@ -34,14 +34,14 @@ export default function AfiliadosPlayersPage() {
   return (
     <div className="max-w-5xl mx-auto space-y-6">
       <div>
-        <h1 className="text-2xl font-black text-white">Jogadores</h1>
+        <h1 className="text-xl sm:text-2xl font-black text-white">Jogadores</h1>
         <p className="text-slate-500 text-sm mt-0.5">
           {total} trader{total !== 1 ? "s" : ""} indicado{total !== 1 ? "s" : ""} por você
         </p>
       </div>
 
-      <div className="bg-[#0d1117] border border-[#1e2a42] rounded-2xl overflow-hidden">
-        <div className="px-6 py-4 border-b border-[#1e2a42]">
+      <div className="bg-[#0d1117] border border-white/6 rounded-2xl overflow-hidden">
+        <div className="px-6 py-4 border-b border-white/6">
           <h2 className="font-bold text-white">Todos os jogadores</h2>
         </div>
 
@@ -51,14 +51,14 @@ export default function AfiliadosPlayersPage() {
           </div>
         ) : rows.length === 0 ? (
           <div className="text-center py-16 text-slate-500">
-            <div className="text-4xl mb-3">👥</div>
+            <svg className="w-10 h-10 mx-auto mb-3 opacity-25" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
             <p className="text-sm">Nenhum jogador indicado ainda.</p>
             <p className="text-xs text-slate-600 mt-1">Compartilhe seu link de divulgação para começar.</p>
           </div>
         ) : (
           <>
             {/* Table header */}
-            <div className="hidden md:grid grid-cols-[1fr_1fr_100px_80px_100px] gap-4 px-6 py-3 text-[10px] uppercase tracking-widest text-slate-600 border-b border-[#1e2a42]">
+            <div className="hidden md:grid grid-cols-[1fr_1fr_100px_80px_100px] gap-4 px-6 py-3 text-[10px] uppercase tracking-widest text-slate-600 border-b border-white/6">
               <span>Nome</span>
               <span>Email</span>
               <span>Link origem</span>
@@ -66,7 +66,7 @@ export default function AfiliadosPlayersPage() {
               <span className="text-right">Gerado</span>
             </div>
 
-            <div className="divide-y divide-[#1e2a42]">
+            <div className="divide-y divide-white/5">
               {rows.map((p) => (
                 <div key={p.id} className="px-6 py-4">
                   {/* Mobile */}
@@ -114,7 +114,7 @@ export default function AfiliadosPlayersPage() {
           <button
             onClick={() => setPage((p) => Math.max(1, p - 1))}
             disabled={page === 1}
-            className="px-4 py-2 rounded-xl border border-[#1e2a42] text-sm text-slate-400 hover:text-white disabled:opacity-40 transition-colors"
+            className="px-4 py-2 rounded-xl border border-white/6 text-sm text-slate-400 hover:text-white disabled:opacity-40 transition-colors"
           >
             ← Anterior
           </button>
@@ -124,7 +124,7 @@ export default function AfiliadosPlayersPage() {
           <button
             onClick={() => setPage((p) => Math.min(pages, p + 1))}
             disabled={page === pages}
-            className="px-4 py-2 rounded-xl border border-[#1e2a42] text-sm text-slate-400 hover:text-white disabled:opacity-40 transition-colors"
+            className="px-4 py-2 rounded-xl border border-white/6 text-sm text-slate-400 hover:text-white disabled:opacity-40 transition-colors"
           >
             Próxima →
           </button>

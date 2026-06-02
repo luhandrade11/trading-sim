@@ -24,14 +24,20 @@ const DEC: Record<string, number> = {
   "BTC/USD": 2, "ETH/USD": 2, "EUR/USD": 5, "GBP/USD": 5, "SOL/USD": 3,
 };
 
-const TICK_MS = 700;
-const MAX_BUF = 800;
-const HIST    = 300;
+// Tick rate: 100 ms gives 10 price updates/sec → chart is genuinely fluid at 60 fps.
+// BASE_MS is the old 700 ms reference kept for cycle-period formulas (same chart rhythm)
+// and for proportional scaling of drift/manipulation forces.
+const TICK_MS = 100;
+const BASE_MS = 700;
+const dt      = TICK_MS / BASE_MS;          // ≈ 0.143 — linear time-step normaliser
+const DSCALE  = Math.sqrt(dt);              // ≈ 0.378 — Brownian (√dt) scaling
+const MAX_BUF = 6000;                       // ~600 s of history at 100 ms/tick
+const HIST    = 2100;                       // same ~210 s of seeded history as before
 
-// Visible ticks per timeframe
-const VIS_TICKS: Record<string, number> = { "5s": 40, "30s": 80, "1m": 140, "5m": 260 };
-// Ticks grouped into one candle per timeframe
-const TICKS_PER_CANDLE: Record<string, number> = { "5s": 1, "30s": 6, "1m": 11, "5m": 42 };
+// Visible ticks per timeframe — scaled ×7 to show the same wall-clock window
+const VIS_TICKS: Record<string, number> = { "5s": 280, "30s": 560, "1m": 980, "5m": 1820 };
+// Ticks per candle — scaled ×7 so each candle covers the same duration as before
+const TICKS_PER_CANDLE: Record<string, number> = { "5s": 7, "30s": 42, "1m": 77, "5m": 294 };
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 export type Timeframe = "5s" | "30s" | "1m" | "5m";
@@ -189,6 +195,9 @@ export default function CustomChart({
   recentResultsRef.current   = recentResults;
   totalSettledRef.current    = totalSettledTrades;
 
+  // Animated view — lerped every frame so Y-rescaling and X-scrolling are smooth
+  const animViewRef = useRef({ lo: 0, hi: 0, wStart: 0, wEnd: 0, init: false });
+
   // Drawing state
   const drawingsRef      = useRef<Drawing[]>([]);
   const drawStartRef     = useRef<{ x: number; y: number } | null>(null);
@@ -202,8 +211,8 @@ export default function CustomChart({
     const vol   = VOL[asset] ?? 0.001;
     const rand  = mulberry32(assetSeed(asset));
     const seed1 = assetSeed(asset) >>> 0;
-    // Asset-specific cycle periods – baked into history so live chart feels like a continuation
-    const cpd1  = ((seed1 % 25) + 18) * TICK_MS;
+    // Cycle periods fixed to BASE_MS so the rhythm is identical regardless of TICK_MS
+    const cpd1  = ((seed1 % 25) + 18) * BASE_MS;
     const cpd2  = cpd1 * 1.75;
     const cOff  = ((seed1 % 100) / 100) * Math.PI * 2;
     const now   = Date.now();
@@ -212,12 +221,12 @@ export default function CustomChart({
     for (let i = 0; i < HIST; i++) {
       raw.unshift(p);
       const t   = now - (HIST - i) * TICK_MS;
-      const mr  = (initialPrice - p) * 0.05;
+      const mr  = (initialPrice - p) * 0.05 * dt;           // drift scales linearly with dt
       const cyc = p * vol * 0.22 * (
         Math.sin(t / cpd1 * Math.PI * 2 + cOff) * 0.6 +
         Math.sin(t / cpd2 * Math.PI * 2) * 0.3
-      );
-      p = p + (rand() - 0.5) * vol * 0.85 * initialPrice + cyc + mr;
+      ) * dt;                                                // periodic drift scales with dt
+      p = p + (rand() - 0.5) * vol * 0.85 * initialPrice * DSCALE + cyc + mr; // Brownian scales √dt
       p = Math.max(Math.min(p, initialPrice * 1.05), initialPrice * 0.95);
     }
     bufRef.current  = raw.map((price, i) => ({ t: now - (HIST - i) * TICK_MS, p: price }));
@@ -241,7 +250,7 @@ export default function CustomChart({
     const vol   = VOL[asset] ?? 0.001;
     // Asset-unique cycle constants (same formula as history so chart feels continuous)
     const seed1 = assetSeed(asset) >>> 0;
-    const cpd1  = ((seed1 % 25) + 18) * TICK_MS;
+    const cpd1  = ((seed1 % 25) + 18) * BASE_MS;  // fixed rhythm — same as history
     const cpd2  = cpd1 * 1.75;
     const cOff  = ((seed1 % 100) / 100) * Math.PI * 2;
 
@@ -258,12 +267,12 @@ export default function CustomChart({
     function tick() {
       const prev  = curRef.current || initialPrice;
       const nowMs = Date.now();
-      const mr    = (initialPrice - prev) * 0.006; // stronger mean-reversion
-      // Cyclic drift – gives the chart an apparent "rhythm" / pattern
+      const mr    = (initialPrice - prev) * 0.006 * dt;  // mean-reversion scales linearly
+      // Cyclic drift — scales linearly with dt; periods use BASE_MS for consistent rhythm
       const cycle = prev * vol * 0.22 * (
         Math.sin(nowMs / cpd1 * Math.PI * 2 + cOff) * 0.6 +
         Math.sin(nowMs / cpd2 * Math.PI * 2) * 0.3
-      );
+      ) * dt;
 
       // ── Outcome-driven price manipulation (only on the most-recent trade) ───
       let manipulation = 0;
@@ -322,8 +331,9 @@ export default function CustomChart({
         }
       }
 
-      const delta = (Math.random() - 0.5) * vol * 0.9 * prev;
-      const next  = Math.max(prev * 0.98, prev + delta + cycle + mr + manipulation * prev);
+      // Brownian step scales with √dt; manipulation is a drift force → scales linearly
+      const delta = (Math.random() - 0.5) * vol * 0.9 * prev * DSCALE;
+      const next  = Math.max(prev * 0.98, prev + delta + cycle + mr + manipulation * prev * dt);
       curRef.current = next;
 
       bufRef.current.push({ t: nowMs, p: next });
@@ -345,8 +355,8 @@ export default function CustomChart({
       }
       onWinRef.current?.(winStates);
 
-      // OHLC
-      const sl = bufRef.current.slice(-60);
+      // OHLC — same ~42 s window as before (60 × BASE_MS / TICK_MS ticks)
+      const sl = bufRef.current.slice(-Math.round(60 * BASE_MS / TICK_MS));
       if (sl.length > 1) {
         const pp = sl.map(t => t.p);
         onOhlcRef.current?.({ open: pp[0], high: Math.max(...pp), low: Math.min(...pp), close: pp[pp.length - 1] });
@@ -463,6 +473,9 @@ export default function CustomChart({
     const canvas = canvasRef.current;
     if (!canvas) return;
 
+    // Reset animated view so a new asset starts without lerping from stale values
+    animViewRef.current = { lo: 0, hi: 0, wStart: 0, wEnd: 0, init: false };
+
     function draw() {
       const ctx = canvas!.getContext("2d");
       if (!ctx) { rafRef.current = requestAnimationFrame(draw); return; }
@@ -487,29 +500,50 @@ export default function CustomChart({
 
       const now = Date.now();
 
-      // Right-side padding: extend to show nearest expiry
-      let rightPadMs = TICK_MS * 18;
+      // Right-side padding: extend to show nearest expiry.
+      // Use BASE_MS (absolute ms) so padding is the same real-time duration
+      // regardless of how often ticks fire.
+      let rightPadMs = BASE_MS * 18;
       for (const trade of tradesRef.current) {
         const rem = new Date(trade.expiresAt).getTime() - now;
-        if (rem > 0) rightPadMs = Math.max(rightPadMs, Math.min(rem + TICK_MS * 6, TICK_MS * visTicks * 0.7));
+        if (rem > 0) rightPadMs = Math.max(rightPadMs, Math.min(rem + BASE_MS * 6, TICK_MS * visTicks * 0.7));
       }
 
-      const wStart = vis[0].t;
-      const wEnd   = vis[VIS - 1].t + rightPadMs;
-      const wDur   = wEnd - wStart;
-
+      // ── Compute target view window ─────────────────────────────────────
       const allPrices = vis.map(t => t.p);
       const minP = Math.min(...allPrices);
       const maxP = Math.max(...allPrices);
       const rng  = maxP - minP || minP * 0.005;
       const pad  = rng * 0.22;
-      const lo   = minP - pad;
-      const hi   = maxP + pad;
+      const tLo     = minP - pad;
+      const tHi     = maxP + pad;
+      const tWStart = vis[0].t;
+      const tWEnd   = vis[VIS - 1].t + rightPadMs;
+
+      // ── Lerp the view so Y-rescaling and X-scrolling are animated ──────
+      // X tracks fast (scrolling should feel live); Y tracks slower (scale
+      // changes feel dramatic/jumpy if instant).
+      const av = animViewRef.current;
+      const lp = (a: number, b: number, k: number) => a + (b - a) * k;
+      if (!av.init) {
+        av.lo = tLo; av.hi = tHi; av.wStart = tWStart; av.wEnd = tWEnd; av.init = true;
+      } else {
+        av.wStart = lp(av.wStart, tWStart, 0.14);  // X: fast scroll
+        av.wEnd   = lp(av.wEnd,   tWEnd,   0.14);
+        av.lo     = lp(av.lo,     tLo,     0.05);  // Y: gentle rescale
+        av.hi     = lp(av.hi,     tHi,     0.05);
+      }
+
+      const lo     = av.lo;
+      const hi     = av.hi;
+      const wStart = av.wStart;
+      const wEnd   = av.wEnd;
+      const wDur   = wEnd - wStart;
 
       const toX = (ms: number) => ((ms - wStart) / wDur) * W;
       const toY = (p: number)  => H - ((p - lo) / (hi - lo)) * H;
 
-      // Store chart view for mouse-to-price conversion
+      // Store animated chart view for mouse-to-price conversion
       chartViewRef.current = { lo, hi, wStart, wEnd, W, H };
 
       // ── Grid ────────────────────────────────────────────────────────────
@@ -680,26 +714,39 @@ export default function CustomChart({
       const lc     = up ? "#10b981" : "#ef4444";
 
       if (cm === "line") {
+        // With TICK_MS=100 ms the buffer already has enough resolution to look
+        // fluid at 60 fps.  We still run the points through a quadratic bezier
+        // spline (midpoint method) for extra silkiness.
+        function smoothPath(pts: Tick[]) {
+          const N = pts.length;
+          if (N < 2) return;
+          ctx!.moveTo(toX(pts[0].t), toY(pts[0].p));
+          for (let i = 1; i < N - 1; i++) {
+            const cx = toX(pts[i].t);
+            const cy = toY(pts[i].p);
+            const mx = (cx + toX(pts[i + 1].t)) / 2;
+            const my = (cy + toY(pts[i + 1].p)) / 2;
+            ctx!.quadraticCurveTo(cx, cy, mx, my);
+          }
+          ctx!.lineTo(toX(pts[N - 1].t), toY(pts[N - 1].p));
+        }
+
         // Area fill
         const grd = ctx.createLinearGradient(0, 0, 0, H);
-        grd.addColorStop(0, up ? "rgba(16,185,129,0.1)" : "rgba(239,68,68,0.1)");
+        grd.addColorStop(0, up ? "rgba(16,185,129,0.12)" : "rgba(239,68,68,0.12)");
         grd.addColorStop(1, "transparent");
         ctx.fillStyle = grd;
         ctx.beginPath();
-        for (let i = 0; i < VIS; i++) {
-          const x = toX(vis[i].t); const y = toY(vis[i].p);
-          i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
-        }
-        ctx.lineTo(toX(vis[VIS - 1].t), H); ctx.lineTo(toX(vis[0].t), H);
-        ctx.closePath(); ctx.fill();
+        smoothPath(vis);
+        ctx.lineTo(toX(vis[VIS - 1].t), H);
+        ctx.lineTo(toX(vis[0].t), H);
+        ctx.closePath();
+        ctx.fill();
 
-        // Line
+        // Line stroke
         ctx.strokeStyle = lc; ctx.lineWidth = 1.8; ctx.lineJoin = "round";
         ctx.beginPath();
-        for (let i = 0; i < VIS; i++) {
-          const x = toX(vis[i].t); const y = toY(vis[i].p);
-          i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
-        }
+        smoothPath(vis);
         ctx.stroke();
 
       } else {
@@ -762,7 +809,7 @@ export default function CustomChart({
       ctx.beginPath(); ctx.moveTo(0, curY); ctx.lineTo(W, curY); ctx.stroke();
       ctx.setLineDash([]);
 
-      // Dot at current tick
+      // Dot at last tick (refreshes every 100 ms — imperceptibly fast)
       const dotX = toX(vis[VIS - 1].t);
       ctx.fillStyle = lc;
       ctx.beginPath(); ctx.arc(dotX, curY, 3.5, 0, Math.PI * 2); ctx.fill();

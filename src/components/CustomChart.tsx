@@ -518,8 +518,21 @@ export default function CustomChart({
         if (rem > 0) rightPadMs = Math.max(rightPadMs, Math.min(rem + BASE_MS * 6, TICK_MS * visTicks * 0.7));
       }
 
+      // ── Live interpolated price — computed here so it feeds the bounds ────
+      // (also used later for the dot, reference line, and price tag)
+      const lastP  = vis[VIS - 1].p;
+      const firstP = vis[0].p;
+      const _elapsed = Math.min(TICK_MS, now - (tickStartRef.current || now));
+      const _tFrac   = _elapsed / TICK_MS;
+      const _smooth  = _tFrac * _tFrac * (3 - 2 * _tFrac);
+      const _fromP   = prevPriceRef.current || lastP;
+      const _toP     = curRef.current       || lastP;
+      const livePrice = _fromP + (_toP - _fromP) * _smooth;
+
       // ── Compute target view window ─────────────────────────────────────
-      const allPrices = vis.map(t => t.p);
+      // Include livePrice so the dot never escapes the Y range — which would
+      // create a visible jerk when the bounds snap to catch up.
+      const allPrices = [...vis.map(t => t.p), livePrice];
       const minP = Math.min(...allPrices);
       const maxP = Math.max(...allPrices);
       const rng  = maxP - minP || minP * 0.005;
@@ -548,8 +561,8 @@ export default function CustomChart({
         // Line mode: smooth X scroll + gentle Y breathing
         av.wStart = lp(av.wStart, tWStart, 0.08);
         av.wEnd   = lp(av.wEnd,   tWEnd,   0.08);
-        av.lo     = lp(av.lo,     tLo,     0.03);
-        av.hi     = lp(av.hi,     tHi,     0.03);
+        av.lo     = lp(av.lo,     tLo,     0.06);
+        av.hi     = lp(av.hi,     tHi,     0.06);
       }
 
       const lo     = av.lo;
@@ -773,18 +786,7 @@ export default function CustomChart({
       }
 
       // ── Chart data (line or candle) ───────────────────────────────────────
-      const lastP  = vis[VIS - 1].p;
-      const firstP = vis[0].p;
-
-      // Live interpolated price (smoothstep between last two ticks).
-      // Computed once here and shared by the line path, dot, reference line,
-      // and price tag so they all stay in perfect sync.
-      const _elapsed    = Math.min(TICK_MS, now - (tickStartRef.current || now));
-      const _tFrac      = _elapsed / TICK_MS;
-      const _smooth     = _tFrac * _tFrac * (3 - 2 * _tFrac);           // smoothstep
-      const _fromP      = prevPriceRef.current || lastP;
-      const _toP        = curRef.current       || lastP;
-      const livePrice   = _fromP + (_toP - _fromP) * _smooth;
+      // lastP / firstP / livePrice already computed above (bounds section)
 
       const up     = livePrice >= firstP;
       const lc     = up ? "#10b981" : "#ef4444";

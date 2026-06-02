@@ -17,8 +17,8 @@ function assetSeed(a: string) {
 
 // ── Per-asset params ───────────────────────────────────────────────────────────
 const VOL: Record<string, number> = {
-  "BTC/USD": 0.0010, "ETH/USD": 0.0012,
-  "EUR/USD": 0.000078, "GBP/USD": 0.000095, "SOL/USD": 0.0015,
+  "BTC/USD": 0.00032, "ETH/USD": 0.00038,
+  "EUR/USD": 0.000024, "GBP/USD": 0.000029, "SOL/USD": 0.00048,
 };
 const DEC: Record<string, number> = {
   "BTC/USD": 2, "ETH/USD": 2, "EUR/USD": 5, "GBP/USD": 5, "SOL/USD": 3,
@@ -222,11 +222,11 @@ export default function CustomChart({
       raw.unshift(p);
       const t   = now - (HIST - i) * TICK_MS;
       const mr  = (initialPrice - p) * 0.05 * dt;           // drift scales linearly with dt
-      const cyc = p * vol * 0.22 * (
+      const cyc = p * vol * 0.10 * (
         Math.sin(t / cpd1 * Math.PI * 2 + cOff) * 0.6 +
         Math.sin(t / cpd2 * Math.PI * 2) * 0.3
       ) * dt;                                                // periodic drift scales with dt
-      p = p + (rand() - 0.5) * vol * 0.85 * initialPrice * DSCALE + cyc + mr; // Brownian scales √dt
+      p = p + (rand() - 0.5) * vol * 0.38 * initialPrice * DSCALE + cyc + mr; // Brownian scales √dt
       p = Math.max(Math.min(p, initialPrice * 1.05), initialPrice * 0.95);
     }
     bufRef.current  = raw.map((price, i) => ({ t: now - (HIST - i) * TICK_MS, p: price }));
@@ -269,7 +269,7 @@ export default function CustomChart({
       const nowMs = Date.now();
       const mr    = (initialPrice - prev) * 0.006 * dt;  // mean-reversion scales linearly
       // Cyclic drift — scales linearly with dt; periods use BASE_MS for consistent rhythm
-      const cycle = prev * vol * 0.22 * (
+      const cycle = prev * vol * 0.10 * (
         Math.sin(nowMs / cpd1 * Math.PI * 2 + cOff) * 0.6 +
         Math.sin(nowMs / cpd2 * Math.PI * 2) * 0.3
       ) * dt;
@@ -332,7 +332,7 @@ export default function CustomChart({
       }
 
       // Brownian step scales with √dt; manipulation is a drift force → scales linearly
-      const delta = (Math.random() - 0.5) * vol * 0.9 * prev * DSCALE;
+      const delta = (Math.random() - 0.5) * vol * 0.38 * prev * DSCALE;
       const next  = Math.max(prev * 0.98, prev + delta + cycle + mr + manipulation * prev * dt);
       curRef.current = next;
 

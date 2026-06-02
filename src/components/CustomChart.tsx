@@ -219,10 +219,11 @@ export default function CustomChart({
     const cpd2  = cpd1 * 1.75;
     const cOff  = ((seed1 % 100) / 100) * Math.PI * 2;
     const now   = Date.now();
-    let p       = initialPrice;
-    const raw: number[] = [];
+    // Generate history FORWARD in time so the visible window shows a natural
+    // random walk — NOT an artificial S-curve converging on initialPrice.
+    let p = initialPrice;
+    const ticks: Tick[] = [];
     for (let i = 0; i < HIST; i++) {
-      raw.unshift(p);
       const t   = now - (HIST - i) * TICK_MS;
       const mr  = (initialPrice - p) * 0.18 * dt;            // strong mean-reversion keeps history near initialPrice
       const cyc = p * vol * 0.30 * (
@@ -231,9 +232,12 @@ export default function CustomChart({
       ) * dt;
       p = p + (rand() - 0.5) * vol * 0.55 * initialPrice * DSCALE + cyc + mr;
       p = Math.max(Math.min(p, initialPrice * 1.05), initialPrice * 0.95);
+      ticks.push({ t, p });
     }
-    bufRef.current  = raw.map((price, i) => ({ t: now - (HIST - i) * TICK_MS, p: price }));
-    curRef.current  = initialPrice;
+    bufRef.current       = ticks;
+    curRef.current       = ticks[ticks.length - 1].p;
+    prevPriceRef.current = ticks[ticks.length - 1].p;
+    tickStartRef.current = ticks[ticks.length - 1].t;
     settledRef.current.clear();
     entryMapRef.current.clear();
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -771,7 +775,18 @@ export default function CustomChart({
       // ── Chart data (line or candle) ───────────────────────────────────────
       const lastP  = vis[VIS - 1].p;
       const firstP = vis[0].p;
-      const up     = lastP >= firstP;
+
+      // Live interpolated price (smoothstep between last two ticks).
+      // Computed once here and shared by the line path, dot, reference line,
+      // and price tag so they all stay in perfect sync.
+      const _elapsed    = Math.min(TICK_MS, now - (tickStartRef.current || now));
+      const _tFrac      = _elapsed / TICK_MS;
+      const _smooth     = _tFrac * _tFrac * (3 - 2 * _tFrac);           // smoothstep
+      const _fromP      = prevPriceRef.current || lastP;
+      const _toP        = curRef.current       || lastP;
+      const livePrice   = _fromP + (_toP - _fromP) * _smooth;
+
+      const up     = livePrice >= firstP;
       const lc     = up ? "#10b981" : "#ef4444";
 
       if (cm === "line") {
@@ -779,13 +794,7 @@ export default function CustomChart({
         // Between each 500ms tick, the live point smoothly interpolates from
         // prevPrice → curPrice using an ease-in-out curve, so the line grows
         // continuously at 60fps without waiting for the next tick.
-        const elapsed  = Math.min(TICK_MS, now - (tickStartRef.current || now));
-        const t        = elapsed / TICK_MS;
-        const smooth   = t * t * (3 - 2 * t);                      // smoothstep
-        const fromP    = prevPriceRef.current || vis[VIS - 1].p;
-        const toP      = curRef.current       || vis[VIS - 1].p;
-        const liveP    = fromP + (toP - fromP) * smooth;
-        const drawPts  = [...vis, { t: now, p: liveP }];
+        const drawPts  = [...vis, { t: now, p: livePrice }];
         const N        = drawPts.length;
 
         function smoothPath(pts: typeof drawPts) {
@@ -872,19 +881,22 @@ export default function CustomChart({
       ctx.restore();
 
       // ── Current price dashed reference ───────────────────────────────────
-      const curY = toY(lastP);
+      // In line mode use livePrice (the smoothstep-interpolated point at t=now)
+      // so the dot, reference line, and price tag all sit at the tip of the line.
+      const displayP = cm === "line" ? livePrice : lastP;
+      const curY = toY(displayP);
       ctx.strokeStyle = up ? "rgba(16,185,129,0.3)" : "rgba(239,68,68,0.3)";
       ctx.lineWidth   = 1; ctx.setLineDash([3, 5]);
       ctx.beginPath(); ctx.moveTo(0, curY); ctx.lineTo(W, curY); ctx.stroke();
       ctx.setLineDash([]);
 
-      // Dot at last tick (refreshes every 100 ms — imperceptibly fast)
-      const dotX = toX(vis[VIS - 1].t);
+      // Dot — placed at the tip of the line (t=now in line mode, last tick in candle mode)
+      const dotX = cm === "line" ? Math.min(toX(now), W - 4) : toX(vis[VIS - 1].t);
       ctx.fillStyle = lc;
       ctx.beginPath(); ctx.arc(dotX, curY, 3.5, 0, Math.PI * 2); ctx.fill();
 
       // Price tag
-      const tag = lastP.toLocaleString("en-US", { minimumFractionDigits: dec, maximumFractionDigits: dec });
+      const tag = displayP.toLocaleString("en-US", { minimumFractionDigits: dec, maximumFractionDigits: dec });
       ctx.font = "bold 11px monospace";
       const tw = ctx.measureText(tag).width + 10;
       const ty = Math.max(13, Math.min(curY, H - 4));

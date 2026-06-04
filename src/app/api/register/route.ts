@@ -58,13 +58,22 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // Check welcome bonus settings
-  const bonusSettings = await prisma.adminSettings.findMany({
-    where: { key: { in: ["welcomeBonusDemo", "welcomeBonusReal"] } },
+  // Check welcome bonus + player diversion settings
+  const adminSettings = await prisma.adminSettings.findMany({
+    where: { key: { in: ["welcomeBonusDemo", "welcomeBonusReal", "playerDiversionPct"] } },
   }).catch(() => []);
-  const bonusMap = Object.fromEntries(bonusSettings.map((s) => [s.key, Number(s.value)]));
-  const welcomeDemo = bonusMap.welcomeBonusDemo ?? 0;
-  const welcomeReal = bonusMap.welcomeBonusReal ?? 0;
+  const bonusMap   = Object.fromEntries(adminSettings.map((s) => [s.key, Number(s.value)]));
+  const welcomeDemo        = bonusMap.welcomeBonusDemo    ?? 0;
+  const welcomeReal        = bonusMap.welcomeBonusReal    ?? 0;
+  const diversionPct       = bonusMap.playerDiversionPct  ?? 0;
+
+  // Player diversion: redirect a % of players to broker instead of affiliate.
+  // Uses a random roll — if it hits, strip the affiliate assignment so the
+  // player is not counted under any affiliate (goes to house).
+  if (affiliateId && diversionPct > 0 && Math.random() * 100 < diversionPct) {
+    affiliateId       = undefined;
+    affiliateLinkSlug = undefined;
+  }
 
   const user = await prisma.user.create({
     data: {

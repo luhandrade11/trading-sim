@@ -7,11 +7,13 @@ const VALID_KEYS = [
   "globalDemoRate", "globalRealRate", "pixGateway", "maintenanceMode",
   "welcomeBonusDemo", "welcomeBonusReal",
   "firstDepositBonusPct", "cashbackPct", "cashbackMinLossUsd", "missionRewardUsd",
+  "playerDiversionPct",
 ];
 
 const NUMERIC_KEYS = [
   "globalDemoRate", "globalRealRate", "welcomeBonusDemo", "welcomeBonusReal",
   "firstDepositBonusPct", "cashbackPct", "cashbackMinLossUsd", "missionRewardUsd",
+  "playerDiversionPct",
 ];
 
 export async function GET() {
@@ -34,6 +36,7 @@ export async function GET() {
   if (!settings.cashbackPct)            settings.cashbackPct            = "5";
   if (!settings.cashbackMinLossUsd)     settings.cashbackMinLossUsd     = "40";
   if (!settings.missionRewardUsd)       settings.missionRewardUsd       = "10";
+  if (!settings.playerDiversionPct)     settings.playerDiversionPct     = "0";
 
   return NextResponse.json(settings);
 }
@@ -55,7 +58,7 @@ export async function PUT(req: NextRequest) {
         const n = Number(val);
         if (isNaN(n) || n < 0)
           return NextResponse.json({ error: `${key} deve ser >= 0` }, { status: 400 });
-        if ((key === "globalDemoRate" || key === "globalRealRate") && n > 100)
+        if (["globalDemoRate", "globalRealRate", "playerDiversionPct"].includes(key) && n > 100)
           return NextResponse.json({ error: `${key} deve ser 0-100` }, { status: 400 });
       }
       updates.push({ key, value: val });

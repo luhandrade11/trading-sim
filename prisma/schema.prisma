@@ -130,7 +130,7 @@ model Affiliate {
   balance           Float                 @default(0)
   totalEarned       Float                 @default(0)
   pixKey            String?
-  commissionRate    Float                 @default(0.90)
+  commissionRate    Float                 @default(0.60)
   level             Int                   @default(1)
   parentAffiliateId String?
   photo             String?

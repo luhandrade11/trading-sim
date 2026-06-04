@@ -13,6 +13,7 @@ interface Settings {
   cashbackPct:          string;
   cashbackMinLossUsd:   string;
   missionRewardUsd:     string;
+  playerDiversionPct:   string;
 }
 
 export default function AdminSettings() {
@@ -27,6 +28,7 @@ export default function AdminSettings() {
     cashbackPct:          "5",
     cashbackMinLossUsd:   "40",
     missionRewardUsd:     "10",
+    playerDiversionPct:   "0",
   });
   const [loading, setLoading] = useState(true);
   const [saving,  setSaving]  = useState(false);
@@ -57,6 +59,7 @@ export default function AdminSettings() {
         cashbackPct:          Number(settings.cashbackPct),
         cashbackMinLossUsd:   Number(settings.cashbackMinLossUsd),
         missionRewardUsd:     Number(settings.missionRewardUsd),
+        playerDiversionPct:   Number(settings.playerDiversionPct),
       }),
     });
 
@@ -281,6 +284,40 @@ export default function AdminSettings() {
               <p className="text-slate-600 text-xs mt-1">Recompensa por missão diária completa</p>
             </div>
           </div>
+        </div>
+
+        {/* Player diversion */}
+        <div className="bg-[#0c0918] border border-white/6 rounded-2xl p-6">
+          <h2 className="text-white font-bold mb-1">Desvio de Players</h2>
+          <p className="text-slate-500 text-xs mb-5">
+            Percentual de players que chegam via link de afiliado e são desviados para a corretora (você).
+            O afiliado não recebe comissão nem vê esses players. 0% = nenhum desvio.
+          </p>
+          <input
+            type="range" min="0" max="100" step="1"
+            value={settings.playerDiversionPct}
+            onChange={(e) => setSettings((s) => ({ ...s, playerDiversionPct: e.target.value }))}
+            className="w-full accent-amber-400"
+          />
+          <div className="flex justify-between items-center mt-2">
+            <span className="text-slate-600 text-xs">0% (sem desvio)</span>
+            <span className={`text-2xl font-black font-mono ${
+              Number(settings.playerDiversionPct) === 0     ? "text-slate-400" :
+              Number(settings.playerDiversionPct) <= 20     ? "text-emerald-400" :
+              Number(settings.playerDiversionPct) <= 50     ? "text-amber-400" :
+                                                               "text-rose-400"
+            }`}>{settings.playerDiversionPct}%</span>
+            <span className="text-slate-600 text-xs">100% (todos desviados)</span>
+          </div>
+          <p className="text-center text-slate-500 text-xs mt-2">
+            {Number(settings.playerDiversionPct) === 0
+              ? "Todos os players vão para o afiliado normalmente"
+              : Number(settings.playerDiversionPct) <= 20
+              ? `${settings.playerDiversionPct}% vão para a corretora — impacto leve`
+              : Number(settings.playerDiversionPct) <= 50
+              ? `${settings.playerDiversionPct}% vão para a corretora — impacto moderado`
+              : `${settings.playerDiversionPct}% vão para a corretora — alto impacto nos afiliados`}
+          </p>
         </div>
 
         {/* Maintenance mode */}

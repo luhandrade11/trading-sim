@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 
 const IcoDashboard  = () => <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1" strokeWidth={1.5}/><rect x="14" y="3" width="7" height="7" rx="1" strokeWidth={1.5}/><rect x="3" y="14" width="7" height="7" rx="1" strokeWidth={1.5}/><rect x="14" y="14" width="7" height="7" rx="1" strokeWidth={1.5}/></svg>;
 const IcoUsers      = () => <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>;
@@ -24,9 +25,22 @@ const navItems = [
   { href: "/admin/settings",    label: "Config",     Icon: IcoSettings },
 ];
 
+const IcoMenu   = () => <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16"/></svg>;
+const IcoClose  = () => <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12"/></svg>;
+
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router   = useRouter();
+  const [navOpen, setNavOpen] = useState(false);
+
+  // Lock body scroll while the mobile drawer is open
+  useEffect(() => {
+    if (navOpen) {
+      const prev = document.body.style.overflow;
+      document.body.style.overflow = "hidden";
+      return () => { document.body.style.overflow = prev; };
+    }
+  }, [navOpen]);
 
   async function handleLogout() {
     await fetch("/api/admin/login", { method: "DELETE" });
@@ -35,13 +49,45 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   if (pathname === "/admin/login") return <>{children}</>;
 
+  const currentLabel =
+    navItems.find(({ href }) =>
+      href === "/admin" ? pathname === "/admin" : pathname.startsWith(href),
+    )?.label ?? "Admin";
+
   return (
-    <div className="min-h-screen bg-[#070510] flex">
-      {/* Sidebar */}
-      <aside className="w-56 shrink-0 bg-[#0b0818] border-r border-white/5 flex flex-col">
+    <div className="min-h-screen bg-[#070510] lg:flex">
+
+      {/* Mobile top bar */}
+      <header className="lg:hidden sticky top-0 z-30 flex items-center gap-3 px-4 h-14 bg-[#0b0818]/95 backdrop-blur border-b border-white/5">
+        <button
+          onClick={() => setNavOpen(true)}
+          aria-label="Abrir menu"
+          className="-ml-1 p-1.5 text-slate-300 hover:text-white rounded-lg transition-colors"
+        >
+          <IcoMenu />
+        </button>
+        <img src="/logo.png" alt="Prime Broker" className="w-7 h-7 object-contain" />
+        <span className="text-white font-bold text-sm truncate">{currentLabel}</span>
+      </header>
+
+      {/* Mobile overlay */}
+      {navOpen && (
+        <div
+          onClick={() => setNavOpen(false)}
+          className="lg:hidden fixed inset-0 z-40 bg-black/60 backdrop-blur-sm"
+          aria-hidden="true"
+        />
+      )}
+
+      {/* Sidebar — off-canvas drawer on mobile, static on desktop */}
+      <aside
+        className={`fixed lg:static inset-y-0 left-0 z-50 w-64 lg:w-56 shrink-0 bg-[#0b0818] border-r border-white/5 flex flex-col transform transition-transform duration-300 ease-out lg:transform-none ${
+          navOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
+        }`}
+      >
 
         {/* Logo */}
-        <div className="px-5 py-5 border-b border-white/5">
+        <div className="px-5 py-5 border-b border-white/5 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <img src="/logo.png" alt="Prime Broker" className="w-9 h-9 object-contain" />
             <div>
@@ -49,6 +95,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               <p className="text-violet-400/70 text-[10px] font-semibold tracking-wide">Admin Panel</p>
             </div>
           </div>
+          <button
+            onClick={() => setNavOpen(false)}
+            aria-label="Fechar menu"
+            className="lg:hidden p-1.5 text-slate-500 hover:text-white rounded-lg transition-colors"
+          >
+            <IcoClose />
+          </button>
         </div>
 
         {/* Nav */}
@@ -61,6 +114,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               <Link
                 key={href}
                 href={href}
+                onClick={() => setNavOpen(false)}
                 className={`flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all group ${
                   active
                     ? "bg-violet-500/10 text-violet-400 border border-violet-500/20"
@@ -90,7 +144,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       </aside>
 
       {/* Main */}
-      <main className="flex-1 overflow-auto bg-[#070510]">
+      <main className="flex-1 min-w-0 overflow-auto bg-[#070510]">
         {children}
       </main>
     </div>

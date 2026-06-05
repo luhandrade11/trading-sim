@@ -83,7 +83,7 @@ export default function AdminSettings() {
   const realRate = Number(settings.globalRealRate);
 
   return (
-    <div className="p-8 max-w-2xl">
+    <div className="p-4 sm:p-6 lg:p-8 max-w-2xl">
       <div className="mb-8">
         <h1 className="text-xl font-black text-white">Configurações</h1>
         <p className="text-slate-500 text-sm mt-1">Controles globais da plataforma</p>
@@ -102,7 +102,7 @@ export default function AdminSettings() {
             Afeta novos trades após a próxima atualização do usuário.
           </p>
 
-          <div className="grid grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
             <div>
               <label className="text-xs text-slate-400 uppercase font-semibold tracking-wide">
                 Win Rate Demo (%)
@@ -156,7 +156,7 @@ export default function AdminSettings() {
           <h2 className="text-white font-bold mb-1">Gateway de Pagamento PIX</h2>
           <p className="text-slate-500 text-xs mb-4">Qual provedor processar os depósitos PIX</p>
 
-          <div className="flex gap-3">
+          <div className="flex flex-col sm:flex-row gap-3">
             {[
               { value: "abacatepay", label: "AbacatePay",   desc: "PIX transparente · QR code inline" },
               { value: "manual",     label: "Manual",        desc: "Admin processa manualmente" },
@@ -188,7 +188,7 @@ export default function AdminSettings() {
             Crédito extra concedido a cada novo usuário no cadastro.
             Demo: somado aos $5.000 iniciais. Real: adicionado ao saldo real.
           </p>
-          <div className="grid grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
             <div>
               <label className="text-xs text-slate-400 uppercase font-semibold tracking-wide">Bônus Demo (USD)</label>
               <div className="relative mt-2">
@@ -230,7 +230,7 @@ export default function AdminSettings() {
         <div className="bg-[#0c0918] border border-white/6 rounded-2xl p-6">
           <h2 className="text-white font-bold mb-1">Monetização</h2>
           <p className="text-slate-500 text-xs mb-5">Bônus de primeiro depósito, cashback e recompensas de missão.</p>
-          <div className="grid grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
             <div>
               <label className="text-xs text-slate-400 uppercase font-semibold tracking-wide">Bônus 1º Depósito (%)</label>
               <div className="relative mt-2">

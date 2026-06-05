@@ -91,7 +91,7 @@ export default function AdminTicketsPage() {
   }
 
   return (
-    <div className="p-8 max-w-7xl">
+    <div className="p-4 sm:p-6 lg:p-8 max-w-7xl">
       <div className="mb-6">
         <h1 className="text-xl font-black text-white">Tickets de Suporte</h1>
         <p className="text-slate-500 text-sm mt-1">{total} tickets no total</p>
@@ -101,7 +101,7 @@ export default function AdminTicketsPage() {
         {/* List */}
         <div>
           {/* Filters */}
-          <div className="flex gap-2 mb-4">
+          <div className="flex gap-2 mb-4 flex-wrap">
             {["", "OPEN", "IN_PROGRESS", "CLOSED"].map((s) => (
               <button key={s}
                 onClick={() => { setStatus(s); setPage(1); }}

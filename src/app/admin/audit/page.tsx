@@ -63,14 +63,14 @@ export default function AuditPage() {
   }
 
   return (
-    <div className="p-8 max-w-6xl">
+    <div className="p-4 sm:p-6 lg:p-8 max-w-6xl">
       <div className="mb-8">
         <h1 className="text-xl font-black text-white">Log de Auditoria</h1>
         <p className="text-slate-500 text-sm mt-1">{total} eventos registrados</p>
       </div>
 
       {/* Filters */}
-      <div className="flex gap-3 mb-6">
+      <div className="flex flex-col sm:flex-row gap-3 mb-6">
         <select
           value={actorType}
           onChange={(e) => setActorType(e.target.value)}

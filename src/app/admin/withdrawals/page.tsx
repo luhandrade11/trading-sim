@@ -59,13 +59,13 @@ export default function AdminWithdrawals() {
   };
 
   return (
-    <div className="p-8">
-      <div className="flex items-center justify-between mb-6">
+    <div className="p-4 sm:p-6 lg:p-8">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
         <div>
           <h1 className="text-xl font-black text-white">Saques</h1>
           <p className="text-slate-500 text-sm mt-1">{total} solicitações</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
           {["PENDING", "APPROVED", "REJECTED", "ALL"].map((f) => (
             <button key={f} onClick={() => changeFilter(f)}
               className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
@@ -79,8 +79,8 @@ export default function AdminWithdrawals() {
         </div>
       </div>
 
-      <div className="bg-[#0c0918] border border-white/6 rounded-2xl overflow-hidden">
-        <table className="w-full text-sm">
+      <div className="bg-[#0c0918] border border-white/6 rounded-2xl overflow-x-auto">
+        <table className="w-full text-sm min-w-[760px]">
           <thead>
             <tr className="border-b border-white/6">
               {["Usuário", "Valor", "Método", "Chave/Destino", "Status", "Data", "Ações"].map((h) => (

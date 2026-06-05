@@ -84,10 +84,10 @@ export default function AdminDashboard() {
   );
 
   return (
-    <div className="p-8 max-w-7xl">
+    <div className="p-4 sm:p-6 lg:p-8 max-w-7xl">
 
       {/* Header */}
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex items-center justify-between gap-3 flex-wrap mb-8">
         <div>
           <h1 className="text-xl font-black text-white tracking-tight">Dashboard</h1>
           <p className="text-slate-600 text-xs mt-0.5">Visão geral da plataforma · atualiza a cada 30s</p>
@@ -135,7 +135,7 @@ export default function AdminDashboard() {
       {/* Pending withdrawals */}
       {stats.recentPendingWithdrawals.length > 0 && (
         <div className="bg-[#0d0a1a] border border-violet-500/15 rounded-2xl overflow-hidden mb-6">
-          <div className="flex items-center justify-between px-6 py-4 border-b border-white/5">
+          <div className="flex items-center justify-between gap-3 px-4 sm:px-6 py-4 border-b border-white/5">
             <div className="flex items-center gap-2">
               <div className="w-2 h-2 rounded-full bg-violet-400 animate-pulse" />
               <h2 className="text-white font-bold text-sm">Saques Pendentes</h2>
@@ -148,17 +148,17 @@ export default function AdminDashboard() {
           </div>
           <div className="divide-y divide-white/4">
             {stats.recentPendingWithdrawals.map((w) => (
-              <div key={w.id} className="flex items-center justify-between px-6 py-3.5 hover:bg-white/2 transition-colors">
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-full bg-violet-500/10 flex items-center justify-center text-xs font-black text-violet-400">
+              <div key={w.id} className="flex items-center justify-between gap-3 px-4 sm:px-6 py-3.5 hover:bg-white/2 transition-colors">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-8 h-8 rounded-full bg-violet-500/10 flex items-center justify-center text-xs font-black text-violet-400 flex-shrink-0">
                     {w.user.name.slice(0, 1).toUpperCase()}
                   </div>
-                  <div>
-                    <p className="text-white text-sm font-semibold leading-tight">{w.user.name}</p>
-                    <p className="text-slate-600 text-[11px]">{w.user.email} · {w.method}</p>
+                  <div className="min-w-0">
+                    <p className="text-white text-sm font-semibold leading-tight truncate">{w.user.name}</p>
+                    <p className="text-slate-600 text-[11px] truncate">{w.user.email} · {w.method}</p>
                   </div>
                 </div>
-                <div className="text-right">
+                <div className="text-right flex-shrink-0">
                   <p className="text-violet-400 font-black text-sm">{fmt(w.amount)}</p>
                   <p className="text-slate-700 text-[11px]">{new Date(w.createdAt).toLocaleDateString("pt-BR")}</p>
                 </div>
@@ -169,7 +169,7 @@ export default function AdminDashboard() {
       )}
 
       {/* Quick links */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {[
           {
             href: "/admin/users",

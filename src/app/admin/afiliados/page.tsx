@@ -249,12 +249,12 @@ export default function AdminAfiliadosPage() {
     <div className="p-6 lg:p-8 min-h-screen bg-[#070510] text-white">
       <div className="max-w-6xl mx-auto space-y-6">
         {/* Header */}
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h1 className="text-2xl font-black text-white">Afiliados</h1>
             <p className="text-slate-500 text-sm mt-0.5">{total} afiliado{total !== 1 ? "s" : ""} cadastrado{total !== 1 ? "s" : ""}</p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             {fixResult && (
               <span className="text-xs text-emerald-400 bg-emerald-400/10 px-3 py-1.5 rounded-lg">{fixResult}</span>
             )}
@@ -461,7 +461,7 @@ export default function AdminAfiliadosPage() {
                           </div>
 
                           {/* Actions */}
-                          <div className="flex items-center gap-2 md:justify-end">
+                          <div className="flex items-center gap-2 flex-wrap md:justify-end">
                             <button
                               onClick={() => handlePendingAction(a.id, "approve")}
                               disabled={isActioning}
@@ -533,11 +533,11 @@ export default function AdminAfiliadosPage() {
               ) : (
                 <div className="divide-y divide-white/5">
                   {withdrawals.map((w) => (
-                    <div key={w.id} className="px-6 py-4 flex items-center justify-between gap-4">
-                      <div>
-                        <div className="font-semibold text-white text-sm">{w.affiliate.name}</div>
-                        <div className="text-xs text-slate-500">{w.affiliate.email}</div>
-                        <div className="text-xs text-slate-500 mt-0.5 font-mono">{w.pixKey}</div>
+                    <div key={w.id} className="px-4 sm:px-6 py-4 flex items-center justify-between gap-4">
+                      <div className="min-w-0">
+                        <div className="font-semibold text-white text-sm truncate">{w.affiliate.name}</div>
+                        <div className="text-xs text-slate-500 truncate">{w.affiliate.email}</div>
+                        <div className="text-xs text-slate-500 mt-0.5 font-mono break-all">{w.pixKey}</div>
                         <div className="text-xs text-slate-600">{new Date(w.createdAt).toLocaleString("pt-BR")}</div>
                       </div>
                       <div className="text-right flex-shrink-0">
@@ -598,7 +598,7 @@ export default function AdminAfiliadosPage() {
                 {/* Edit acordo + saldo */}
                 <div className="bg-[#070510] border border-white/6 rounded-xl p-4 space-y-4">
                   <h3 className="font-bold text-white text-sm">Editar acordo e saldo</h3>
-                  <div className="grid grid-cols-3 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     <div>
                       <label className="block text-[10px] text-slate-500 uppercase tracking-wide mb-1.5">Revenue share (%)</label>
                       <div className="flex items-center gap-2">

@@ -153,8 +153,8 @@ export default function AdminUsers() {
   }
 
   return (
-    <div className="p-8">
-      <div className="flex items-center justify-between mb-6">
+    <div className="p-4 sm:p-6 lg:p-8">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
         <div>
           <h1 className="text-xl font-black text-white">Usuários</h1>
           <p className="text-slate-500 text-sm mt-1">{total} usuários cadastrados</p>
@@ -164,12 +164,12 @@ export default function AdminUsers() {
           value={search}
           onChange={(e) => doSearch(e.target.value)}
           placeholder="Buscar por nome ou email…"
-          className="bg-[#0c0918] border border-white/6 rounded-xl px-4 py-2.5 text-white text-sm w-64 focus:outline-none focus:border-violet-500/50 placeholder-slate-700"
+          className="bg-[#0c0918] border border-white/6 rounded-xl px-4 py-2.5 text-white text-sm w-full sm:w-64 focus:outline-none focus:border-violet-500/50 placeholder-slate-700"
         />
       </div>
 
-      <div className="bg-[#0c0918] border border-white/6 rounded-2xl overflow-hidden">
-        <table className="w-full text-sm">
+      <div className="bg-[#0c0918] border border-white/6 rounded-2xl overflow-x-auto">
+        <table className="w-full text-sm min-w-[640px]">
           <thead>
             <tr className="border-b border-white/6">
               {["Usuário", "Demo", "Real", "Trades", "Win Rate", "Status", ""].map((h) => (

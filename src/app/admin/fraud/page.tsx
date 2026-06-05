@@ -87,7 +87,7 @@ export default function FraudPage() {
   if (!data) return <div className="p-8 text-rose-400">Erro ao carregar dados.</div>;
 
   return (
-    <div className="p-8 max-w-6xl space-y-8">
+    <div className="p-4 sm:p-6 lg:p-8 max-w-6xl space-y-8">
       <div>
         <h1 className="text-xl font-black text-white">Detecção de Fraudes</h1>
         <p className="text-slate-500 text-sm mt-1">Padrões suspeitos dos últimos 7 dias</p>
@@ -100,7 +100,7 @@ export default function FraudPage() {
         ) : (
           <div className="divide-y divide-white/5">
             {data.suspiciousWinRate.map((u) => (
-              <div key={u.id} className="px-5 py-3.5 flex items-center justify-between gap-4">
+              <div key={u.id} className="px-5 py-3.5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-semibold text-white">{u.name}</span>
@@ -108,7 +108,7 @@ export default function FraudPage() {
                   </div>
                   <div className="text-xs text-slate-500 mt-0.5">{u.email}</div>
                 </div>
-                <div className="flex items-center gap-6 shrink-0">
+                <div className="flex flex-wrap items-center gap-4 sm:gap-6 sm:shrink-0">
                   <div className="text-center">
                     <div className="text-lg font-black text-rose-400">{u.winRate}%</div>
                     <div className="text-[10px] text-slate-600">{u.wins}/{u.trades} wins</div>
@@ -136,12 +136,12 @@ export default function FraudPage() {
         ) : (
           <div className="divide-y divide-white/5">
             {data.bulkWithdrawals.map((u) => (
-              <div key={u.id} className="px-5 py-3.5 flex items-center justify-between gap-4">
+              <div key={u.id} className="px-5 py-3.5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
                 <div className="min-w-0">
                   <div className="text-sm font-semibold text-white">{u.name}</div>
                   <div className="text-xs text-slate-500">{u.email}</div>
                 </div>
-                <div className="flex items-center gap-6 shrink-0">
+                <div className="flex flex-wrap items-center gap-4 sm:gap-6 sm:shrink-0">
                   <div className="text-center">
                     <div className="text-xl font-black text-amber-400">{u.withdrawalCount}</div>
                     <div className="text-[10px] text-slate-600">saques</div>
@@ -164,13 +164,13 @@ export default function FraudPage() {
         ) : (
           <div className="divide-y divide-white/5">
             {data.largeWithdrawals.map((w) => (
-              <div key={w.id} className="px-5 py-3.5 flex items-center justify-between gap-4">
+              <div key={w.id} className="px-5 py-3.5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
                 <div className="min-w-0">
                   <div className="text-sm font-semibold text-white">{w.user.name}</div>
                   <div className="text-xs text-slate-500">{w.user.email}</div>
                   <div className="text-xs text-slate-700 mt-0.5">{new Date(w.createdAt).toLocaleDateString("pt-BR")}</div>
                 </div>
-                <div className="flex items-center gap-4">
+                <div className="flex items-center gap-4 flex-shrink-0">
                   <div className="text-xl font-black text-white font-mono">{fmt(w.amount)}</div>
                   <span className={`text-[10px] px-2 py-0.5 rounded-full border font-semibold ${
                     w.status === "APPROVED" ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/25" :
@@ -191,7 +191,7 @@ export default function FraudPage() {
         ) : (
           <div className="divide-y divide-white/5">
             {data.rapidDepositors.map((u) => (
-              <div key={u.id} className="px-5 py-3.5 flex items-center justify-between gap-4">
+              <div key={u.id} className="px-5 py-3.5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
                 <div className="min-w-0">
                   <div className="text-sm font-semibold text-white">{u.name}</div>
                   <div className="text-xs text-slate-500">{u.email}</div>

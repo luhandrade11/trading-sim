@@ -17,10 +17,7 @@ export const metadata: Metadata = {
   title: "Prime Broker — Simulador de Trading",
   description: "Plataforma profissional de simulação de trading com dados de mercado em tempo real. Cripto e Forex.",
   keywords: ["trading", "simulador", "cripto", "forex", "bitcoin", "opções binárias"],
-  icons: {
-    icon: "/logo.png",
-    shortcut: "/logo.png",
-  },
+  // Favicons handled by app/icon.png + app/apple-icon.png (Next file convention)
   openGraph: {
     title: "Prime Broker — Simulador de Trading",
     description: "Opera cripto e forex com $1.000 virtuais. Dados reais. Sem risco.",

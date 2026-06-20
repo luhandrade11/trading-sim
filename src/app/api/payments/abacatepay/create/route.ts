@@ -1,6 +1,6 @@
-// AbacatePay — Transparent PIX checkout
+// AbacatePay — PIX QR Code checkout (API v1)
 // Env vars required:
-//   ABACATEPAY_API_KEY  — from AbacatePay dashboard → API Keys
+//   ABACATEPAY_API_KEY  — from AbacatePay dashboard → API Keys (abc_prod_…)
 //   BRL_RATE            — optional, USD→BRL rate override (default: 5.20)
 
 import { NextRequest, NextResponse } from "next/server";
@@ -8,7 +8,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { rateLimit } from "@/lib/rateLimit";
 
-const ABACATE_BASE = "https://api.abacatepay.com/v2";
+const ABACATE_BASE = "https://api.abacatepay.com/v1";
 const BRL_RATE     = () => Number(process.env.BRL_RATE ?? 5.20);
 
 export async function POST(req: NextRequest) {
@@ -41,21 +41,20 @@ export async function POST(req: NextRequest) {
   }
 
   const amountCents = Math.round(amountBrl * 100);
+  // externalId embeds the userId as prefix so the webhook can always map back,
+  // even if AbacatePay ever drops custom metadata keys.
   const externalId  = `${session.user.id}_${Date.now()}`;
   const baseUrl     = process.env.NEXTAUTH_URL ?? "http://localhost:3000";
 
-  // externalId must go inside metadata — it is NOT a valid top-level field
+  // v1 pixQrCode/create — flat payload (no { method, data } wrapper)
   const payload = {
-    method: "PIX",
-    data: {
-      amount:      amountCents,
-      description: `Depósito Prime Broker — $${amountUsd.toFixed(2)}`,
-      expiresIn:   3600,
-      metadata: {
-        userId:     session.user.id,
-        amountUsd:  String(amountUsd),
-        externalId,
-      },
+    amount:      amountCents,
+    description: `Depósito Prime Broker — $${amountUsd.toFixed(2)}`,
+    expiresIn:   3600,
+    metadata: {
+      externalId,
+      userId:    session.user.id,
+      amountUsd: String(amountUsd),
     },
   };
 
@@ -63,7 +62,7 @@ export async function POST(req: NextRequest) {
   const tid = setTimeout(() => ac.abort(), 10_000);
   let res: Response;
   try {
-    res = await fetch(`${ABACATE_BASE}/transparents/create`, {
+    res = await fetch(`${ABACATE_BASE}/pixQrCode/create`, {
       method: "POST",
       headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
       body: JSON.stringify(payload),

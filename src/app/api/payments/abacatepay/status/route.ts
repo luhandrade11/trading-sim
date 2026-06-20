@@ -4,7 +4,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { rateLimit } from "@/lib/rateLimit";
 
-const ABACATE_BASE = "https://api.abacatepay.com/v2";
+const ABACATE_BASE = "https://api.abacatepay.com/v1";
 
 export async function GET(req: NextRequest) {
   const session = await getServerSession(authOptions);
@@ -23,7 +23,7 @@ export async function GET(req: NextRequest) {
   const tid  = setTimeout(() => ac.abort(), 8_000);
   let res: Response;
   try {
-    res = await fetch(`${ABACATE_BASE}/transparents/check?id=${encodeURIComponent(id)}`, {
+    res = await fetch(`${ABACATE_BASE}/pixQrCode/check?id=${encodeURIComponent(id)}`, {
       headers: { Authorization: `Bearer ${key}` },
       cache: "no-store",
       signal: ac.signal,

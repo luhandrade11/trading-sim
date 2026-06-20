@@ -1,65 +1,69 @@
-// AbacatePay webhook — confirms PIX payment and credits user balance
+// AbacatePay webhook (API v1) — confirms PIX payment and credits user balance
 //
-// Setup in AbacatePay dashboard → Webhooks:
-//   URL: https://yourdomain.com/api/payments/abacatepay/webhook?secret=YOUR_SECRET
-//   Events: transparent.completed
+// Setup in AbacatePay dashboard → Webhooks → Criar webhook:
+//   Versão:  Webhook v1
+//   URL:     https://primebroker.work/api/payments/abacatepay/webhook
+//   Secret:  <ABACATEPAY_WEBHOOK_SECRET>   (AbacatePay appends ?webhookSecret=… )
+//   Eventos: billing.paid
 //
 // Env vars:
-//   ABACATEPAY_WEBHOOK_SECRET — the secret you set in the query string above
+//   ABACATEPAY_WEBHOOK_SECRET — must equal the Secret set in the dashboard form
 
 import { NextRequest, NextResponse } from "next/server";
-import crypto from "crypto";
 import { prisma } from "@/lib/prisma";
 
 const AFFILIATE_RATE = 0.10;
 
-function verifySignature(rawBody: string, signature: string): boolean {
-  const secret = process.env.ABACATEPAY_WEBHOOK_SECRET;
-  if (!secret) {
-    // In development without secret configured, allow through
-    return process.env.NODE_ENV !== "production";
-  }
-  const expected = crypto
-    .createHmac("sha256", secret)
-    .update(rawBody)
-    .digest("base64");
-  try {
-    return crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(signature));
-  } catch {
-    return false;
-  }
-}
-
 export async function POST(req: NextRequest) {
-  // Query-string secret check
-  const qsSecret  = req.nextUrl.searchParams.get("secret");
+  // AbacatePay sends the secret on the query string as ?webhookSecret=…
+  // (also accept ?secret= for backwards compatibility)
+  const qsSecret  = req.nextUrl.searchParams.get("webhookSecret")
+                 ?? req.nextUrl.searchParams.get("secret");
   const envSecret = process.env.ABACATEPAY_WEBHOOK_SECRET;
-  if (envSecret && qsSecret !== envSecret) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  if (envSecret) {
+    if (qsSecret !== envSecret) {
+      console.warn("[AbacatePay] Webhook rejected — bad webhookSecret");
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+  } else if (process.env.NODE_ENV === "production") {
+    console.error("[AbacatePay] ABACATEPAY_WEBHOOK_SECRET not set in production");
+    return NextResponse.json({ error: "Not configured" }, { status: 503 });
   }
 
-  const rawBody   = await req.text();
-  const signature = req.headers.get("x-webhook-signature") ?? "";
-
-  if (!verifySignature(rawBody, signature)) {
-    console.warn("[AbacatePay] Invalid webhook signature");
-    return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
-  }
+  const rawBody = await req.text();
 
   let event: Record<string, unknown>;
   try { event = JSON.parse(rawBody); }
   catch { return NextResponse.json({ error: "Invalid JSON" }, { status: 400 }); }
 
-  // Only process transparent PIX completions
-  if (event.event !== "transparent.completed") {
+  // v1 fires "billing.paid" when a PIX QR Code / billing is paid
+  if (event.event !== "billing.paid") {
     return NextResponse.json({ ok: true });
   }
 
-  const charge    = (event.data as Record<string, unknown>) ?? {};
-  const chargeId  = String(charge.id ?? "");
-  const metadata  = (charge.metadata as Record<string, string>) ?? {};
-  const userId    = metadata.userId;
-  const amountUsd = Number(metadata.amountUsd);
+  // Payload shape varies: data.pixQrCode | data.billing | data
+  const data   = (event.data as Record<string, unknown>) ?? {};
+  const charge = (data.pixQrCode as Record<string, unknown>)
+              ?? (data.billing  as Record<string, unknown>)
+              ?? data;
+
+  const status   = String(charge.status ?? "").toUpperCase();
+  if (status && status !== "PAID") {
+    return NextResponse.json({ ok: true });
+  }
+
+  const chargeId = String(charge.id ?? "");
+  const metadata = (charge.metadata as Record<string, string>) ?? {};
+
+  // userId: prefer metadata, fall back to externalId prefix ("<userId>_<ts>")
+  const userId    = metadata.userId
+                 || String(metadata.externalId ?? "").split("_")[0]
+                 || "";
+  // amountUsd: prefer metadata, fall back to recomputing from BRL amount (cents)
+  const brlCents  = Number(charge.amount ?? 0);
+  const brlRate   = Number(process.env.BRL_RATE ?? 5.20);
+  const amountUsd = Number(metadata.amountUsd)
+                 || (brlCents > 0 ? Math.round((brlCents / 100 / brlRate) * 100) / 100 : 0);
 
   if (!userId || !chargeId || !amountUsd || amountUsd <= 0) {
     console.warn("[AbacatePay] Webhook missing metadata", { userId, chargeId, amountUsd });
